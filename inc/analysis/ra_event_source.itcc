@@ -21,7 +21,7 @@
  */
 
 # ifndef H_STROMA_V_ANALYSIS_PIPELINE_H
-# warning "This header has to be indirectly included in analysis/pipeline.hpp."
+# warning "This header has to be included in analysis/pipeline.hpp."
 # endif
 
 /**@class iEventSource
