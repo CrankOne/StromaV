@@ -34,6 +34,13 @@
 # include <unordered_map>
 # include <unordered_set>
 
+/* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
+ * keywords, so we get rid of them using these macro defs: */
+# ifdef SWIG
+# define override
+# define final
+# endif  // SWIG
+
 namespace sV {
 
 /**@class AnalysisPipeline
@@ -61,8 +68,10 @@ public:
     /// Processor stub helper for concrete event processors.
     template<typename PayloadT> class iEventPayloadProcessor;
 protected:
+    # ifndef SWIG
     /// Aux interfacing class implementing pushing hooks.
     class iEventPayloadProcessorBase;
+    # endif
     /// Pointer to data source.
     iEventSequence * _evSeq;
     /// List of handlers.
@@ -79,6 +88,7 @@ protected:
     virtual void _finalize_sequence( AnalysisPipeline::iEventSequence * );
 public:
     AnalysisPipeline();
+    virtual ~AnalysisPipeline() {}  // todo?
 
     /// Adds processor to processor chain.
     void push_back_processor( iEventProcessor * );
@@ -155,6 +165,7 @@ public:
     const std::string & processor_name() const { return _pName; }
 };
 
+# ifndef SWIG
 class AnalysisPipeline::iEventPayloadProcessorBase : public iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
@@ -166,6 +177,7 @@ protected:
 
     friend class AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
+# endif
 
 /**@class AnalysisApplication::iEventPayloadProcessor
  *

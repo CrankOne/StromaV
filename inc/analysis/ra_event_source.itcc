@@ -36,8 +36,12 @@ class iEventSource : public AnalysisPipeline::iEventSequence {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
+    # ifndef SWIG
     typedef typename MetadataDictionary<EventID>
             ::template iMetadataType<SpecificMetadata> iMetadataType;
+    # else
+    # define iMetadataType MetadataDictionary<EventID>::iMetadataType<SpecificMetadata>
+    # endif
 private:
     Metadata * _mDatCache;
 protected:

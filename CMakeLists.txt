@@ -85,6 +85,10 @@ push_option( ANALYSIS_ROUTINES
 push_option( ALIGNMENT_ROUTINES
         "Enable alignment routines."
         OFF )
+#\option
+push_option( PYTHON_BINDINGS
+        "Enable python bindings (requires SWIG)."
+        OFF )
 push_option( DOC_HTML
     "Whether to produce HTML documentation with doxygen."
         OFF )
@@ -467,6 +471,12 @@ if( DOC_HTML )
         COMMENT "Generating API documentation with Doxygen" VERBATIM
     )
 endif( DOC_HTML )
+
+#
+# Py-bindings
+if( PYTHON_BINDINGS )
+    add_subdirectory( py )
+endif( PYTHON_BINDINGS )
 
 # Build ROOT plugins
 #\project-subdir:
