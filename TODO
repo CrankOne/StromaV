@@ -1,0 +1,10 @@
+
+23.07.016: As we now faced with the need for some primitive alignment
+    algorithms and have some basics in event display, one should have
+    to move this basics on library level (see ed_Tracking* sources).
+
+    It is also required to switch format of ./defaults.cfg to JSON as
+    this approach promises more flexibility considering new needs
+    issued by increased modularity and appearance of large amuount of
+    configurable data.
+

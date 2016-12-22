@@ -1,0 +1,112 @@
+syntax = "proto3";
+/*
+ * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+ * Author: Renat R. Dusaev <crank@qcrypt.org>
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+import "google/protobuf/any.proto";
+package sV.events;
+
+// Event
+///////
+
+message SimulatedEvent {
+    google.protobuf.Any payload = 1;
+}
+
+message ExperimentalEvent {
+    google.protobuf.Any payload = 1;
+}
+
+message DetectorSummary {
+    // The type must match the AFR_DetSignature type:
+    uint32 detectorID = 1;
+    repeated google.protobuf.Any summary = 2;
+}
+
+message DetectorSummaryGroup {
+    repeated DetectorSummary summaries = 3;
+    double maxDep = 5;
+}
+
+message EventDisplayMessage {
+    repeated DetectorSummary summary = 1;
+}
+
+// The event message can bear the simulated experimental data:
+message Event {
+    oneof uevent {
+        SimulatedEvent simulated = 1;
+        ExperimentalEvent experimental = 5;
+    }
+    EventDisplayMessage eventDisplayMessage = 8;
+}
+
+// Multicast message can either contain the steering/status message, or
+// a particular event:
+message MulticastMessage {
+    message SenderStatusMessage {
+        enum SenderStatus {
+              UNKNOWN = 0;
+            OPERATING = 1;
+                 IDLE = 2;
+          MALFUNCTION = 3;
+            QUENCHING = 4;
+        }
+        SenderStatus senderStatus = 1;
+    }
+
+    oneof Payload {
+        Event event = 1;
+        SenderStatusMessage status = 2;
+    }
+}
+
+//
+// Basic storaging
+//
+
+message Bucket {
+    repeated Event events = 1;
+}
+
+message DeflatedBucketMetaInfo {
+    enum CompressionMethod {
+        UNCOMPRESSED = 0;
+                ZLIB = 1;
+                 BZ2 = 2;
+    }
+    CompressionMethod comprMethod = 1;
+    // ...
+    google.protobuf.Any suppInfo = 15;
+}
+
+message DeflatedBucket {
+    DeflatedBucketMetaInfo  metainfo = 1;
+    google.protobuf.Any     deflatedContent = 2;
+}
+
+// Misc
+//////
+
+message TestingMessage {
+    string content = 1;
+}
+

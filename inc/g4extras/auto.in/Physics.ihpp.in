@@ -1,0 +1,50 @@
+/*
+ * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+ * Author: Renat R. Dusaev <crank@qcrypt.org>
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+# ifndef H_STROMA_V_SIM_DYNAMIC_PHYSICS_MODULES_GENERATED_MACRO_H
+# define H_STROMA_V_SIM_DYNAMIC_PHYSICS_MODULES_GENERATED_MACRO_H
+
+# include "../../config.h"
+
+/*
+ * Note, that this file is CMake-generated and beware
+ * to edit output (.ihpp extension). The real source
+ * has .ihpp.in extension.
+ */
+
+# ifdef GEANT4_MC_MODEL
+# ifdef GEANT4_DYNAMIC_PHYSICS
+
+//# pragma GCC diagnostic push
+//# pragma GCC diagnostic ignored "-Wdeprecated-register"  // "register" is depr-d
+@G4_PHYSICS_INCLUDES_STR@
+//# pragma GCC diagnostic pop
+
+# define for_each_physics( m ) \
+@G4_PHYSICS_DEFINES_STR@
+    /* ... */
+
+# endif  // GEANT4_DYNAMIC_PHYSICS
+# endif  // GEANT4_MC_MODEL
+
+# endif  // H_STROMA_V_SIM_DYNAMIC_PHYSICS_MODULES_GENERATED_MACRO_H
+

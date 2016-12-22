@@ -1,0 +1,46 @@
+# Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+# Author: Renat R. Dusaev <crank@qcrypt.org>
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+# the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# CMake config file for Goo library package
+# - It defines the following variables
+#  StromaV_INCLUDE_DIRS      - include directories for StromaV library
+#  StromaV_LIBRARIES         - StromaV libraries to link against
+#  StromaV_LIBRARY_DIR       - Where StromaV libraries is to be placed
+#  StromaV_CC                - StromaV C compiler
+#  StromaV_C_CFLAGS          - StromaV C compiler flags
+#  StromaV_CXX               - StromaV C++ compiler
+#  StromaV_CXX_CFLAGS        - StromaV C++ compiler flags
+#  StromaV_INSTALL_PREFIX    - StromaV basic installation path
+
+set( StromaV_INCLUDE_DIRS   "@CMAKE_INSTALL_PREFIX@/include/StromaV" )
+set( StromaV_LIBRARIES      @StromaV_LIB@ )
+set( StromaV_LIBRARY_DIR    @CMAKE_INSTALL_PREFIX@/lib/StromaV )
+set( StromaV_INSTALL_PREFIX @CMAKE_INSTALL_PREFIX@ )
+
+set( StromaV_CC             "@CMAKE_C_COMPILER@" )
+set( StromaV_C_CFLAGS       "@CMAKE_C_FLAGS@"   )
+
+set( StromaV_CXX            "@CMAKE_CXX_COMPILER@" )
+set( StromaV_CXX_CFLAGS     "@CMAKE_CXX_FLAGS@" )
+
+set( StromaV_DEFAULT_CFG_FILE_PATH @DEFAULT_STROMAV_CFG_PATH@ )
+
+@StromaV_OPTIONS_STR@
+

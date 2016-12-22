@@ -1,0 +1,9 @@
+# WARNING: If this file has a postfix rootrc.in this is an original template.
+# All the changes will be reflected in output copy of this file.
+# If this file has a postfix .rootrc this is a generated instance ---
+# after re-generating all the changes WILL BE LOST.
+
+# Sets up some additional variables needed to handle p348g4 extensions
+
+#Unix.*.Root.DynamicPath:    .:rootPlugins/CommandWidget/:
++Plugin.TGCommandPlugin *   P348CommandWidgetPlugin P348CommandWidgetPlugin "P348CommandWidgetPlugin(const TGWindow*,UInt_t,UInt_t)"
