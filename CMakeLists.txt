@@ -127,10 +127,8 @@ find_package( Boost ${Boost_FORCE_VERSION}
 if( RPC_PROTOCOLS )
     find_package( Protobuf REQUIRED )
     #set(PROTOBUF_GENERATE_CPP_APPEND_PATH FALSE)
-    PROTOBUF_GENERATE_CPP(GPROTO_MSGS_SRCS GPROTO_MSGS_HDRS
-        event.proto)
-    #message( STATUS '$!$' ${GPROTO_MSGS_SRCS} )  # XXX
-    #message( STATUS '$@$' ${GPROTO_MSGS_HDRS} )  # XXX
+    protobuf_generate_cpp(GPROTO_MSGS_SRCS GPROTO_MSGS_HDRS
+                          event.proto)
 endif( RPC_PROTOCOLS )
 
 # GEANT4 is a framework for Monte-Carlo simulations in high-energy and nuclear
@@ -423,6 +421,8 @@ add_library( ${StromaV_LIB} SHARED
         $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
     )
 
+#add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX
+
 set_target_properties( ${StromaV_LIB} PROPERTIES VERSION ${StromaV_VERSION}
                        SOVERSION ${StromaV_VERSION_MAJOR} )
 
@@ -476,6 +476,8 @@ endif( DOC_HTML )
 # Py-bindings
 if( PYTHON_BINDINGS )
     add_subdirectory( py )
+    # Can fix possible issue with target visibility:
+    #set_source_files_properties( ${PY_MSG_MODULES} GENERATED TRUE )
 endif( PYTHON_BINDINGS )
 
 # Build ROOT plugins
