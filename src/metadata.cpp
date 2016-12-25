@@ -23,6 +23,12 @@
 # include "metadata.hpp"
 # include "analysis/pipeline.hpp"
 
+sV_MetadataTypeIndex
+sV_generate_metadata_type_id( void * _this ) {
+    // trivial thing:
+    return _this;
+}
+
 namespace sV {
 
 namespace test {
@@ -50,24 +56,14 @@ class TstMetadataType1 : public MetadataDict::iMetadataType<TstMetadata1> {
 public:
     typedef MetadataDict::iMetadataType<TstMetadata1>::DataSource DataSource;
 protected:
-    bool _V_acquire_metadata( DataSource & ) override;
-    bool _V_store_metadata( const SpecificMetadata & mdInstance,
-                            SpecificDictionary & dictInstance ) override;
-    bool _V_restore_metadata_for( SpecificMetadata & mdDestInstance,
-                               const SpecificDictionary & dictInstance,
-                               const EventID & eid ) override;
+    TstMetadata1 & _V_acquire_metadata( DataSource & ) const override;
 };  // class TstMetadataType1
 
 class TstMetadataType2 : public MetadataDict::iMetadataType<TstMetadata2> {
 public:
     typedef MetadataDict::iMetadataType<TstMetadata2>::DataSource DataSource;
 protected:
-    bool _V_acquire_metadata( DataSource & ) override;
-    bool _V_store_metadata( const SpecificMetadata & mdInstance,
-                            SpecificDictionary & dictInstance ) override;
-    bool _V_restore_metadata_for( SpecificMetadata & mdDestInstance,
-                               const SpecificDictionary & dictInstance,
-                               const EventID & eid ) override;
+    TstMetadata2 & _V_acquire_metadata( DataSource & ) const override;
 };  // TstMetadataType2
 
 //
@@ -118,11 +114,6 @@ protected:
         // TODO: source must implement some kind of iteration among this range
         _TODO_  // TODO
         return true;
-    }
-    virtual Metadata * _V_recache_metadata(
-                                    MetadataDictionary<EventID> & ) override {
-        //TODO: source must implement some kind of iteration among this range
-        _TODO_  // TODO
     }
 public:
     TstEventSource1() : _evIter(nullptr) {

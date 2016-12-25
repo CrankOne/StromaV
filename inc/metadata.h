@@ -25,7 +25,7 @@
 
 # include <stdint.h>
 
-typedef uint8_t sV_MetadataTypeIndex;
+typedef void * sV_MetadataTypeIndex;
 
 /**@struct NA64_ChunksMetadata
  * @brief Metadata C representation.
@@ -39,6 +39,9 @@ typedef struct sV_Metadata {
     sV_MetadataTypeIndex typeIndex;
     void * payload;
 } sV_Metadata;
+
+/** For metadata type provided by ptr, generates its unique ID. */
+sV_MetadataTypeIndex sV_generate_metadata_type_id( void * );
 
 # endif  /* H_STROMA_V_METADATA_BASE_STRUCTURES_H */
 

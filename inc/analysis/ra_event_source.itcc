@@ -43,7 +43,7 @@ public:
     # define iMetadataType MetadataDictionary<EventID>::iMetadataType<SpecificMetadata>
     # endif
 private:
-    Metadata * _mDatCache;
+    SpecificMetadata * _mDatCache;
 protected:
     /// Random access read event based on provided metadata information (IF).
     virtual bool _V_event_read_single( const EventID & ) = 0;
@@ -59,9 +59,6 @@ protected:
         }
         return res;
     }
-
-    /// Returns metadata handle for current data source.
-    virtual Metadata * _V_recache_metadata( MetadataDictionary<EventID> & ) = 0;
 public:
     virtual bool event_read_single( const EventID & eid ) {
         return _V_event_read_single(eid); }
@@ -72,12 +69,14 @@ public:
         return _V_event_read_list(list); }
 
     /// Obtain (fetch cached or build new) metadata for itself.
-    virtual const SpecificMetadata & acquire_metadata(
+    virtual const SpecificMetadata & metadata(
                                     MetadataDictionary<EventID> & mDict ) {
         if( !_mDatCache ) {
-            _mDatCache = _V_recache_metadata( mDict );
+            const iMetadataType & mdt = 
+                        mDict.template get_metadata_type<SpecificMetadata>();
+            _mDatCache = &( mdt.acquire_metadata( *this ) );
         }
-        return mDict.template cast<SpecificMetadata>( *_mDatCache );
+        return *_mDatCache;
     }
 };  // class iEventSource
 
