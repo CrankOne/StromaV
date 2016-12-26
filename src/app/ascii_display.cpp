@@ -31,11 +31,15 @@ namespace aux {
 
 ASCII_Display::ASCII_Entry::ASCII_Entry( ASCII_Display * displayPtr, NLines nLines ) :
         _displayPtr(displayPtr) {
-    _displayPtr->_register_me( this, nLines );
+    if( _displayPtr ) {
+        _displayPtr->_register_me( this, nLines );
+    }
 }
 
 ASCII_Display::ASCII_Entry::~ASCII_Entry( ) {
-    _displayPtr->_erase_me( this );
+    if( _displayPtr ) {
+        _displayPtr->_erase_me( this );
+    }
 }
 
 

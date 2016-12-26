@@ -92,7 +92,7 @@ class MetadataDictionary {
 public:
     typedef EventIDT EventID;
 
-    class iSpecificEventIDMetdataType : protected iMetadataTypeBase {
+    class iSpecificEventIDMetdataType : public iMetadataTypeBase {
     public:
         typedef MetadataDictionary<EventID> SpecificDictionary;
     private:
@@ -127,7 +127,7 @@ public:
     std::unordered_map<MetadataTypeIndex, iMetadataTypeBase *> _encodedIndex;
 public:
     /// Registers metadata type.
-    MetadataTypeIndex register_metadata_type( iMetadataTypeBase * md );
+    MetadataTypeIndex register_metadata_type( iMetadataTypeBase & md );
 
     /// Removes metadata type.
     void remove_metadata_type( const std::string & );
@@ -169,7 +169,8 @@ MetadataDictionary<EventIDT>::_cast_typecheck( const Metadata & md, MetadataType
 }
 
 template<typename EventIDT> MetadataTypeIndex
-MetadataDictionary<EventIDT>::register_metadata_type( iMetadataTypeBase * md ) {
+MetadataDictionary<EventIDT>::register_metadata_type( iMetadataTypeBase & mdRef ) {
+    iMetadataTypeBase * md = &mdRef;
     auto insertionResult = _namedIndex.emplace( md->name(), md );
     if( !insertionResult.second ) {
         if( insertionResult.first->second == md ) {
