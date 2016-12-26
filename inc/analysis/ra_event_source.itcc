@@ -36,12 +36,7 @@ class iEventSource : public AnalysisPipeline::iEventSequence {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
-    # ifndef SWIG
-    typedef typename MetadataDictionary<EventID>
-            ::template iMetadataType<SpecificMetadata> iMetadataType;
-    # else
-    # define iMetadataType MetadataDictionary<EventID>::iMetadataType<SpecificMetadata>
-    # endif
+    typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
 private:
     SpecificMetadata * _mDatCache;
 protected:
@@ -72,7 +67,7 @@ public:
     virtual const SpecificMetadata & metadata(
                                     MetadataDictionary<EventID> & mDict ) {
         if( !_mDatCache ) {
-            const iMetadataType & mdt = 
+            const iSpecificMetadataType & mdt = 
                         mDict.template get_metadata_type<SpecificMetadata>();
             _mDatCache = &( mdt.acquire_metadata( *this ) );
         }

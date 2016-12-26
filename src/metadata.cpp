@@ -29,6 +29,8 @@ sV_generate_metadata_type_id( void * _this ) {
     return _this;
 }
 
+# if 0
+
 namespace sV {
 
 namespace test {
@@ -153,4 +155,5 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+# endif
 
