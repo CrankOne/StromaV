@@ -28,6 +28,8 @@
 #  StromaV_CXX               - StromaV C++ compiler
 #  StromaV_CXX_CFLAGS        - StromaV C++ compiler flags
 #  StromaV_INSTALL_PREFIX    - StromaV basic installation path
+#  StromaV_SWIG_IFACES_DIR   - StromaV SWIG interfaces path (when
+#                            PYTHON_BINDINGS was enabled)
 
 set( StromaV_INCLUDE_DIRS   "@CMAKE_INSTALL_PREFIX@/include/StromaV" )
 set( StromaV_LIBRARIES      @StromaV_LIB@ )
@@ -41,6 +43,8 @@ set( StromaV_CXX            "@CMAKE_CXX_COMPILER@" )
 set( StromaV_CXX_CFLAGS     "@CMAKE_CXX_FLAGS@" )
 
 set( StromaV_DEFAULT_CFG_FILE_PATH @DEFAULT_STROMAV_CFG_PATH@ )
+
+set( StromaV_SWIG_IFACES_DIR "@StromaV_SWIG_IFACES_DIR@" )
 
 @StromaV_OPTIONS_STR@
 

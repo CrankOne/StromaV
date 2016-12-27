@@ -45,7 +45,7 @@
 
 /* Some third-party libraries require this macro to be set.
  */
-# ifndef PACKAGE
+# if !defined( PACKAGE ) && !defined( SWIG )
 #   define PACKAGE StromaV
 #   define PACKAGE_VERSION STROMAV_VERSION_MAJOR STROMAV_VERSION_MINOR
 # endif

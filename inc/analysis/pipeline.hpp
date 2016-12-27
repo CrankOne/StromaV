@@ -34,14 +34,19 @@
 # include <unordered_map>
 # include <unordered_set>
 
-/* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
- * keywords, so we get rid of them using these macro defs: */
-# ifdef SWIG
-# define override
-# define final
-# endif  // SWIG
-
 namespace sV {
+
+// FWD
+namespace aux {
+/// Data format reader object representation.
+class iEventSequence;
+/// Event processor reader object representation.
+class iEventProcessor;
+/// Processor stub helper for concrete event processors.
+template<typename PayloadT> class iEventPayloadProcessor;
+/// Aux interfacing class implementing pushing hooks.
+class iEventPayloadProcessorBase;
+}  // namespace aux
 
 /**@class AnalysisPipeline
  * @brief Representation for data analysis pipeline.
@@ -61,17 +66,10 @@ namespace sV {
 class AnalysisPipeline {
 public:
     typedef typename mixins::PBEventApp::UniEvent Event;
-    /// Data format reader object representation.
-    class iEventSequence;
-    /// Event processor reader object representation.
-    class iEventProcessor;
-    /// Processor stub helper for concrete event processors.
-    template<typename PayloadT> class iEventPayloadProcessor;
+    typedef aux::iEventSequence iEventSequence;
+    typedef aux::iEventProcessor iEventProcessor;
+    typedef aux::iEventPayloadProcessorBase iEventPayloadProcessorBase;
 protected:
-    # ifndef SWIG
-    /// Aux interfacing class implementing pushing hooks.
-    class iEventPayloadProcessorBase;
-    # endif
     /// Pointer to data source.
     iEventSequence * _evSeq;
     /// List of handlers.
@@ -105,14 +103,16 @@ public:
 
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
     virtual int process( iEventSequence * );
+
+    template<typename PayloadT> friend class aux::iEventPayloadProcessor;
 };  // class AnalysisPipeline
 
-
+namespace aux {
 /**@class AnalysisApplication::iEventSequence
  *
  * Data format reader object representation.
  * */
-class AnalysisPipeline::iEventSequence {
+class iEventSequence {
 public:
     typedef AnalysisPipeline::Event Event;
 protected:
@@ -131,6 +131,8 @@ public:
     virtual void finalize_reading( ) {   _V_finalize_reading(); }
     virtual void print_brief_summary( std::ostream & os ) const
                                     { _V_print_brief_summary( os ); }
+
+    friend class ::sV::AnalysisPipeline;
 };
 
 # include "ra_event_source.itcc"
@@ -139,7 +141,7 @@ public:
  *
  * Event processing handler class interface. This class claims the basic logic.
  * */
-class AnalysisPipeline::iEventProcessor {
+class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
 private:
@@ -163,10 +165,11 @@ public:
                                     { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
+
+    friend class ::sV::AnalysisPipeline;
 };
 
-# ifndef SWIG
-class AnalysisPipeline::iEventPayloadProcessorBase : public iEventProcessor {
+class iEventPayloadProcessorBase : public iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
     iEventPayloadProcessorBase( const std::string & pn ) :
@@ -175,9 +178,8 @@ protected:
     /// Must be overriden by payload processor.
     virtual void register_hooks( AnalysisPipeline * ) = 0;
 
-    friend class AnalysisPipeline;
+    friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
-# endif
 
 /**@class AnalysisApplication::iEventPayloadProcessor
  *
@@ -187,7 +189,7 @@ protected:
  * some helper code.
  * */
 template<typename PayloadT>
-class AnalysisPipeline::iEventPayloadProcessor : public iEventPayloadProcessorBase {
+class iEventPayloadProcessor : public iEventPayloadProcessorBase {
 public:
     typedef AnalysisPipeline::Event Event;
 private:
@@ -246,7 +248,10 @@ protected:
 public:
     /// Helper method registering pack/unpack caching functions. Invoked by
     /// pipeline
+    friend class ::sV::AnalysisPipeline;
 };
+
+}  // namespace aux
 
 }  // namespace sV
 

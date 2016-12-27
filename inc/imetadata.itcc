@@ -47,7 +47,7 @@ class iMetadataType :
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
-    typedef iEventSource<EventID, SpecificMetadata> DataSource;
+    typedef aux::iEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     //typedef typename SpecificDictionary::iSpecificEventIDMetdataType iSpecificEventIDMetdataType;
 private:

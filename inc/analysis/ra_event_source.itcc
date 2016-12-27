@@ -32,7 +32,7 @@
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iEventSource : public AnalysisPipeline::iEventSequence {
+class iEventSource : public iEventSequence {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;

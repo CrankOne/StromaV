@@ -38,7 +38,9 @@ namespace sV {
 typedef sV_MetadataTypeIndex MetadataTypeIndex;
 typedef sV_Metadata Metadata;
 
+namespace aux {
 template<typename EventIDT, typename SpecificMetadataT> class iEventSource;
+}  // namespace aux
 template<typename EventIDT> class MetadataDictionary;
 
 namespace aux {
