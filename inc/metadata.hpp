@@ -104,7 +104,6 @@ public:
     iTemplatedEventIDMetdataType( const std::string & tnm ) : 
                                   iMetadataTypeBase( tnm ) {}
 
-    std::string swig_acc_chk_m1() const { return "erase me, please #1"; } // XXX
     friend class sV::MetadataDictionary<EventID>;
 };  // iTemplatedEventIDMetdataType
 

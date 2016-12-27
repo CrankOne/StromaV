@@ -20,8 +20,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_ANALYSIS_PIPELINE_H
-# warning "This header has to be included in analysis/pipeline.hpp."
+# if !defined(H_STROMA_V_ANALYSIS_PIPELINE_H) && !defined(SWIG)
+# error "This header has to be included in analysis/pipeline.hpp or used " \
+"by SWIG."
 # endif
 
 /**@class iEventSource
@@ -65,7 +66,7 @@ public:
 
     /// Obtain (fetch cached or build new) metadata for itself.
     virtual const SpecificMetadata & metadata(
-                                    MetadataDictionary<EventID> & mDict ) {
+                                sV::MetadataDictionary<EventIDT> & mDict ) {
         if( !_mDatCache ) {
             const iSpecificMetadataType & mdt = 
                         mDict.template get_metadata_type<SpecificMetadata>();
