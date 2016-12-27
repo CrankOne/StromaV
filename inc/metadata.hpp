@@ -58,6 +58,8 @@ protected:
     /// and invoked by MetadataDictionary implementation.
     virtual void _set_type_index( MetadataTypeIndex ) = 0;
 public:
+    /// Default ctr to make SWIG happy.
+    iMetadataTypeBase() { _FORBIDDEN_CALL_; }
     /// Ctr.
     iMetadataTypeBase( const std::string & tnm ) : _typeName(tnm) {}
     /// Virtual dtr of abstract base class.
@@ -93,9 +95,13 @@ protected:
     void _remove_dict_backref( const SpecificDictionary & dictRef ) {
         _dictionariesBackRefs.erase( &dictRef );
     }
-    iTemplatedEventIDMetdataType( const std::string & tnm ) : 
-                                                iMetadataTypeBase( tnm ) {}
 public:
+    /// Default ctr to make SWIG happy.
+    iTemplatedEventIDMetdataType() { _FORBIDDEN_CALL_; }
+
+    iTemplatedEventIDMetdataType( const std::string & tnm ) : 
+                                  iMetadataTypeBase( tnm ) {}
+
     std::string swig_acc_chk_m1() const { return "erase me, please #1"; } // XXX
     friend class sV::MetadataDictionary<EventID>;
 };  // iTemplatedEventIDMetdataType

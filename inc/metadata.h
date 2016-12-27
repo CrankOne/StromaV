@@ -25,7 +25,7 @@
 
 # include <stdint.h>
 
-typedef void * sV_MetadataTypeIndex;
+typedef uint16_t sV_MetadataTypeIndex;
 
 /**@struct NA64_ChunksMetadata
  * @brief Metadata C representation.

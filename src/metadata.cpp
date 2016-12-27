@@ -23,13 +23,29 @@
 # include "metadata.hpp"
 # include "analysis/pipeline.hpp"
 
+static std::unordered_set<sV_MetadataTypeIndex> * _static_mdTypeIds = nullptr;
+
 sV_MetadataTypeIndex
 sV_generate_metadata_type_id( void * _this ) {
-    // trivial thing:
-    return _this;
+    typedef std::remove_pointer<decltype(_static_mdTypeIds)>::type
+            IDsContainer;
+    if( !_static_mdTypeIds ) {
+        _static_mdTypeIds = new IDsContainer();
+    }
+    IDsContainer & ids = *_static_mdTypeIds;
+    sV_MetadataTypeIndex idCandidate;
+    uint16_t nSense = USHRT_MAX;
+    do {
+        idCandidate = USHRT_MAX*(double(rand())/RAND_MAX);
+        nSense--;
+    } while( ids.end() != ids.find(idCandidate) && nSense );
+    if( !nSense ) {
+        emraise( overflow, "Can not generate unique metadata type ID." );
+    }
+    return idCandidate;
 }
 
-# if 0
+
 
 namespace sV {
 
@@ -54,16 +70,16 @@ struct TstMetadata2 {
 
 //
 // Implement testing metadata types
-class TstMetadataType1 : public MetadataDict::iMetadataType<TstMetadata1> {
+class TstMetadataType1 : public iMetadataType<TstEventID, TstMetadata1> {
 public:
-    typedef MetadataDict::iMetadataType<TstMetadata1>::DataSource DataSource;
+    typedef iMetadataType<TstEventID, TstMetadata1>::DataSource DataSource;
 protected:
     TstMetadata1 & _V_acquire_metadata( DataSource & ) const override;
 };  // class TstMetadataType1
 
-class TstMetadataType2 : public MetadataDict::iMetadataType<TstMetadata2> {
+class TstMetadataType2 : public iMetadataType<TstEventID, TstMetadata2> {
 public:
-    typedef MetadataDict::iMetadataType<TstMetadata2>::DataSource DataSource;
+    typedef iMetadataType<TstEventID, TstMetadata2>::DataSource DataSource;
 protected:
     TstMetadata2 & _V_acquire_metadata( DataSource & ) const override;
 };  // TstMetadataType2
@@ -155,5 +171,4 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-# endif
 

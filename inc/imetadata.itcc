@@ -74,6 +74,9 @@ protected:
     /// among side cache resource(s).
     virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
 public:
+    /// Default ctr to make SWIG happy.
+    iMetadataType() { _FORBIDDEN_CALL_; }
+    
     iMetadataType( const std::string & tnm ) :
             MetadataDictionary<EventIDT>::iSpecificEventIDMetdataType( tnm ) {}
 
