@@ -42,10 +42,10 @@ private:
     SpecificMetadata * _mDatCache;
 protected:
     /// Random access read event based on provided metadata information (IF).
-    virtual bool _V_event_read_single( const EventID & ) = 0;
+    virtual bool _V_event_read_single( const EventIDT & ) = 0;
     /// Read events in some ID range (IF).
-    virtual bool _V_event_read_range( const EventID & lower,
-                                      const EventID & upper ) = 0;
+    virtual bool _V_event_read_range( const EventIDT & lower,
+                                      const EventIDT & upper ) = 0;
     /// Read events specified by set of indexes (IF with default
     /// implementation).
     virtual bool _V_event_read_list( const std::list<EventID> & list ) {

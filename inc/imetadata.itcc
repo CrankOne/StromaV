@@ -68,6 +68,7 @@ protected:
                         this, (size_t) _typeIndex );
             }
         }
+        _typeIndex = desiredIdx;
     }
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up

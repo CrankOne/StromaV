@@ -216,6 +216,8 @@ MetadataDictionary<EventIDT>::register_metadata_type(
         MetadataTypeIndex newIdx = sV_generate_metadata_type_id( md );
         md->_set_type_index( newIdx );
         _encodedIndex.emplace( newIdx, md );
+        //std::cout << "New metadata type " << md << " registered with ID "
+        //          << newIdx << " in dict " << this << "." << std::endl;
     }
 }
 

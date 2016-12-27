@@ -36,7 +36,9 @@ sV_generate_metadata_type_id( void * _this ) {
     sV_MetadataTypeIndex idCandidate;
     uint16_t nSense = USHRT_MAX;
     do {
-        idCandidate = USHRT_MAX*(double(rand())/RAND_MAX);
+        idCandidate = double(USHRT_MAX)*(double(rand())/RAND_MAX);
+        //XXX
+        //std::cout << "New type ID generated:" << idCandidate << std::endl;
         nSense--;
     } while( ids.end() != ids.find(idCandidate) && nSense );
     if( !nSense ) {
