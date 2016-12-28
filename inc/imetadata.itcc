@@ -42,12 +42,11 @@ namespace sV {
  * */
 template<typename EventIDT, typename SpecificMetadataT>
 class iMetadataType :
-            //public MetadataDictionary<EventIDT>::iSpecificEventIDMetdataType
             public aux::iTemplatedEventIDMetdataType<EventIDT> {
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
-    typedef aux::iEventSource<EventID, SpecificMetadata> DataSource;
+    typedef aux::iUniqueEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     //typedef typename SpecificDictionary::iSpecificEventIDMetdataType iSpecificEventIDMetdataType;
 private:
@@ -92,7 +91,7 @@ public:
     virtual MetadataTypeIndex get_index() const final { return type_index(); }
 
     friend class MetadataDictionary<EventID>;
-};  // class iMetadata
+};  // class iMetadataType
 
 template<typename EventIDT, typename SpecificMetadataT>
 MetadataTypeIndex iMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;

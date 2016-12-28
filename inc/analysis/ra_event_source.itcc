@@ -25,15 +25,22 @@
 "by SWIG."
 # endif
 
-/**@class iEventSource
+/**@class iUniqueEventSource
+ * @brief Interface class for unique event source supporting metadata for
+ *        random access.
  * 
  * Template class for event sequences supporting random access. All the 
  * `event_read_*` functions can return false upon non-critical failure as well
  * as indicate a critical error by throwing an exception.
+ *
+ * This class is designed as an intermediate representation of somewhat ideal
+ * "unique" event source that supports metadata indexing its own scope. It can
+ * be further used as a container or manager dispatching queries among multiple
+ * minor event source instances.
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iEventSource : public iEventSequence {
+class iUniqueEventSource : public iEventSequence {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
@@ -43,6 +50,7 @@ private:
 protected:
     /// Random access read event based on provided metadata information (IF).
     virtual bool _V_event_read_single( const EventIDT & ) = 0;
+
     /// Read events in some ID range (IF).
     virtual bool _V_event_read_range( const EventIDT & lower,
                                       const EventIDT & upper ) = 0;
@@ -56,11 +64,15 @@ protected:
         return res;
     }
 public:
+    iUniqueEventSource() : _mDatCache(nullptr) {}
+
     virtual bool event_read_single( const EventID & eid ) {
         return _V_event_read_single(eid); }
+
     virtual bool event_read_range( const EventID & lower,
                                    const EventID & upper ) {
         return _V_event_read_range( lower, upper ); }
+
     virtual bool event_read_list( const std::list<EventID> & list ) {
         return _V_event_read_list(list); }
 
@@ -74,5 +86,5 @@ public:
         }
         return *_mDatCache;
     }
-};  // class iEventSource
+};  // class iUniqueEventSource
 

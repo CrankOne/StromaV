@@ -25,6 +25,7 @@
 
 # include "metadata.h"
 # include "app/app.h"
+//# include "identifiable_ev_source.tcc"
 
 # include <typeinfo>
 # include <list>
@@ -39,7 +40,8 @@ typedef sV_MetadataTypeIndex MetadataTypeIndex;
 typedef sV_Metadata Metadata;
 
 namespace aux {
-template<typename EventIDT, typename SpecificMetadataT> class iEventSource;
+template<typename EventIDT, typename SpecificMetadataT>
+        class iUniqueEventSource;
 }  // namespace aux
 template<typename EventIDT> class MetadataDictionary;
 
@@ -174,7 +176,20 @@ public:
     template<typename SpecificMetadataT>
     const iMetadataType<EventID, SpecificMetadataT> &
     get_metadata_type() const {
-        _TODO_;  // TODO
+        // This method will be called with sepcific metadata objec C++-type
+        // as a template argument. It has to return an instance of
+        // corresponding iMetadataType --- just found instance of the
+        // iMetadataType<EventID, SpecificMetadataT>. Here we involve a
+        // idiomatic "virtual static method".
+        auto it = _encodedIndex.find(
+                    iMetadataType<EventID, SpecificMetadataT>::type_index() );
+        if( _encodedIndex.end() == it ) {
+            emraise( notFound, "Metadata types dictionary %p has no "
+                     " type registered with ID %u.", this,
+                     iMetadataType<EventID, SpecificMetadataT>::type_index() );
+        }
+        return static_cast<const iMetadataType<EventID, SpecificMetadataT> &>(
+                                                                *(it->second));
     }
 };  // class MetadataDictionary
 
