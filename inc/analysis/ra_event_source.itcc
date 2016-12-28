@@ -25,35 +25,47 @@
 "by SWIG."
 # endif
 
-/**@class iUniqueEventSource
- * @brief Interface class for unique event source supporting metadata for
+/**@class iEventSource
+ * @brief Interface class for event source supporting metadata for
  *        random access.
  * 
  * Template class for event sequences supporting random access. All the 
  * `event_read_*` functions can return false upon non-critical failure as well
  * as indicate a critical error by throwing an exception.
  *
+ * TODO: following thesis can be wrong:
  * This class is designed as an intermediate representation of somewhat ideal
  * "unique" event source that supports metadata indexing its own scope. It can
  * be further used as a container or manager dispatching queries among multiple
  * minor event source instances.
  * */
-template<typename EventIDT,
-         typename SpecificMetadataT>
-class iUniqueEventSource : public iEventSequence {
+template<typename MetadataTypeT>
+class iEventSource : public iEventSequence {
+# ifndef SWIG
+            static_assert( std::is_base_of<sV::aux::iMetadataTypeBase,
+                                           MetadataTypeT>::value,
+                "Metadata type class has to be descendant of "
+                "iMetadataTypeBase." );
+# endif
 public:
-    typedef EventIDT EventID;
-    typedef SpecificMetadataT SpecificMetadata;
-    typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
+    typedef MetadataTypeT                   MetadataType;
+    typedef typename MetadataType::EventID           EventID;
+    typedef typename MetadataType::SpecificMetadata  SpecificMetadata;
+# ifndef SWIG
+    static_assert( std::is_base_of<iMetadataType<EventID, SpecificMetadata>,
+                                   MetadataType>::value,
+                "Metadata type class has to implement iMetadataType "
+                "interface." );
+# endif
 private:
     SpecificMetadata * _mDatCache;
 protected:
     /// Random access read event based on provided metadata information (IF).
-    virtual bool _V_event_read_single( const EventIDT & ) = 0;
+    virtual bool _V_event_read_single( const EventID & ) = 0;
 
     /// Read events in some ID range (IF).
-    virtual bool _V_event_read_range( const EventIDT & lower,
-                                      const EventIDT & upper ) = 0;
+    virtual bool _V_event_read_range( const EventID & lower,
+                                      const EventID & upper ) = 0;
     /// Read events specified by set of indexes (IF with default
     /// implementation).
     virtual bool _V_event_read_list( const std::list<EventID> & list ) {
@@ -64,7 +76,7 @@ protected:
         return res;
     }
 public:
-    iUniqueEventSource() : _mDatCache(nullptr) {}
+    iEventSource() : _mDatCache(nullptr) {}
 
     virtual bool event_read_single( const EventID & eid ) {
         return _V_event_read_single(eid); }
@@ -78,13 +90,13 @@ public:
 
     /// Obtain (fetch cached or build new) metadata for itself.
     virtual const SpecificMetadata & metadata(
-                                sV::MetadataDictionary<EventIDT> & mDict ) {
+                                sV::MetadataDictionary<EventID> & mDict ) {
         if( !_mDatCache ) {
-            const iSpecificMetadataType & mdt = 
+            const MetadataType & mdt = 
                         mDict.template get_metadata_type<SpecificMetadata>();
             _mDatCache = &( mdt.acquire_metadata( *this ) );
         }
         return *_mDatCache;
     }
-};  // class iUniqueEventSource
+};  // class iEventSource
 

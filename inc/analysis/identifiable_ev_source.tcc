@@ -114,7 +114,7 @@ public:
 };  // class iIdentifiableEventSource
 
 template<typename SourceIDT>
-aux::iSourceIDParser<SourceID> * 
+aux::iSourceIDParser<SourceIDT> * 
                     iIdentifiableEventSource<SourceIDT>::IDParser = nullptr;
 
 }  // namespace mixins

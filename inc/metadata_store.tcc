@@ -28,6 +28,13 @@
 
 namespace sV {
 
+namespace aux {
+template<typename EventIDT,
+         typename SpecificMetadataT,
+         typename SourceIDT>
+class iEventSource;
+}  // namespace aux
+
 /**@class iMetadataStore
  * @brief Interface to entities storing metadata of specific type.
  **/
@@ -37,6 +44,7 @@ template<typename EventIDT,
 class iMetadataStore {
 public:
     typedef EventIDT EventID;
+    typedef SourceIDT SourceID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef iMetadataType<EventID, SpecificMetadata> SpecificMetadataType;
 public:
@@ -167,7 +175,7 @@ iCachedMetadataType<EventIDT,
 template<typename EventIDT,
          typename SpecificMetadataT,
          typename SourceIDT> SpecificMetadataT &
-iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::acquire_metadata_for(
+iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::_V_acquire_metadata(
                                                     DataSource & s ) const {
     const SourceID * sidPtr = s.id_ptr();
     // ^^^ TODO: how to guarantee? Note, that it can return NULL
@@ -176,7 +184,7 @@ iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::acquire_metadata_fo
         if( sidPtr ) {
             metadataPtr = _look_up_for( *sidPtr );
         } else {
-            sV_logw( badParameter, "Can not permanently store/retrieve "
+            sV_logw( "Can not permanently store/retrieve "
                 "metadata information for source %s (%p) since it has no "
                 "ID set.\n", s.textual_id(), &s );
         }
@@ -198,9 +206,10 @@ iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::acquire_metadata_fo
                 "source %s (%p).", s.textual_id(sidPtr), &s );
         }
         sV_log2( "Metadata extracted for source %p.\n", &s );
-        append_metadata( metadataPtr, chunk.run_no(), chunk.chunk_no() );
+        append_metadata( sidPtr, s, metadataPtr );
     }
-    return *tIndexPtr;
+    assert( metadataPtr );
+    return *metadataPtr;
 }
 
 }  // namespace sV

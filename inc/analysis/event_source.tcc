@@ -25,7 +25,8 @@
 
 # include "pipeline.hpp"
 # include "identifiable_ev_source.tcc"
-
+# include "metadata_store.tcc"
+# if 0
 namespace sV {
 
 /**@class iEventSource
@@ -39,7 +40,7 @@ namespace sV {
 template<typename EventIDT,
          typename SpecificMetadataT,
          typename SourceIDT>
-class iEventSource : public iUniqueEventSource<EventIDT, SpecificMetadataT>,
+class iEventSource : public aux::iUniqueEventSource<EventIDT, SpecificMetadataT>,
                      public mixins::iIdentifiableEventSource<SourceIDT> {
 public:
     typedef EventIDT EventID;
@@ -62,5 +63,6 @@ public:
 };  // class iEventSource
 
 }  // namespace sV
+# endif
 
 # endif  // H_STROMA_V_EVENT_SOURCE_H
