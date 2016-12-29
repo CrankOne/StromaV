@@ -22,6 +22,7 @@
 
 # include "metadata.hpp"
 # include "analysis/pipeline.hpp"
+# include "analysis/ra_event_source.tcc"
 
 static std::unordered_set<sV_MetadataTypeIndex> * _static_mdTypeIds = nullptr;
 

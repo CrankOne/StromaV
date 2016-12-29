@@ -46,7 +46,7 @@ class iMetadataType :
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
-    typedef aux::iUniqueEventSource<EventID, SpecificMetadata> DataSource;
+    typedef iBatchEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     //typedef typename SpecificDictionary::iSpecificEventIDMetdataType iSpecificEventIDMetdataType;
 private:
@@ -71,7 +71,7 @@ protected:
     }
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up
-    /// among side cache resource(s).
+    /// among side cache resource (monolithic).
     virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
 public:
     /// Default ctr to make SWIG happy.

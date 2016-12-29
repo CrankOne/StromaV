@@ -115,6 +115,13 @@ namespace aux {
 class iEventSequence {
 public:
     typedef AnalysisPipeline::Event Event;
+    typedef uint8_t Features_t;
+    enum Features : Features_t {
+        randomAccess = 0x1,
+        identifiable = 0x2,
+    };
+private:
+    uint8_t _features;
 protected:
     virtual bool _V_is_good() = 0;
     virtual void _V_next_event( Event *& ) = 0;
@@ -123,19 +130,39 @@ protected:
     virtual Event * _V_initialize_reading() = 0;
     virtual void _V_finalize_reading() = 0;
     virtual void _V_print_brief_summary( std::ostream & ) const {}
+    iEventSequence( Features_t fts );
 public:
     virtual ~iEventSequence(){}
+
+    /// Returns true if source initialized and next event can be read.
     virtual bool is_good() {     return _V_is_good(); }
+
+    /// Set-ups reading procedure.
     virtual Event * initialize_reading() { return _V_initialize_reading(); }
+
+    /// Performs reading next event into provided reentrant instance.
     virtual void next_event( Event *& e ) {         _V_next_event( e ); }
+
+    /// Invoked after event reading done (e.g. to clean-up file descriptor).
     virtual void finalize_reading( ) {   _V_finalize_reading(); }
+
+    /// Prints out brief statistics of current state.
     virtual void print_brief_summary( std::ostream & os ) const
                                     { _V_print_brief_summary( os ); }
 
+    /// Returns features mask.
+    Features_t features() const { return _features; }
+
+    /// Returns true if descendant implements iRandomAccessEventSource.
+    bool does_provide_random_access() const
+                { return _features & randomAccess; }
+
+    /// Returns true if descendant implements iIdentifiableEventSource.
+    bool is_identifiable() const
+                { return _features & identifiable; }
+
     friend class ::sV::AnalysisPipeline;
 };
-
-# include "ra_event_source.itcc"
 
 /**@class AnalysisApplication::iEventProcessor
  *

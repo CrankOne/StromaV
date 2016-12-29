@@ -67,11 +67,11 @@ public:
 
 
 template<typename ConcreteHitT>
-class CachedPayloadReceptiveDetector : ReceptiveDetector {
+class CachedPayloadReceptiveDetector : public ReceptiveDetector {
 protected:
     ConcreteHitT _reentrantHit;
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit ) final {
+    virtual bool _V_treat_new_hit( const Hit & hit ) override {
         _TODO_  // TODO
     }
 public:

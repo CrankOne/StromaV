@@ -38,12 +38,10 @@ namespace sV {
 
 typedef sV_MetadataTypeIndex MetadataTypeIndex;
 typedef sV_Metadata Metadata;
-
-namespace aux {
 template<typename EventIDT, typename SpecificMetadataT>
-        class iUniqueEventSource;
-}  // namespace aux
-template<typename EventIDT> class MetadataDictionary;
+        class iBatchEventSource;
+template<typename EventIDT>
+        class MetadataDictionary;
 
 namespace aux {
 /**@class iMetadataTypeBase
@@ -176,7 +174,7 @@ public:
     template<typename SpecificMetadataT>
     const iMetadataType<EventID, SpecificMetadataT> &
     get_metadata_type() const {
-        // This method will be called with sepcific metadata objec C++-type
+        // This method will be called with specific metadata objec C++-type
         // as a template argument. It has to return an instance of
         // corresponding iMetadataType --- just found instance of the
         // iMetadataType<EventID, SpecificMetadataT>. Here we involve a
