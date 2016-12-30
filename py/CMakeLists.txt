@@ -31,7 +31,12 @@ endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
 Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
-                   LINK_LIBS ${StromaV_LIB} )
+                   LINK_LIBS ${StromaV_LIB}
+                   WRAPPER_SOUCES WRAPPER_SRCS )
+
+# Note: workarounds for recent C++ compiler warnings
+set_source_files_properties( ${WRAPPER_SRCS}
+        PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign" )
 
 if( RPC_PROTOCOLS )
     protobuf_generate_python( PY_MSG_MODULES ../event.proto )

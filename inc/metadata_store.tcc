@@ -24,7 +24,6 @@
 # define H_STROMA_V_METADATA_STORE_H
 
 # include "metadata.hpp"
-# include "analysis/identifiable_ev_source.tcc"
 
 namespace sV {
 
@@ -32,6 +31,10 @@ template<typename EventIDT,
          typename SpecificMetadataT,
          typename SourceIDT>
 class iSectionalEventSource;
+
+template<typename EventIDT,
+         typename SpecificMetadataT>
+class iBatchEventSource;
 
 /**@class iMetadataStore
  * @brief Interface to entities storing metadata of specific type.
@@ -45,9 +48,15 @@ public:
     typedef SpecificMetadataT SpecificMetadata;
     typedef SourceIDT SourceID;
     typedef iMetadataType<EventID, SpecificMetadata> SpecificMetadataType;
+protected:
+    virtual SpecificMetadata * _V_get_metadata_for(const SourceID &) const = 0;
 public:
+    iMetadataStore() {}
+    virtual ~iMetadataStore() {}
+
     /// Returns nullptr if source with such ID not found in store.
-    SpecificMetadata * get_metadata_for( const SourceID & );
+    virtual SpecificMetadata * get_metadata_for( const SourceID & sid ) const
+        { return _V_get_metadata_for( sid ); }
 };  // class iMetadataStore
 
 /**@class iCachedMetadataType
@@ -77,18 +86,11 @@ protected:
     /// Tries to find metadata instance for given source ID.
     virtual SpecificMetadata * _look_up_for( const SourceID & ) const;
 
-    /// Obtaines or (re)caches metadata for given source performing interaction
-    /// with associated metadata store instance(s).
-    virtual SpecificMetadata & _V_acquire_metadata_for(
-                                                DataSource & ) const;
-
     /// Overrides unidentifiable source access with dynamic cast.
     virtual SpecificMetadata & _V_acquire_metadata(
-                                BaseDataSource & ds ) const override {
-        return acquire_metadata_for( dynamic_cast<DataSource &>(ds) );
-    }
+                                BaseDataSource & ds ) const final;
 
-    /// (IF) Returns true if metadata information can be appended.
+    /// (IF) Returns true if metadata information is full.
     virtual bool _V_is_complete( const SpecificMetadata & ) const = 0;
 
 
@@ -105,14 +107,14 @@ protected:
     /// (IF) Merges metadata information from multiple instances into one.
     /// Lifetime of new instance has be controlled by this class or descendant.
     virtual SpecificMetadata * _V_merge_metadata(
-                                const std::list<SpecificMetadata *> & ) = 0;
+                            const std::list<SpecificMetadata *> & ) const = 0;
     
     /// (IF) Has to append metadata stores with extracted metadata info.
     virtual bool _V_append_metadata( DataSource & s,
                                      SpecificMetadata & md ) const = 0;
 public:
     /// Default ctr (no store associated).
-    iCachedMetadataType() {}
+    iCachedMetadataType( const std::string & tnm ) : ImmanentParent(tnm) {}
 
     /// Ctr immediately associating type with store.
     iCachedMetadataType(MetadataStore & store) { _mdStores.push_back(&store); }
@@ -132,13 +134,14 @@ public:
 
     /// Performs extraction of metadata from source w.r.t. to provided source
     /// ID and writes pointer to newly allocated metadata instance.
-    bool extract_metadata( const SourceID *,
-                           DataSource &,
-                           SpecificMetadata *& ) const;
+    bool extract_metadata( const SourceID * sidPtr,
+                           DataSource & s,
+                           SpecificMetadata *& mdPtrRef ) const
+        { return _V_extract_metadata( sidPtr, s, mdPtrRef ); }
 
     /// Merges metadata information from multiple instances into one.
     SpecificMetadata * merge_metadata(
-                                const std::list<SpecificMetadata *> & mds ) {
+                            const std::list<SpecificMetadata *> & mds ) const {
         return _V_merge_metadata( mds );
     }
 
@@ -148,7 +151,8 @@ public:
         return _V_append_metadata( s, md );
     }
 
-    /// Acquires metadata handle.
+    /// Obtaines or (re)caches metadata for given source performing interaction
+    /// with associated metadata store instance(s).
     virtual SpecificMetadataT & acquire_metadata_for( DataSource & s ) const;
 };  // iCachedMetadataType
 
@@ -161,7 +165,7 @@ iCachedMetadataType<EventIDT,
                     SourceIDT>::_look_up_for( const SourceID & sid ) const {
     std::list<SpecificMetadata *> results;
     for( const auto & it : _mdStores ) {
-        SpecificMetadata * result = it.get_metadata_for( sid );
+        SpecificMetadata * result = it->get_metadata_for( sid );
         if( result ) {
             results.push_back( result );
         }
@@ -206,18 +210,32 @@ iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::acquire_metadata_fo
     }
 
     if( !metadataPtr || !is_complete( *metadataPtr ) ) {
-        // Look-up failed, we have to initiate extraction metadata from this
-        // source and append storage with acquired data:
+        // Look-up failed or metadata is not complete, we have to initiate
+        // extraction metadata from this source and append storage with
+        // acquired data:
         sV_log2( "Extracting metadata information for source \"%s\" (%p).\n",
             s.textual_id(), &s );
-        if( !extract_metadata( sidPtr, s, &metadataPtr ) ) {
+        if( !extract_metadata( sidPtr, s, metadataPtr ) ) {
             emraise( thirdParty, "Unable to extract metadata from "
-                "source %s (%p).", s.textual_id(sidPtr), &s );
+                "source %s (%p).", s.textual_id(), &s );
         }
         sV_log2( "Metadata extracted for source %p.\n", &s );
         append_metadata( s, *metadataPtr );
     }
     return *metadataPtr;
+}
+
+template<typename EventIDT,
+         typename SpecificMetadataT,
+         typename SourceIDT>
+SpecificMetadataT &
+iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::_V_acquire_metadata(
+                            BaseDataSource & ds ) const {
+    // TODO: sV_logd()?
+    //sV_logw( "Inetrface method acquire_metadata() called for "
+    //    "iCachedMetadataType<...> type. Can affect performance.\n" );
+    //return acquire_metadata_for( dynamic_cast<DataSource &>(ds) );
+    _FORBIDDEN_CALL_
 }
 
 }  // namespace sV

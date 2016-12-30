@@ -33,7 +33,7 @@ class iSourceIDParser {
 public:
     typedef SourceIDT SourceID;
 protected:
-    SourceID _V_parse( const std::string & ) const = 0;
+    virtual SourceID _V_parse( const std::string & ) const = 0;
 public:
     SourceID parse( const std::string & idStr ) const
         { return _V_parse(idStr); }
@@ -72,7 +72,7 @@ private:
     SourceID _id;
 protected:
     /// (IF) Has to return verbose string ID identifier (can be NULL).
-    virtual char * _V_textual_id( const SourceID * ) const = 0;
+    virtual const char * _V_textual_id( const SourceID * ) const = 0;
 public:
     /// Default ctr for instances with uninitialized ID.
     iIdentifiableEventSource() : _isIDInitialized(false) {}
@@ -109,7 +109,7 @@ public:
             emraise( badState, "Source ID parser is not set for "
                 "this type." );
         }
-        return IDParser( idStr );
+        return IDParser->parse( idStr );
     }
 };  // class iIdentifiableEventSource
 

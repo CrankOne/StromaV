@@ -116,7 +116,11 @@ class iEventSequence {
 public:
     typedef AnalysisPipeline::Event Event;
     typedef uint8_t Features_t;
-    enum Features : Features_t {
+    enum Features
+    # ifndef SWIG
+        : Features_t
+    # endif
+    {
         randomAccess = 0x1,
         identifiable = 0x2,
     };

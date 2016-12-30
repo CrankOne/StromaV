@@ -22,7 +22,7 @@
 
 # include "metadata.hpp"
 # include "analysis/pipeline.hpp"
-# include "analysis/ra_event_source.tcc"
+# include "analysis/evSource_batch.tcc"
 
 static std::unordered_set<sV_MetadataTypeIndex> * _static_mdTypeIds = nullptr;
 
@@ -137,7 +137,8 @@ protected:
         return true;
     }
 public:
-    TstEventSource1() : _evIter(nullptr) {
+    TstEventSource1() : TstMetadataType1::DataSource(),
+                        _evIter(nullptr) {
     }
 };  // class class TstEventSource1
 const char TstEventSource1::evs[6][32] = {

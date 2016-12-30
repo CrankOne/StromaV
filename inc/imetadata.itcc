@@ -68,15 +68,15 @@ protected:
             }
         }
         _typeIndex = desiredIdx;
+        sV_log2( "Index %zu assigned for metadata type instance "
+                 "\"%s\" (%p).\n", (size_t) desiredIdx,
+                 this->name().c_str(), this );
     }
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up
     /// among side cache resource (monolithic).
     virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
 public:
-    /// Default ctr to make SWIG happy.
-    iMetadataType() { _FORBIDDEN_CALL_; }
-    
     iMetadataType( const std::string & tnm ) :
             MetadataDictionary<EventIDT>::iSpecificEventIDMetdataType( tnm ) {}
 

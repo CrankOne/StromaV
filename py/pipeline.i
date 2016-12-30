@@ -30,6 +30,5 @@
 
 %include "config.h"
 %include "analysis/pipeline.hpp"
-%include "analysis/ra_event_source.itcc"
 %include "analysis/dictionary.hpp"
 

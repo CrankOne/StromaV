@@ -60,8 +60,6 @@ protected:
     /// and invoked by MetadataDictionary implementation.
     virtual void _set_type_index( MetadataTypeIndex ) = 0;
 public:
-    /// Default ctr to make SWIG happy.
-    iMetadataTypeBase() { _FORBIDDEN_CALL_; }
     /// Ctr.
     iMetadataTypeBase( const std::string & tnm ) : _typeName(tnm) {}
     /// Virtual dtr of abstract base class.
@@ -98,9 +96,6 @@ protected:
         _dictionariesBackRefs.erase( &dictRef );
     }
 public:
-    /// Default ctr to make SWIG happy.
-    iTemplatedEventIDMetdataType() { _FORBIDDEN_CALL_; }
-
     iTemplatedEventIDMetdataType( const std::string & tnm ) : 
                                   iMetadataTypeBase( tnm ) {}
 
@@ -140,16 +135,17 @@ private:
                           MetadataTypeIndex toTypeIdx ) const;
 public:
     /// Container for all known metadata types (composition).
-    std::unordered_set<aux::iMetadataTypeBase *> _types;
+    std::unordered_set<iSpecificEventIDMetdataType *> _types;
     /// Metadata types indexed by name.
-    std::unordered_map<std::string, aux::iMetadataTypeBase *> _namedIndex;
+    std::unordered_map<std::string, iSpecificEventIDMetdataType *> _namedIndex;
     /// Metadata types indexed by id.
-    std::unordered_map<MetadataTypeIndex, aux::iMetadataTypeBase *>
+    std::unordered_map<MetadataTypeIndex, iSpecificEventIDMetdataType *>
                                                                 _encodedIndex;
 public:
-    /// Registers metadata type.
+    /// Registers metadata type. Front-end interfacing function. Need to be
+    /// called with metadata type instances before providing any operations.
     MetadataTypeIndex register_metadata_type(
-                            aux::iTemplatedEventIDMetdataType<EventID> *md);
+                            aux::iTemplatedEventIDMetdataType<EventID> & md);
 
     /// Removes metadata type.
     void remove_metadata_type( const std::string & );
@@ -207,30 +203,32 @@ MetadataDictionary<EventIDT>::_cast_typecheck( const Metadata & md,
 
 template<typename EventIDT> MetadataTypeIndex
 MetadataDictionary<EventIDT>::register_metadata_type(
-                            aux::iTemplatedEventIDMetdataType<EventID> * md ) {
-    //iSpecificEventIDMetdataType * md = &mdRef;
-    auto insertionResult = _namedIndex.emplace( md->name(), md );
+                            aux::iTemplatedEventIDMetdataType<EventID> & mdt ) {
+    sV_log3( "Attempt to register metadata type \"%s\" (%p) "
+             "at dictionary %p.\n", mdt.name().c_str(), &mdt, this );
+    auto insertionResult = _namedIndex.emplace( mdt.name(), &mdt );
     if( !insertionResult.second ) {
-        if( insertionResult.first->second == md ) {
+        if( insertionResult.first->second == &mdt ) {
             sV_log3( "Metadata type \"%s\" (%p) already known to metadata "
-                     "types dictionary %p. Ignored.\n", md->name().c_str(),
-                     md, this );
+                     "types dictionary %p. Ignored.\n", mdt.name().c_str(),
+                     &mdt, this );
+            return mdt.get_index();
         } else {
             emraise( badState,
                      "Metadata type \"%s\" (%p) can not be inserted to  "
                      "types dictionary %p. Name not unique. Another type: "
-                     "%p.", md->name().c_str(), md, this,
+                     "%p.", mdt.name().c_str(), &mdt, this,
                      insertionResult.first->second );
         }
     } else {
-        //dynamic_cast<iSpecificEventIDMetdataType*>(md)
-        //                    ->_add_dict_backref( *this );
-        _types.insert( md );
-        MetadataTypeIndex newIdx = sV_generate_metadata_type_id( md );
-        md->_set_type_index( newIdx );
-        _encodedIndex.emplace( newIdx, md );
-        //std::cout << "New metadata type " << md << " registered with ID "
-        //          << newIdx << " in dict " << this << "." << std::endl;
+        _types.insert( &mdt );
+        MetadataTypeIndex newIdx = sV_generate_metadata_type_id( &mdt );
+        mdt._set_type_index( newIdx );
+        _encodedIndex.emplace( newIdx, &mdt );
+        sV_log2( "Metadata type %s (%p) registered at dictionary %p "
+                 "with index %d.\n",
+                 mdt.name().c_str(), &mdt, this, (int) newIdx );
+        return newIdx;
     }
 }
 
