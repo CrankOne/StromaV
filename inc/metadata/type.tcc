@@ -20,10 +20,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# if !defined(H_STROMA_V_METADATA_DICTIONARY_H) && !defined(SWIG)
-# error "This header file has to be included either by parent metadata.hpp, " \
-"either by swig, but never directly."
-# endif  // !defined(H_STROMA_V_METADATA_DICTIONARY_H) && !defined(SWIG)
+# ifndef H_STROMA_V_METADATA_TYPE_IFACE_H
+# define H_STROMA_V_METADATA_TYPE_IFACE_H
+
+# include "type_base.hpp"
 
 namespace sV {
 
@@ -42,14 +42,15 @@ namespace sV {
  * */
 template<typename EventIDT, typename SpecificMetadataT>
 class iMetadataType :
-            public aux::iTemplatedEventIDMetdataType<EventIDT> {
+            public sV::aux::iTemplatedEventIDMetadataType<EventIDT> {
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
     typedef iBatchEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
+    typedef sV::aux::iTemplatedEventIDMetadataType<EventID> Parent;
     //typedef typename SpecificDictionary::iSpecificEventIDMetdataType iSpecificEventIDMetdataType;
-private:
+public:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s
     static MetadataTypeIndex _typeIndex;
@@ -71,21 +72,23 @@ protected:
         sV_log2( "Index %zu assigned for metadata type instance "
                  "\"%s\" (%p).\n", (size_t) desiredIdx,
                  this->name().c_str(), this );
+        sV_log2( "XXX idx var addr: %p\n", &_typeIndex );
     }
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up
     /// among side cache resource (monolithic).
     virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
 public:
-    iMetadataType( const std::string & tnm ) :
-            MetadataDictionary<EventIDT>::iSpecificEventIDMetdataType( tnm ) {}
+    iMetadataType( const std::string & tnm ) : Parent( tnm ) {}
 
     /// Obtains metadata for provided source.
     SpecificMetadata & acquire_metadata( DataSource & s ) const {
                 return _V_acquire_metadata(s); }
 
     /// Returns encoded type.
-    static MetadataTypeIndex type_index() { return _typeIndex; }
+    static MetadataTypeIndex type_index() {
+        sV_log2( "XXX ===> idx var addr: %p\n", &_typeIndex );
+        return _typeIndex; }
 
     /// Returns encoded type. Same as static method type_index().
     virtual MetadataTypeIndex get_index() const final { return type_index(); }
@@ -97,4 +100,6 @@ template<typename EventIDT, typename SpecificMetadataT>
 MetadataTypeIndex iMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;
 
 }  // namespace sV
+
+# endif  // H_STROMA_V_METADATA_TYPE_IFACE_H
 

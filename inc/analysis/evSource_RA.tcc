@@ -24,7 +24,7 @@
 # define H_STROMA_V_RANDOM_ACCESS_EVENT_SOURCE_H
 
 # include "pipeline.hpp"
-# include "metadata_store.tcc"
+# include "metadata/type.tcc"
 
 namespace sV {
 
@@ -40,7 +40,7 @@ template<typename EventIDT,
 class iRandomAccessEventSource : public iEventSequence {
 public:
     typedef EventIDT EventID;
-    typedef SpecificMetadataT SpecificMetadata;
+    typedef SpecificMetadataT SpecificMetadata;  // TODO: reserve for future
     typedef iEventSequence Parent;
 protected:
     /// Random access read event based on provided metadata information (IF).

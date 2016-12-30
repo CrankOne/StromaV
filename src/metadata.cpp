@@ -20,7 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "metadata.hpp"
+# include "metadata/dictionary.tcc"
 # include "analysis/pipeline.hpp"
 # include "analysis/evSource_batch.tcc"
 

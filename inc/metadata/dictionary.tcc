@@ -20,96 +20,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_METADATA_DICTIONARY_H
-# define H_STROMA_V_METADATA_DICTIONARY_H
+# ifndef H_STROMA_V_METADATA_TYPES_DICTIONARY_H
+# define H_STROMA_V_METADATA_TYPES_DICTIONARY_H
 
-# include "metadata.h"
-# include "app/app.h"
-//# include "identifiable_ev_source.tcc"
-
-# include <typeinfo>
-# include <list>
-# include <unordered_map>
-# include <unordered_set>
-
-# include <goo_exception.hpp>
+# include "type_base.hpp"
+# include "type.tcc"
 
 namespace sV {
-
-typedef sV_MetadataTypeIndex MetadataTypeIndex;
-typedef sV_Metadata Metadata;
-template<typename EventIDT, typename SpecificMetadataT>
-        class iBatchEventSource;
-template<typename EventIDT>
-        class MetadataDictionary;
-
-namespace aux {
-/**@class iMetadataTypeBase
- * @brief Base for metadata templates.
- *
- * Metadata type describes how to utilize the metadata and can be referred with
- * string exprassion (metadata type name). This trait describes its major
- * interfacing logic.
- * */
-class iMetadataTypeBase {
-private:
-    /// Constant attribute, set by ctr.
-    const std::string _typeName;
-protected:
-    /// For internal use --- automatically implemented by template descendant
-    /// and invoked by MetadataDictionary implementation.
-    virtual void _set_type_index( MetadataTypeIndex ) = 0;
-public:
-    /// Ctr.
-    iMetadataTypeBase( const std::string & tnm ) : _typeName(tnm) {}
-    /// Virtual dtr of abstract base class.
-    virtual ~iMetadataTypeBase() {}
-
-    /// Returns its type name.
-    virtual const std::string & name() const
-        { return _typeName; }
-
-    /// Type ID getter. Will be automatically implemented by template
-    /// descendant (virtual static method idiom).
-    virtual MetadataTypeIndex get_index() const = 0;
-
-    template<typename EventIDT> friend class sV::MetadataDictionary;
-};  // class iMetadataTypeBase
-
-template<typename EventIDT>
-class iTemplatedEventIDMetdataType : public iMetadataTypeBase {
-public:
-    typedef EventIDT EventID;
-    typedef MetadataDictionary<EventID> SpecificDictionary;
-private:
-    /// Back references to the dictionaries where this type was registered.
-    std::unordered_set<const SpecificDictionary *> _dictionariesBackRefs;
-protected:
-    /// Aux method adding dict instance backref (invoked by dict upon
-    /// register).
-    void _add_dict_backref( const SpecificDictionary & dictRef ) {
-        _dictionariesBackRefs.insert( &dictRef );
-    }
-    /// Aux method removing dict instance backref (invoked by dict upon
-    /// type remove).
-    void _remove_dict_backref( const SpecificDictionary & dictRef ) {
-        _dictionariesBackRefs.erase( &dictRef );
-    }
-public:
-    iTemplatedEventIDMetdataType( const std::string & tnm ) : 
-                                  iMetadataTypeBase( tnm ) {}
-
-    friend class sV::MetadataDictionary<EventID>;
-};  // iTemplatedEventIDMetdataType
-
-}  // namespace aux
-
-// Definition of this class is given below. Logically, it has to be nested
-// class of MetadataDictionary but nested tamplates piss SWIG off so we've
-// tried to calm him down this way.
-template<typename EventIDT,
-         typename SpecificMetadataT>
-class iMetadataType;
 
 /**@class MetadataDictionary
  * @brief Index of metadata constructors.
@@ -128,7 +45,7 @@ template<typename EventIDT>
 class MetadataDictionary {
 public:
     typedef EventIDT EventID;
-    typedef aux::iTemplatedEventIDMetdataType<EventID>
+    typedef sV::aux::iTemplatedEventIDMetadataType<EventID>
             iSpecificEventIDMetdataType;
 private:
     void _cast_typecheck( const Metadata & md,
@@ -142,10 +59,12 @@ public:
     std::unordered_map<MetadataTypeIndex, iSpecificEventIDMetdataType *>
                                                                 _encodedIndex;
 public:
+    MetadataDictionary() {}
+
     /// Registers metadata type. Front-end interfacing function. Need to be
     /// called with metadata type instances before providing any operations.
     MetadataTypeIndex register_metadata_type(
-                            aux::iTemplatedEventIDMetdataType<EventID> & md);
+                                    iSpecificEventIDMetdataType & md);
 
     /// Removes metadata type.
     void remove_metadata_type( const std::string & );
@@ -203,7 +122,7 @@ MetadataDictionary<EventIDT>::_cast_typecheck( const Metadata & md,
 
 template<typename EventIDT> MetadataTypeIndex
 MetadataDictionary<EventIDT>::register_metadata_type(
-                            aux::iTemplatedEventIDMetdataType<EventID> & mdt ) {
+                                        iSpecificEventIDMetdataType & mdt ) {
     sV_log3( "Attempt to register metadata type \"%s\" (%p) "
              "at dictionary %p.\n", mdt.name().c_str(), &mdt, this );
     auto insertionResult = _namedIndex.emplace( mdt.name(), &mdt );
@@ -261,9 +180,5 @@ MetadataDictionary<EventIDT>::metadata_type_name( MetadataTypeIndex idx ) const 
 
 }  // namespace sV
 
-# ifndef SWIG
-#   include "imetadata.itcc"
-# endif
-
-# endif  // H_STROMA_V_METADATA_DICTIONARY_H
+# endif  // H_STROMA_V_METADATA_TYPES_DICTIONARY_H
 

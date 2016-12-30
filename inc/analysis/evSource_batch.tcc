@@ -24,6 +24,7 @@
 # define H_STROMA_V_BATCH_EVENT_SOURCE_H
 
 # include "evSource_RA.tcc"
+# include "metadata/dictionary.tcc"
 
 namespace sV {
 

@@ -29,7 +29,6 @@
 
 # include "app/mixins/protobuf.hpp"
 # include "uevent.hpp"
-# include "metadata.hpp"
 
 # include <unordered_map>
 # include <unordered_set>

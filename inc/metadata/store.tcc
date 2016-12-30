@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_METADATA_STORE_H
 # define H_STROMA_V_METADATA_STORE_H
 
-# include "metadata.hpp"
+# include "dictionary.tcc"
 
 namespace sV {
 

@@ -25,6 +25,8 @@
 
 # include "evSource_RA.tcc"
 # include "evSource_identifiable.tcc"
+# include "metadata/dictionary.tcc"
+# include "metadata/store.tcc"
 
 namespace sV {
 
