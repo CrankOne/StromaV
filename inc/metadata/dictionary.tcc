@@ -40,6 +40,9 @@ namespace sV {
  * This class is designed to handle the "metadata type" abstraction. It
  * constituates indexing and storaging singletone instances of particular
  * metadata descriptions in order to make them accessable at a runtime.
+ *
+ * This class also provides a special template method for querying the metadata
+ * type instances by their C++ type.
  * */
 template<typename EventIDT>
 class MetadataDictionary {

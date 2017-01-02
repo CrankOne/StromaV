@@ -82,18 +82,21 @@ protected:
                                      void(*packer)(Event*) );
     virtual int _process_chain( Event * );
     virtual void _finalize_event( Event * );
-    virtual void _finalize_sequence( AnalysisPipeline::iEventSequence * );
+    virtual void _finalize_sequence( iEventSequence * );
 public:
     AnalysisPipeline();
     virtual ~AnalysisPipeline() {}  // todo?
 
     /// Adds processor to processor chain.
     void push_back_processor( iEventProcessor * );
-    /// Returns a processor chain list.
-    std::list<iEventProcessor *> & get_processors_chain() { return _processorsChain; }
-    /// Returns current event sequence ptr. Not that it will return 
-    template<typename TagetTypeT> TagetTypeT get_evseq() {
-            return safe_cast<TagetTypeT>( *_evSeq ); }
+
+    /// Processor chain getter.
+    std::list<iEventProcessor *> & processors()
+        { return _processorsChain; }
+
+    /// Current event sequence getter.
+    TagetTypeT * event_sequence()
+        { return _evSeq; }
 
     /// Evaluates pipeline on the single event. If event was denied,
     /// returns the ordering number of processor which did the discrimination
@@ -188,13 +191,15 @@ protected:
 public:
     iEventProcessor( const std::string & pn ) : _pName(pn) {}
     virtual ~iEventProcessor(){}
-    virtual bool operator()( Event * e ) { return _V_process_event( e ); }
+    virtual bool process_event( Event * e ) { return _V_process_event( e ); }
     virtual void finalize_event( Event * e )
                                     { _V_finalize_event_processing( e ); }
     virtual void print_brief_summary( std::ostream & os ) const
                                     { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
+
+    virtual bool operator()( Event * e ) { return process_event( e ); }
 
     friend class ::sV::AnalysisPipeline;
 };
@@ -225,22 +230,22 @@ public:
 private:
     /// Reentrant static field. Should be initialized to NULL by analysis
     /// application at the beginning of each new event.
-    static PayloadT * _reentrantExpEventPtr;
+    static PayloadT * _reentrantPayloadPtr;
 public:
     /// Must be called at the beginning of each new event by management class.
-    static void nullate_cache() { _reentrantExpEventPtr = nullptr; }
+    static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
 private:
     /// Will be called if current event has payload of required type.
     static void unpack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
+        uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
                  ->mutable_payload()
-                 ->UnpackTo(_reentrantExpEventPtr);
+                 ->UnpackTo(_reentrantPayloadPtr);
     }
     /// Will be called at the end of event processing pipeline.
     static void pack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
+        uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
                  ->mutable_payload()
-                 ->PackFrom(*_reentrantExpEventPtr);
+                 ->PackFrom(*_reentrantPayloadPtr);
     }
 protected:
     iEventPayloadProcessor( const std::string & pn ) :
@@ -260,10 +265,10 @@ protected:
                              this->processor_name().c_str() );
                 return false;
             }
-            if( !_reentrantExpEventPtr ) {
+            if( !_reentrantPayloadPtr ) {
                 unpack_payload( uEventPtr );
             }
-            return _V_process_event_payload( _reentrantExpEventPtr );
+            return _V_process_event_payload( _reentrantPayloadPtr );
         }
         return false;
     }

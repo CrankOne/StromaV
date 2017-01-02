@@ -70,7 +70,7 @@ public:
         { return _typeName; }
 
     /// Type ID getter. Will be automatically implemented by template
-    /// descendant (virtual static method idiom).
+    /// descendant.
     virtual MetadataTypeIndex get_index() const = 0;
 
     template<typename EventIDT> friend class sV::MetadataDictionary;
