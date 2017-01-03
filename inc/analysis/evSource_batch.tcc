@@ -55,12 +55,8 @@ public:
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> Parent;
 private:
     SpecificMetadata * _raMDatCache;
-protected:
-    iBatchEventSource( aux::iEventSequence::Features_t fts ) :
-                                Parent( fts ),
-                                _raMDatCache(nullptr) {}
 public:
-    iBatchEventSource() : iBatchEventSource( 0x0 ) {}
+    iBatchEventSource() : _raMDatCache(nullptr) {}
 
     virtual ~iBatchEventSource() {
         if( _raMDatCache ) {

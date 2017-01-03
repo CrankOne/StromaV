@@ -51,7 +51,7 @@ public:
     typedef sV::aux::iTemplatedEventIDMetadataType<EventID>
             iSpecificEventIDMetdataType;
 private:
-    void _cast_typecheck( const Metadata & md,
+    void _cast_typecheck( const C_Metadata & md,
                           MetadataTypeIndex toTypeIdx ) const;
 public:
     /// Container for all known metadata types (composition).
@@ -76,14 +76,14 @@ public:
     const std::string & metadata_type_name( MetadataTypeIndex idx ) const;
 
     /// Payload cast method for metadata instance.
-    template<typename T> T & cast( Metadata & md ) const {
+    template<typename T> T & cast( C_Metadata & md ) const {
         typedef iMetadataType<EventID, T> ItsType;
         _cast_typecheck( md, ItsType::type_index() );
         return *reinterpret_cast<T*>(md.payload);
     }
 
     /// Payload cast method for metadata instance.
-    template<typename T> const T & cast( const Metadata & md ) const {
+    template<typename T> const T & cast( const C_Metadata & md ) const {
         typedef iMetadataType<EventID, T> ItsType;
         _cast_typecheck( md, ItsType::type_index() );
         return *reinterpret_cast<const T*>(md.payload);
@@ -110,7 +110,7 @@ public:
 };  // class MetadataDictionary
 
 template<typename EventIDT> void
-MetadataDictionary<EventIDT>::_cast_typecheck( const Metadata & md,
+MetadataDictionary<EventIDT>::_cast_typecheck( const C_Metadata & md,
                                         MetadataTypeIndex toTypeIdx ) const {
     if( md.typeIndex != toTypeIdx ) {
         sV_loge("Metadata %p has type 0x%x (%s) while type cast to 0x%x (%s) "

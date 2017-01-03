@@ -38,5 +38,22 @@ inrospection media allowing one to compose strictly-typed information into
 one unified structure. The type information is cheap to be retreived, however
 any additional type is required to be explicitly declared at the `.proto` file.
 
-## The `sV::AnalysisPipeline`
+## The `sV::AnalysisPipeline` Class
+
+This class implements common solution built around forward-iterable data source
+within handlers chain. We will use "event sequence" term further to denote the
+data source and we will call handlers as "processors" to avoid disambiguations.
+
+The class diagram depicted on fig. TODO basically describes a set of
+implementation traits: an `AnalysisPipeline` instance implements iteration of
+descendant instance of `iEventSequence` while processing each extracted event
+within method `process()` (by `_processorsChain`). Basic activity diagram of
+`process()` method is depicted at fig. TODO. More detailed activity with
+participants responsibilities is proveded at fig. TODO.
+
+## The `sV::iEventSequence` Class
+
+TODO
+
+Note: the diagrams is ready and can be found at .mdj file.
 

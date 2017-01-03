@@ -95,7 +95,7 @@ public:
         { return _processorsChain; }
 
     /// Current event sequence getter.
-    TagetTypeT * event_sequence()
+    iEventSequence * event_sequence()
         { return _evSeq; }
 
     /// Evaluates pipeline on the single event. If event was denied,

@@ -37,11 +37,10 @@ namespace aux {
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iRandomAccessEventSource : public iEventSequence {
+class iRandomAccessEventSource {
 public:
     typedef EventIDT EventID;
-    typedef SpecificMetadataT SpecificMetadata;  // TODO: reserve for future
-    typedef iEventSequence Parent;
+    typedef SpecificMetadataT SpecificMetadata;  // TODO: reserve for future?
 protected:
     /// Random access read event based on provided metadata information (IF).
     virtual bool _V_event_read_single( const EventIDT & ) = 0;
@@ -58,12 +57,9 @@ protected:
         }
         return res;
     }
-
-    iRandomAccessEventSource( Parent::Features_t fts ) :
-                        Parent( fts | iEventSequence::randomAccess ) {}
 public:
-    iRandomAccessEventSource() :
-                    iRandomAccessEventSource( 0x0 ) {}
+    iRandomAccessEventSource() {}
+
     virtual ~iRandomAccessEventSource() {}
     virtual bool event_read_single( const EventID & eid ) {
         return _V_event_read_single(eid); }

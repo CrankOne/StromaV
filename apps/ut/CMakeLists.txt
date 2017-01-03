@@ -21,7 +21,8 @@
 cmake_minimum_required( VERSION 2.6 )
 project( StromaV_ut )
 
-add_executable( StromaV_ut${StromaV_BUILD_POSTFIX} main.cpp )
+add_executable( StromaV_ut${StromaV_BUILD_POSTFIX}
+                main.cpp md-test1.cpp md-test2.cpp )
 target_link_libraries( StromaV_ut${StromaV_BUILD_POSTFIX} ${Boost_LIBRARIES} )
 target_link_libraries( StromaV_ut${StromaV_BUILD_POSTFIX} ${StromaV_LIB} )
 # See: http://stackoverflow.com/questions/30898469/boost-unit-test-dynamic-linking-on-ubuntu

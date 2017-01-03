@@ -24,6 +24,7 @@
 # define H_STROMA_V_METADATA_TYPE_IFACE_H
 
 # include "type_base.hpp"
+# include "traits.tcc"
 
 namespace sV {
 
@@ -40,7 +41,8 @@ namespace sV {
  * specification has to be instantiated only once for each parent metadata
  * dictionary.
  * */
-template<typename EventIDT, typename SpecificMetadataT>
+template<typename EventIDT,
+        typename SpecificMetadataT>
 class iMetadataType :
             public sV::aux::iTemplatedEventIDMetadataType<EventIDT> {
 public:
@@ -49,31 +51,13 @@ public:
     typedef iBatchEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     typedef sV::aux::iTemplatedEventIDMetadataType<EventID> Parent;
+    typedef MetadataTypeTraits<EventID, SpecificMetadata> SpecificTraits;
     //typedef typename SpecificDictionary::iSpecificEventIDMetdataType iSpecificEventIDMetdataType;
-public:
-    /// Metadata type identifier that has to be set upon construction. Note,
-    /// that this static-template field need to be s
-    static MetadataTypeIndex _typeIndex;
 protected:
-    virtual void _set_type_index( MetadataTypeIndex desiredIdx ) final {
-        if( _typeIndex ) {
-            if( _typeIndex != desiredIdx ) {
-                emraise( badState, "Metadata type %p already has type index "
-                    "(%zu) while another assignment invoked with new code %zu.",
-                    this, (size_t) _typeIndex, (size_t) desiredIdx
-                );
-            } else {
-                sV_log3( "Metadata type %p already has type index (%zu) while "
-                        "some internal code invokes assignment of same index.",
-                        this, (size_t) _typeIndex );
-            }
-        }
-        _typeIndex = desiredIdx;
-        sV_log2( "Index %zu assigned for metadata type instance "
-                 "\"%s\" (%p).\n", (size_t) desiredIdx,
-                 this->name().c_str(), this );
-        sV_log2( "XXX idx var addr: %p\n", &_typeIndex );
+    virtual void _set_type_index( MetadataTypeIndex desiredIdx ) override {
+        SpecificTraits::_set_type_index(desiredIdx);
     }
+
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up
     /// among side cache resource (monolithic).
@@ -87,17 +71,16 @@ public:
 
     /// Returns encoded type.
     static MetadataTypeIndex type_index() {
-        sV_log2( "XXX ===> idx var addr: %p\n", &_typeIndex );
-        return _typeIndex; }
+        return SpecificTraits::index(); }
 
     /// Returns encoded type. Same as static method type_index().
-    virtual MetadataTypeIndex get_index() const final { return type_index(); }
-
-    friend class MetadataDictionary<EventID>;
+    virtual MetadataTypeIndex get_index() const override {
+        return SpecificTraits::index();
+    }
 };  // class iMetadataType
 
-template<typename EventIDT, typename SpecificMetadataT>
-MetadataTypeIndex iMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;
+//template<typename EventIDT, typename SpecificMetadataT>
+//MetadataTypeIndex iMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;
 
 }  // namespace sV
 
