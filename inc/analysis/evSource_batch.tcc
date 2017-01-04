@@ -55,9 +55,48 @@ public:
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> Parent;
 private:
     SpecificMetadata * _raMDatCache;
-public:
-    iBatchEventSource() : _raMDatCache(nullptr) {}
+protected:
+    /// This abstract metod has to read the event using metadata instance (IF).
+    virtual bool _V_md_event_read_single( const SpecificMetadata & md,
+                                          const EventIDT & eid ) = 0;
 
+    /// This abstract method has to read range of events using metadata
+    /// instance (IF).
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
+                                        const SpecificMetadata & md,
+                                        const EventIDT & eidFrom,
+                                        const EventIDT & eidTo ) = 0;
+
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
+                                    const SpecificMetadata & md,
+                                    const std::list<EventID> & eidsList ) = 0;
+
+    /// Random access read event based on provided metadata
+    /// information.
+    virtual bool _V_event_read_single( const EventIDT & eid ) override {
+        return _V_md_event_read_single( metadata(), eid );
+    }
+
+    /// Read events in some ID range.
+    virtual std::unique_ptr<aux::iEventSequence> _V_event_read_range(
+                                        const EventIDT & eidFrom,
+                                        const EventIDT & eidTo ) override {
+        return _V_md_event_read_range( metadata(), eidFrom, eidTo );
+    }
+    /// Read events specified by set of indexes.
+    virtual std::unique_ptr<aux::iEventSequence> _V_event_read_list(
+                                const std::list<EventID> & list ) override {
+        return _V_md_event_read_list( metadata(), list );
+    }
+
+    iBatchEventSource() :
+                Parent(),
+                _raMDatCache(nullptr) {}
+
+    iBatchEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
+                Parent( mdtDictRef ),
+                _raMDatCache(nullptr) {}
+public:
     virtual ~iBatchEventSource() {
         if( _raMDatCache ) {
             delete _raMDatCache;
@@ -65,11 +104,12 @@ public:
     }
 
     /// Obtain (fetch cached or build new) metadata for itself.
-    virtual const SpecificMetadata & metadata(
-                                sV::MetadataDictionary<EventIDT> & mDict ) {
+    virtual const SpecificMetadata & metadata() {
         if( !_raMDatCache ) {
             const iSpecificMetadataType & mdt = 
-                        mDict.template get_metadata_type<SpecificMetadata>();
+                        Parent
+                        ::metadata_types_dict()
+                        .template get_metadata_type<SpecificMetadata>();
             _raMDatCache = &( mdt.acquire_metadata( *this ) );
         }
         return *_raMDatCache;

@@ -109,16 +109,29 @@ class DataSource : public MetadataTraits::iEventSource {
 private:
     const char * const _content;
 protected:
-    virtual bool _V_event_read_single( const EventID & ) {
+    virtual bool _V_md_event_read_single(
+                            const Metadata & md,
+                            const EventID & ) override {
         _TODO_  // TODO
     }
 
-    virtual bool _V_event_read_range( const EventID & lower,
-                                      const EventID & upper ) {
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
+                            const Metadata & md,
+                            const EventID & lower,
+                            const EventID & upper ) override {
+        _TODO_  // TODO
+    }
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
+                            const Metadata & md,
+                            const std::list<EventID> & eidsList ) override {
         _TODO_  // TODO
     }
 public:
     DataSource( const char * const c ) : _content(c) {}
+    DataSource( const char * const c,
+                MetadataTraits::MetadataTypesDictionary & mdDictRef ) :
+                                    MetadataTraits::iEventSource(mdDictRef),
+                                    _content(c) {}
     const char * const content() const { return _content; }
 };  // DataSource
 
@@ -164,13 +177,17 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
     // Run extraction routine expecting no side effects
     BOOST_REQUIRE( !sV::test::extract_words_positions(
                                         sV::test::_static_srcHaiku ).empty());
-    // This part has to be run at user code at somewhat "init" section:
+    # if 0
+    // This part has may be run at user code at somewhat "init" section:
     sV::test::MetadataTraits::MetadataTypesDictionary dict;
     sV::test::MetadataType mdt;
     dict.register_metadata_type( mdt );
-
-    // Now, do the real job:
+    sV::test::DataSource s( sV::test::_static_srcThomas, dict );
+    else
+    sV::test::MetadataType mdt;
     sV::test::DataSource s( sV::test::_static_srcThomas );
+    s.metadata_types_dict().register_metadata_type( mdt );
+    # endif
     //sV::test::Metadata md = s.acquire_metadata(); // ?
 
     # if 0

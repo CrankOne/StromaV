@@ -41,35 +41,54 @@ class iRandomAccessEventSource {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;  // TODO: reserve for future?
+    typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
+private:
+    bool _ownsDict;
+    MetadataDictionary<EventIDT> * _mdtDictPtr;
+
+    iRandomAccessEventSource( MetadataDictionary<EventID> * mdtDictPtr,
+                              bool ownsDict ) :
+                                    _ownsDict( ownsDict ),
+                                    _mdtDictPtr( mdtDictPtr ) {}
 protected:
     /// Random access read event based on provided metadata information (IF).
     virtual bool _V_event_read_single( const EventIDT & ) = 0;
 
     /// Read events in some ID range (IF).
-    virtual bool _V_event_read_range( const EventIDT & lower,
-                                      const EventIDT & upper ) = 0;
+    virtual std::unique_ptr<iEventSequence> _V_event_read_range(
+                                        const EventIDT & lower,
+                                        const EventIDT & upper ) = 0;
     /// Read events specified by set of indexes (IF with default
     /// implementation).
-    virtual bool _V_event_read_list( const std::list<EventID> & list ) {
-        bool res = true;
-        for( auto id : list ) {
-            res &= event_read_single( id );
-        }
-        return res;
-    }
+    virtual std::unique_ptr<iEventSequence> _V_event_read_list(
+                                        const std::list<EventID> & list ) = 0;
+    iRandomAccessEventSource() :
+                        iRandomAccessEventSource(
+                                    new MetadataDictionary<EventID>(),
+                                    true ) {}
+    iRandomAccessEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
+                        iRandomAccessEventSource(
+                                    &mdtDictRef,
+                                    false ) {}
 public:
-    iRandomAccessEventSource() {}
-
-    virtual ~iRandomAccessEventSource() {}
+    virtual ~iRandomAccessEventSource() {
+        if( _ownsDict && _mdtDictPtr ) {
+            delete _mdtDictPtr;
+        }
+    }
     virtual bool event_read_single( const EventID & eid ) {
         return _V_event_read_single(eid); }
 
-    virtual bool event_read_range( const EventID & lower,
-                                   const EventID & upper ) {
+    virtual std::unique_ptr<iEventSequence> event_read_range(
+                                    const EventID & lower,
+                                    const EventID & upper ) {
         return _V_event_read_range( lower, upper ); }
 
-    virtual bool event_read_list( const std::list<EventID> & list ) {
+    virtual std::unique_ptr<iEventSequence> event_read_list(
+                                    const std::list<EventID> & list ) {
         return _V_event_read_list(list); }
+
+    MetadataDictionary<EventIDT> metadata_types_dict() { return *_mdtDictPtr; }
 };  // iRandomAccessEventSource
 
 }  // namespace aux

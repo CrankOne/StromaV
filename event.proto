@@ -55,6 +55,7 @@ message Event {
     oneof uevent {
         SimulatedEvent simulated = 1;
         ExperimentalEvent experimental = 5;
+        google.protobuf.Any blob = 7;
     }
     EventDisplayMessage eventDisplayMessage = 8;
 }
