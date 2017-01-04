@@ -61,7 +61,7 @@ namespace mixins {
  * IDs.
  * */
 template<typename SourceIDT>
-class iIdentifiableEventSource {
+class iIdentifiableEventSource : virtual public aux::iEventSequence {
 public:
     typedef SourceIDT SourceID;
     typedef aux::iSourceIDParser<SourceID> SourceIDParser;
@@ -75,11 +75,16 @@ protected:
     virtual const char * _V_textual_id( const SourceID * ) const = 0;
 public:
     /// Default ctr for instances with uninitialized ID.
-    iIdentifiableEventSource() : _isIDInitialized(false) {}
+    iIdentifiableEventSource( aux::iEventSequence::Features_t fts ) :
+            aux::iEventSequence( fts | aux::iEventSequence::identifiable ),
+            _isIDInitialized(false) {}
 
     /// Ctr. Initializes ID attr.
-    iIdentifiableEventSource( SourceID & id ) : _isIDInitialized(true),
-                                                _id(id) {}
+    iIdentifiableEventSource( SourceID & id,
+                              aux::iEventSequence::Features_t fts ) :
+            aux::iEventSequence( fts | aux::iEventSequence::identifiable ),
+            _isIDInitialized(true),
+            _id(id) {}
 
     /// Ctr can be invoked only for template instances (classes) that have
     /// IDParer static attribute set. Throws goo::Exception/badState if parser

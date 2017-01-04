@@ -42,8 +42,8 @@ The clouds give rest
 To the moon-beholders.)";
 
 // (Dylan Thomas, "Do not go gently into that good night", 1947)
-const char _static_srcThomas[] = R"(
-Do not go gentle into that good night,
+const char _static_srcThomas[] =
+R"(Do not go gentle into that good night,
 Old age should burn and rave at close of day;
 Rage, rage against the dying of the light.
 
@@ -79,15 +79,30 @@ extract_words_positions( const char * const s ) {
             }
         } else {
             if( lastBgn ) {
-                std::pair<size_t, size_t> p( c - s, c - lastBgn );
-                //std::cout << "XXX '" << std::string( lastBgn, c )
-                //          << "'" << std::endl;
+                std::pair<size_t, size_t> p( lastBgn - s, c - lastBgn );
+                # if 0  // dev dbg
+                std::cout << "XXX '" << std::string( lastBgn, c )
+                          << "' => '" << std::string(s + p.first, p.second)
+                          << "'" << std::endl;
+                # endif
                 r.push_back( p );
                 lastBgn = nullptr;
             }
         }
     }
     return r;
+}
+
+void
+copy_word_to_event( const std::string & word,
+                    sV::events::Event & event ) {
+    assert( !word.empty() );
+    event.set_blob( word );
+}
+
+std::string
+get_word_from_event( const sV::events::Event & event ) {
+    return event.blob();
 }
 
 //
@@ -104,34 +119,144 @@ typedef sV::MetadataTypeTraits<EventID, Metadata> MetadataTraits;
 //
 // Defining the routines:
 
+// Aux class keeping words obtained using metadata
+class ExtractedWords : public aux::iEventSequence {
+private:
+    std::list<std::string> _words;
+    std::list<std::string>::const_iterator _it;
+    Event _rE;
+    bool _isGood;
+protected:
+    virtual bool _V_is_good() override { return _isGood; }
+    virtual void _V_next_event( Event *& eventPtrRef ) override {
+        if( _it != _words.end() ) {
+            copy_word_to_event( *_it, *eventPtrRef );
+            ++_it;
+        } else {
+            _isGood = false;
+            eventPtrRef = nullptr;
+        }
+    }
+    /// Has to return a pointer to a valid event. Can invoke _V_next_event()
+    /// internally.
+    virtual Event * _V_initialize_reading() override {
+        Event * _evPtr = &_rE;
+        _it = _words.begin();
+        _isGood = true;
+        _V_next_event( _evPtr );
+        return _evPtr;
+    }
+    virtual void _V_finalize_reading() override {
+        _it = _words.end();
+        _isGood = false;
+    }
+public:
+    ExtractedWords() : iEventSequence(0x0) {}
+    ExtractedWords( const std::list<std::string> & words_ ) :
+                                iEventSequence(0x0),
+                                _words(words_) {}
+    void push_back_word( const std::string & w ) {
+        _words.push_back( w );
+    }
+};
+
 // - data stream supporting metadata indexing:
 class DataSource : public MetadataTraits::iEventSource {
 private:
+    /// Since our data has relatively small size in this testing unit, we can
+    /// just keep all of it in RAM.
     const char * const _content;
+    /// This helper vector will be used upon iterating.
+    std::vector< std::pair<size_t, size_t> > _words;
+    /// This internal iterator refers to "last event".
+    DECLTYPE(_words)::const_iterator _it;
+    bool _isGood;
+    /// Reentrant event object. Most of the real data sources has it.
+    Event _rE;
 protected:
-    virtual bool _V_md_event_read_single(
+    //
+    // Common event sequence interface
+    // (we do not use it)
+    virtual bool _V_is_good() override {
+        return _isGood;
+    }
+
+    virtual void _V_next_event( Event *& eventPtrRef ) override {
+        if( _it != _words.end() ) {
+            std::string word( _content + _it->first, _it->second );
+            copy_word_to_event( word, *eventPtrRef );
+            ++_it;
+        } else {
+            _isGood = false;
+        }
+    }
+
+    virtual Event * _V_initialize_reading() override {
+        _it = _words.begin();
+        Event * evPtr = &_rE;
+        _isGood = true;
+        _V_next_event( evPtr );
+        return evPtr;
+    }
+    virtual void _V_finalize_reading() override {
+        _it = _words.end();
+        _isGood = false;
+    }
+
+    //
+    // Metadata access
+    virtual Event * _V_md_event_read_single(
                             const Metadata & md,
-                            const EventID & ) override {
-        _TODO_  // TODO
+                            const EventID & wordNo ) override {
+        auto it = md.find( wordNo );
+        if( md.end() == it ) {
+            emraise( noSuchKey, "Has no word #%zu.", wordNo );
+        }
+        std::pair<size_t, size_t> wp = it->second;
+        std::string word( _content + wp.first, wp.second );
+        copy_word_to_event( word, _rE );
+        return &_rE;
     }
 
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
                             const Metadata & md,
                             const EventID & lower,
                             const EventID & upper ) override {
-        _TODO_  // TODO
+        std::list<std::string> words;
+        for( size_t i = lower; !(i > upper); ++i ) {
+            auto wp = md.find(i)->second;
+            words.push_back( std::string(_content + wp.first, wp.second) );
+        }
+        return std::unique_ptr<sV::aux::iEventSequence>(
+                                                new ExtractedWords( words ));
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
                             const Metadata & md,
                             const std::list<EventID> & eidsList ) override {
-        _TODO_  // TODO
+        std::list<std::string> words;
+        for( const auto & nw : eidsList ) {
+            auto wp = md.find(nw)->second;
+            words.push_back( std::string(_content + wp.first, wp.second) );
+        }
+        return std::unique_ptr<sV::aux::iEventSequence>(
+                                                new ExtractedWords( words ));
     }
 public:
-    DataSource( const char * const c ) : _content(c) {}
+    DataSource( const char * const c ) :
+                aux::iEventSequence( aux::iEventSequence::randomAccess ),
+                MetadataTraits::iEventSource(), //< will init own dict inside
+                _content(c) {
+                    _words = extract_words_positions( _content );
+                    _it = _words.begin();
+                }
     DataSource( const char * const c,
                 MetadataTraits::MetadataTypesDictionary & mdDictRef ) :
-                                    MetadataTraits::iEventSource(mdDictRef),
-                                    _content(c) {}
+                    aux::iEventSequence( aux::iEventSequence::randomAccess ),
+                    MetadataTraits::iEventSource(mdDictRef),
+                    _content(c) {
+                        _words = extract_words_positions( _content );
+                        _it = _words.begin();
+                    }
     const char * const content() const { return _content; }
 };  // DataSource
 
@@ -145,15 +270,13 @@ public:
     MetadataType() : MetadataTraits::iSpecificMetadataType("Testing1") {}
 };  // MetadataType
 
-
-static Metadata _static_Metadata;
-
 // Implementation of metadata getting method.
 MetadataType::SpecificMetadata &
 MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
     ::sV::test::DataSource & s = dynamic_cast<::sV::test::DataSource &>(s_);
     size_t wordNo = 0;
-    Metadata & md = _static_Metadata;
+    Metadata & md = *(new Metadata);
+    // ^^^ It's ok here. Will be automatically cleaned. TODO: add to docs.
     auto poss = extract_words_positions( s.content() );
     for( auto pIt = poss.begin(); poss.end() != pIt; ++pIt, ++wordNo ) {
         md.emplace( wordNo, *pIt );
@@ -174,30 +297,82 @@ MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
 BOOST_AUTO_TEST_SUITE( Data_source_suite )
 
 BOOST_AUTO_TEST_CASE( InitialValidity ) {
-    // Run extraction routine expecting no side effects
-    BOOST_REQUIRE( !sV::test::extract_words_positions(
-                                        sV::test::_static_srcHaiku ).empty());
-    # if 0
-    // This part has may be run at user code at somewhat "init" section:
-    sV::test::MetadataTraits::MetadataTypesDictionary dict;
-    sV::test::MetadataType mdt;
-    dict.register_metadata_type( mdt );
-    sV::test::DataSource s( sV::test::_static_srcThomas, dict );
-    else
-    sV::test::MetadataType mdt;
-    sV::test::DataSource s( sV::test::_static_srcThomas );
-    s.metadata_types_dict().register_metadata_type( mdt );
-    # endif
-    //sV::test::Metadata md = s.acquire_metadata(); // ?
+    using namespace sV::test;
 
-    # if 0
-    sV::test::MetadataDict tstDict;
-    sV::test::TstEventSource1 src1;
-    //TstEventSource2 src2;
-    BOOST_REQUIRE( !src1.is_good() );
-    BOOST_REQUIRE( src1.initialize_reading() );
-    BOOST_REQUIRE( src1.is_good() );
-    # endif
+    // Run extraction routine expecting no side effects
+    BOOST_REQUIRE( !extract_words_positions( _static_srcHaiku ).empty());
+
+    # if 1  // whether to init with external types dictionary
+    // This part has may be run at user code at somewhat "init" section:
+    MetadataTraits::MetadataTypesDictionary dict;
+    MetadataType mdt;
+    dict.register_metadata_type( mdt );
+    DataSource s( _static_srcThomas, dict );
+    # else // whether to init with external types dictionary
+    MetadataType mdt;
+    DataSource s( _static_srcThomas );
+    s.metadata_types_dict().register_metadata_type( mdt );
+    # endif // whether to init with external types dictionary
+
+    for( sV::events::Event * eventPtr = s.initialize_reading();
+         s.is_good();
+         s.next_event( eventPtr ) ) {
+        std::cout << get_word_from_event( *eventPtr ) << "-";
+    }
+    std::cout << std::endl;
+
+    size_t nWords[] = { 0, 1, 2, 102, 4, 167 };
+    const unsigned short nWordsLen = sizeof(nWords)/sizeof(size_t);
+    const char expectedOutput[][32] = {
+        "Do", "not", "go", "gentle", "into",
+        "light"  //< we have to check accessibility of the last word
+    };
+
+    // Basic, event-by-event reading:
+    for( unsigned short i = 0; i < nWordsLen; ++i ) {
+        //std::cout << "Expected: '" << expectedOutput[i] << "' got: '"
+        //          << get_word_from_event(
+        //                                    *s.event_read_single( nWords[i] ) )
+        //          << "'." << std::endl;
+        BOOST_REQUIRE(std::string(expectedOutput[i]) ==
+            get_word_from_event( *s.event_read_single( nWords[i] )));
+    }
+
+    // Read range
+    {
+        std::string expectedPhrase( _static_srcThomas, 37 ),
+                    obtainedPhrase;
+        //std::cout << phrase << std::endl;
+        auto seqPtr = s.event_read_range( 0, 7 );
+        for( sV::events::Event * eventPtr = seqPtr->initialize_reading();
+             seqPtr->is_good(); seqPtr->next_event(eventPtr) ) {
+            obtainedPhrase += get_word_from_event( *eventPtr ) + " ";
+        }
+        obtainedPhrase = obtainedPhrase.substr(0, obtainedPhrase.size()-1);
+        //std::cout << "#1 '" << expectedPhrase << "' =?= '"
+        //                    << obtainedPhrase << "'" << std::endl;
+        BOOST_REQUIRE( obtainedPhrase == expectedPhrase );
+    }
+
+    // Read set
+    {
+        std::list<EventID> eids;
+        std::string expectedPhrase, obtainedPhrase;
+        for( unsigned short i = 0; i < nWordsLen; ++i ) {
+            unsigned short idx = nWordsLen - i - 1;
+            eids.push_back( nWords[idx] );
+            expectedPhrase += expectedOutput[idx];
+            expectedPhrase += " ";
+        }
+        auto seqPtr = s.event_read_list( eids );
+        for( sV::events::Event * eventPtr = seqPtr->initialize_reading();
+             seqPtr->is_good(); seqPtr->next_event(eventPtr) ) {
+            obtainedPhrase += get_word_from_event( *eventPtr ) + " ";
+        }
+        //std::cout << "#2 '" << expectedPhrase << "' =?= '"
+        //                    << obtainedPhrase << "'" << std::endl;
+        BOOST_REQUIRE( obtainedPhrase == expectedPhrase );
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

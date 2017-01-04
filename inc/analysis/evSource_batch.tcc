@@ -47,18 +47,20 @@ namespace sV {
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iBatchEventSource : public aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> {
+class iBatchEventSource :
+            public aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> Parent;
+    typedef typename Parent::Event Event;
 private:
     SpecificMetadata * _raMDatCache;
 protected:
     /// This abstract metod has to read the event using metadata instance (IF).
-    virtual bool _V_md_event_read_single( const SpecificMetadata & md,
-                                          const EventIDT & eid ) = 0;
+    virtual Event * _V_md_event_read_single( const SpecificMetadata & md,
+                                             const EventIDT & eid ) = 0;
 
     /// This abstract method has to read range of events using metadata
     /// instance (IF).
@@ -73,7 +75,7 @@ protected:
 
     /// Random access read event based on provided metadata
     /// information.
-    virtual bool _V_event_read_single( const EventIDT & eid ) override {
+    virtual Event * _V_event_read_single( const EventIDT & eid ) override {
         return _V_md_event_read_single( metadata(), eid );
     }
 
@@ -90,11 +92,11 @@ protected:
     }
 
     iBatchEventSource() :
-                Parent(),
+                Parent( 0x0 ),
                 _raMDatCache(nullptr) {}
 
     iBatchEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
-                Parent( mdtDictRef ),
+                Parent( mdtDictRef, 0x0 ),
                 _raMDatCache(nullptr) {}
 public:
     virtual ~iBatchEventSource() {
