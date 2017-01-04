@@ -31,6 +31,7 @@ namespace sV {
 template<typename T> class MetadataDictionary;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> class iSectionalEventSource;
 template<typename EventIDT, typename MetadataT> class iMetadataType;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> class iCachedMetadataType;
 
 /**???
  * Generic MetadataTypeTraits<> template used for sectioned source.
@@ -49,6 +50,8 @@ public:
     typedef MetadataDictionary<EventID> MetadataTypesDictionary;
     typedef SourceIDT SourceID;
     typedef iSectionalEventSource<EventID, Metadata, SourceID> iEventSource;
+    typedef iCachedMetadataType<EventID, Metadata, SourceID>
+            iSpecificMetadataType;
 private:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s

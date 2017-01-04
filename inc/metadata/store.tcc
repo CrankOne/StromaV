@@ -181,8 +181,8 @@ iCachedMetadataType<EventIDT,
 /**Optionally performs synchronization against particular metadata store.
  * This method tries to lookup the specific metadata corresponding to
  * given data source at the associated storage and obtain reference to
- * valid instance, if possible. If it is not, it has to construct new
- * instance (and append the associated storage, if presented).
+ * valid instance, if possible. If look-up is not succeeded the method has to
+ * construct new instance (and append the associated storage, if has).
  * */
 template<typename EventIDT,
          typename SpecificMetadataT,

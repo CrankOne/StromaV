@@ -58,32 +58,43 @@ public:
             iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>
             Parent;
-private:
-    SpecificMetadata * _mDatCache;
-
 protected:
-    iSectionalEventSource( aux::iEventSequence::Features_t fts ) :
-                     Parent( fts | aux::iEventSequence::identifiable ),
-                     _mDatCache(nullptr) {}
-public:
-    iSectionalEventSource( ) : iSectionalEventSource( 0x0 ) {}
-
-    virtual ~iSectionalEventSource() {
-        if( _mDatCache ) {
-            delete _mDatCache;
-        }
-    }
-
-    virtual const SpecificMetadata & metadata(
-                        sV::MetadataDictionary<EventIDT> & mDict ) {
-        if( !_mDatCache ) {
-            const iSpecificMetadataType & mdt =
+    virtual const SpecificMetadata * _V_acquire_my_metadata() final {
+        const iSpecificMetadataType & mdt =
                     static_cast<const iSpecificMetadataType &> (
-                    mDict.template get_metadata_type<SpecificMetadata>() );
-            _mDatCache = &( mdt.acquire_metadata_for( *this ) );
-        }
-        return *_mDatCache;
+                    Parent::metadata_types_dict().template get_metadata_type<SpecificMetadata>() );
+        return &( mdt.acquire_metadata_for( *this ) );
     }
+public:
+    iSectionalEventSource(aux::iEventSequence::Features_t fts = 0x0) :
+            aux::iEventSequence( fts
+                               | aux::iEventSequence::identifiable ),
+            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( fts ),
+            mixins::iIdentifiableEventSource<SourceIDT>( fts ) {}
+
+    iSectionalEventSource( SourceIDT & id,
+                           aux::iEventSequence::Features_t fts=0x0 ) :
+            aux::iEventSequence( fts
+                               | aux::iEventSequence::identifiable ),
+            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( fts ),
+            mixins::iIdentifiableEventSource<SourceIDT>( fts, id ) {}
+
+    iSectionalEventSource( MetadataDictionary<EventIDT> & mtDict,
+                           aux::iEventSequence::Features_t fts=0x0 ) :
+            aux::iEventSequence( fts
+                               | aux::iEventSequence::identifiable ),
+            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( mtDict, fts ),
+            mixins::iIdentifiableEventSource<SourceIDT>( fts ) {}
+
+    iSectionalEventSource( SourceIDT & id,
+                           MetadataDictionary<EventIDT> & mtDict,
+                           aux::iEventSequence::Features_t fts=0x0 ) :
+            aux::iEventSequence( fts
+                               | aux::iEventSequence::identifiable ),
+            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( mtDict, fts ),
+            mixins::iIdentifiableEventSource<SourceIDT>( id, fts ) {}
+
+    virtual ~iSectionalEventSource() {}
 };  // class iSectionalEventSource
 
 }  // namespace sV

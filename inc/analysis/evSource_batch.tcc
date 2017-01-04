@@ -55,67 +55,21 @@ public:
     typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> Parent;
     typedef typename Parent::Event Event;
-private:
-    SpecificMetadata * _raMDatCache;
 protected:
-    /// This abstract metod has to read the event using metadata instance (IF).
-    virtual Event * _V_md_event_read_single( const SpecificMetadata & md,
-                                             const EventIDT & eid ) = 0;
-
-    /// This abstract method has to read range of events using metadata
-    /// instance (IF).
-    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
-                                        const SpecificMetadata & md,
-                                        const EventIDT & eidFrom,
-                                        const EventIDT & eidTo ) = 0;
-
-    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
-                                    const SpecificMetadata & md,
-                                    const std::list<EventID> & eidsList ) = 0;
-
-    /// Random access read event based on provided metadata
-    /// information.
-    virtual Event * _V_event_read_single( const EventIDT & eid ) override {
-        return _V_md_event_read_single( metadata(), eid );
+    virtual const SpecificMetadata * _V_acquire_my_metadata() final {
+        const iSpecificMetadataType & mdt = 
+                    Parent
+                    ::metadata_types_dict()
+                    .template get_metadata_type<SpecificMetadata>();
+        return &( mdt.acquire_metadata( *this ) );
     }
 
-    /// Read events in some ID range.
-    virtual std::unique_ptr<aux::iEventSequence> _V_event_read_range(
-                                        const EventIDT & eidFrom,
-                                        const EventIDT & eidTo ) override {
-        return _V_md_event_read_range( metadata(), eidFrom, eidTo );
-    }
-    /// Read events specified by set of indexes.
-    virtual std::unique_ptr<aux::iEventSequence> _V_event_read_list(
-                                const std::list<EventID> & list ) override {
-        return _V_md_event_read_list( metadata(), list );
-    }
-
-    iBatchEventSource() :
-                Parent( 0x0 ),
-                _raMDatCache(nullptr) {}
+    iBatchEventSource() : Parent( 0x0 ) {}
 
     iBatchEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
-                Parent( mdtDictRef, 0x0 ),
-                _raMDatCache(nullptr) {}
+                Parent( mdtDictRef, 0x0 ) {}
 public:
-    virtual ~iBatchEventSource() {
-        if( _raMDatCache ) {
-            delete _raMDatCache;
-        }
-    }
-
-    /// Obtain (fetch cached or build new) metadata for itself.
-    virtual const SpecificMetadata & metadata() {
-        if( !_raMDatCache ) {
-            const iSpecificMetadataType & mdt = 
-                        Parent
-                        ::metadata_types_dict()
-                        .template get_metadata_type<SpecificMetadata>();
-            _raMDatCache = &( mdt.acquire_metadata( *this ) );
-        }
-        return *_raMDatCache;
-    }
+    virtual ~iBatchEventSource() {}
 };  // class iBatchEventSource
 
 }  // namespace sV

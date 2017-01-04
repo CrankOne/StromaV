@@ -40,12 +40,13 @@ template<typename EventIDT,
 class iRandomAccessEventSource : virtual public iEventSequence {
 public:
     typedef EventIDT EventID;
-    typedef SpecificMetadataT SpecificMetadata;  // TODO: reserve for future?
+    typedef SpecificMetadataT SpecificMetadata;
     typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
     typedef iEventSequence::Event Event;
 private:
     bool _ownsDict;
     MetadataDictionary<EventIDT> * _mdtDictPtr;
+    const SpecificMetadata * _raMDatCache;
 
     iRandomAccessEventSource(
                 MetadataDictionary<EventID> * mdtDictPtr,
@@ -53,19 +54,25 @@ private:
                 iEventSequence::Features_t fts ) :
                         iEventSequence( fts | iEventSequence::randomAccess ),
                         _ownsDict( ownsDict ),
-                        _mdtDictPtr( mdtDictPtr ) {}
+                        _mdtDictPtr( mdtDictPtr ),
+                        _raMDatCache(nullptr) {}
 protected:
-    /// Random access read event based on provided metadata information (IF).
-    virtual Event * _V_event_read_single( const EventIDT & ) = 0;
+    virtual const SpecificMetadata * _V_acquire_my_metadata() = 0;
 
-    /// Read events in some ID range (IF).
-    virtual std::unique_ptr<iEventSequence> _V_event_read_range(
-                                        const EventIDT & lower,
-                                        const EventIDT & upper ) = 0;
-    /// Read events specified by set of indexes (IF with default
-    /// implementation).
-    virtual std::unique_ptr<iEventSequence> _V_event_read_list(
-                                        const std::list<EventID> & list ) = 0;
+    /// This abstract metod has to read the event using metadata instance (IF).
+    virtual Event * _V_md_event_read_single( const SpecificMetadata & md,
+                                             const EventIDT & eid ) = 0;
+
+    /// This abstract method has to read range of events using metadata
+    /// instance (IF).
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
+                                        const SpecificMetadata & md,
+                                        const EventIDT & eidFrom,
+                                        const EventIDT & eidTo ) = 0;
+
+    virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
+                                    const SpecificMetadata & md,
+                                    const std::list<EventID> & eidsList ) = 0;
     iRandomAccessEventSource( iEventSequence::Features_t fts ) :
                         iRandomAccessEventSource(
                                     new MetadataDictionary<EventID>(),
@@ -84,18 +91,26 @@ public:
         }
     }
     virtual Event * event_read_single( const EventID & eid ) {
-        return _V_event_read_single(eid); }
+        return _V_md_event_read_single( metadata(), eid ); }
 
     virtual std::unique_ptr<iEventSequence> event_read_range(
                                     const EventID & lower,
                                     const EventID & upper ) {
-        return _V_event_read_range( lower, upper ); }
+        return _V_md_event_read_range( metadata(), lower, upper ); }
 
     virtual std::unique_ptr<iEventSequence> event_read_list(
                                     const std::list<EventID> & list ) {
-        return _V_event_read_list(list); }
+        return _V_md_event_read_list(metadata(), list); }
 
     MetadataDictionary<EventIDT> & metadata_types_dict() { return *_mdtDictPtr; }
+
+    /// Obtain (fetch cached or build new) metadata for itself.
+    virtual const SpecificMetadata & metadata() {
+        if( !_raMDatCache ) {
+            _raMDatCache = _V_acquire_my_metadata();
+        }
+        return *_raMDatCache;
+    }
 };  // iRandomAccessEventSource
 
 }  // namespace aux

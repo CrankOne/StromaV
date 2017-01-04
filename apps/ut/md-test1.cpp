@@ -20,8 +20,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "metadata/traits.tcc"
 # include "analysis/evSource_batch.tcc"
+# include "md-test-common.hpp"
 
 namespace sV {
 
@@ -68,43 +68,6 @@ Curse, bless, me now with your fierce tears, I pray.
 Do not go gentle into that good night.
 Rage, rage against the dying of the light.)";
 
-std::vector< std::pair<size_t, size_t> >
-extract_words_positions( const char * const s ) {
-    const char * lastBgn = nullptr;
-    std::vector< std::pair<size_t, size_t> > r;
-    for( const char * c = s; *c != '\0'; ++c ) {
-        if( std::isalnum(*c) ) {
-            if( !lastBgn ) {
-                lastBgn = c;
-            }
-        } else {
-            if( lastBgn ) {
-                std::pair<size_t, size_t> p( lastBgn - s, c - lastBgn );
-                # if 0  // dev dbg
-                std::cout << "XXX '" << std::string( lastBgn, c )
-                          << "' => '" << std::string(s + p.first, p.second)
-                          << "'" << std::endl;
-                # endif
-                r.push_back( p );
-                lastBgn = nullptr;
-            }
-        }
-    }
-    return r;
-}
-
-void
-copy_word_to_event( const std::string & word,
-                    sV::events::Event & event ) {
-    assert( !word.empty() );
-    event.set_blob( word );
-}
-
-std::string
-get_word_from_event( const sV::events::Event & event ) {
-    return event.blob();
-}
-
 //
 // Metadata types
 
@@ -118,47 +81,6 @@ typedef sV::MetadataTypeTraits<EventID, Metadata> MetadataTraits;
 
 //
 // Defining the routines:
-
-// Aux class keeping words obtained using metadata
-class ExtractedWords : public aux::iEventSequence {
-private:
-    std::list<std::string> _words;
-    std::list<std::string>::const_iterator _it;
-    Event _rE;
-    bool _isGood;
-protected:
-    virtual bool _V_is_good() override { return _isGood; }
-    virtual void _V_next_event( Event *& eventPtrRef ) override {
-        if( _it != _words.end() ) {
-            copy_word_to_event( *_it, *eventPtrRef );
-            ++_it;
-        } else {
-            _isGood = false;
-            eventPtrRef = nullptr;
-        }
-    }
-    /// Has to return a pointer to a valid event. Can invoke _V_next_event()
-    /// internally.
-    virtual Event * _V_initialize_reading() override {
-        Event * _evPtr = &_rE;
-        _it = _words.begin();
-        _isGood = true;
-        _V_next_event( _evPtr );
-        return _evPtr;
-    }
-    virtual void _V_finalize_reading() override {
-        _it = _words.end();
-        _isGood = false;
-    }
-public:
-    ExtractedWords() : iEventSequence(0x0) {}
-    ExtractedWords( const std::list<std::string> & words_ ) :
-                                iEventSequence(0x0),
-                                _words(words_) {}
-    void push_back_word( const std::string & w ) {
-        _words.push_back( w );
-    }
-};
 
 // - data stream supporting metadata indexing:
 class DataSource : public MetadataTraits::iEventSource {
@@ -302,7 +224,7 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
     // Run extraction routine expecting no side effects
     BOOST_REQUIRE( !extract_words_positions( _static_srcHaiku ).empty());
 
-    # if 1  // whether to init with external types dictionary
+    # if 0  // whether to init with external types dictionary
     // This part has may be run at user code at somewhat "init" section:
     MetadataTraits::MetadataTypesDictionary dict;
     MetadataType mdt;
@@ -314,12 +236,12 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
     s.metadata_types_dict().register_metadata_type( mdt );
     # endif // whether to init with external types dictionary
 
-    for( sV::events::Event * eventPtr = s.initialize_reading();
-         s.is_good();
-         s.next_event( eventPtr ) ) {
-        std::cout << get_word_from_event( *eventPtr ) << "-";
-    }
-    std::cout << std::endl;
+    //for( sV::events::Event * eventPtr = s.initialize_reading();
+    //     s.is_good();
+    //     s.next_event( eventPtr ) ) {
+    //    std::cout << get_word_from_event( *eventPtr ) << "-";
+    //}
+    //std::cout << std::endl;
 
     size_t nWords[] = { 0, 1, 2, 102, 4, 167 };
     const unsigned short nWordsLen = sizeof(nWords)/sizeof(size_t);
