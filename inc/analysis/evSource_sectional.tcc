@@ -66,25 +66,12 @@ protected:
         return &( mdt.acquire_metadata_for( *this ) );
     }
 public:
-    iSectionalEventSource(aux::iEventSequence::Features_t fts = 0x0) :
-            aux::iEventSequence( fts
-                               | aux::iEventSequence::identifiable ),
-            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( fts ),
-            mixins::iIdentifiableEventSource<SourceIDT>( fts ) {}
-
     iSectionalEventSource( SourceIDT & id,
                            aux::iEventSequence::Features_t fts=0x0 ) :
             aux::iEventSequence( fts
                                | aux::iEventSequence::identifiable ),
             aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( fts ),
             mixins::iIdentifiableEventSource<SourceIDT>( fts, id ) {}
-
-    iSectionalEventSource( MetadataDictionary<EventIDT> & mtDict,
-                           aux::iEventSequence::Features_t fts=0x0 ) :
-            aux::iEventSequence( fts
-                               | aux::iEventSequence::identifiable ),
-            aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( mtDict, fts ),
-            mixins::iIdentifiableEventSource<SourceIDT>( fts ) {}
 
     iSectionalEventSource( SourceIDT & id,
                            MetadataDictionary<EventIDT> & mtDict,

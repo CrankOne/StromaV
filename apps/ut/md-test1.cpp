@@ -25,7 +25,7 @@
 
 namespace sV {
 
-namespace test {
+namespace mdTest1 {
 
 //
 // Some data for tests.
@@ -106,7 +106,7 @@ protected:
     virtual void _V_next_event( Event *& eventPtrRef ) override {
         if( _it != _words.end() ) {
             std::string word( _content + _it->first, _it->second );
-            copy_word_to_event( word, *eventPtrRef );
+            test::copy_word_to_event( word, *eventPtrRef );
             ++_it;
         } else {
             _isGood = false;
@@ -136,7 +136,7 @@ protected:
         }
         std::pair<size_t, size_t> wp = it->second;
         std::string word( _content + wp.first, wp.second );
-        copy_word_to_event( word, _rE );
+        test::copy_word_to_event( word, _rE );
         return &_rE;
     }
 
@@ -150,7 +150,7 @@ protected:
             words.push_back( std::string(_content + wp.first, wp.second) );
         }
         return std::unique_ptr<sV::aux::iEventSequence>(
-                                                new ExtractedWords( words ));
+                                        new test::ExtractedWords( words ));
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
                             const Metadata & md,
@@ -161,14 +161,14 @@ protected:
             words.push_back( std::string(_content + wp.first, wp.second) );
         }
         return std::unique_ptr<sV::aux::iEventSequence>(
-                                                new ExtractedWords( words ));
+                                        new test::ExtractedWords( words ));
     }
 public:
     DataSource( const char * const c ) :
                 aux::iEventSequence( aux::iEventSequence::randomAccess ),
                 MetadataTraits::iEventSource(), //< will init own dict inside
                 _content(c) {
-                    _words = extract_words_positions( _content );
+                _words = test::extract_words_positions( _content );
                     _it = _words.begin();
                 }
     DataSource( const char * const c,
@@ -176,7 +176,7 @@ public:
                     aux::iEventSequence( aux::iEventSequence::randomAccess ),
                     MetadataTraits::iEventSource(mdDictRef),
                     _content(c) {
-                        _words = extract_words_positions( _content );
+                    _words = test::extract_words_positions( _content );
                         _it = _words.begin();
                     }
     const char * const content() const { return _content; }
@@ -195,18 +195,18 @@ public:
 // Implementation of metadata getting method.
 MetadataType::SpecificMetadata &
 MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
-    ::sV::test::DataSource & s = dynamic_cast<::sV::test::DataSource &>(s_);
+    ::sV::mdTest1::DataSource & s = dynamic_cast<::sV::mdTest1::DataSource &>(s_);
     size_t wordNo = 0;
     Metadata & md = *(new Metadata);
     // ^^^ It's ok here. Will be automatically cleaned. TODO: add to docs.
-    auto poss = extract_words_positions( s.content() );
+    auto poss = test::extract_words_positions( s.content() );
     for( auto pIt = poss.begin(); poss.end() != pIt; ++pIt, ++wordNo ) {
         md.emplace( wordNo, *pIt );
     }
     return md;
 }
 
-}  // namespace test
+}  // namespace mdTest1
 }  // namespace sV
 
 //
@@ -216,25 +216,18 @@ MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
 //# define BOOST_TEST_MODULE Data source with metadata
 # include <boost/test/unit_test.hpp>
 
-BOOST_AUTO_TEST_SUITE( Data_source_suite )
+BOOST_AUTO_TEST_SUITE( Metadata_suite )
 
-BOOST_AUTO_TEST_CASE( InitialValidity ) {
+BOOST_AUTO_TEST_CASE( BatchSource ) {
+    using namespace sV::mdTest1;
     using namespace sV::test;
 
     // Run extraction routine expecting no side effects
     BOOST_REQUIRE( !extract_words_positions( _static_srcHaiku ).empty());
 
-    # if 0  // whether to init with external types dictionary
-    // This part has may be run at user code at somewhat "init" section:
-    MetadataTraits::MetadataTypesDictionary dict;
-    MetadataType mdt;
-    dict.register_metadata_type( mdt );
-    DataSource s( _static_srcThomas, dict );
-    # else // whether to init with external types dictionary
     MetadataType mdt;
     DataSource s( _static_srcThomas );
     s.metadata_types_dict().register_metadata_type( mdt );
-    # endif // whether to init with external types dictionary
 
     //for( sV::events::Event * eventPtr = s.initialize_reading();
     //     s.is_good();
@@ -295,6 +288,7 @@ BOOST_AUTO_TEST_CASE( InitialValidity ) {
         //                    << obtainedPhrase << "'" << std::endl;
         BOOST_REQUIRE( obtainedPhrase == expectedPhrase );
     }
+    std::cout << "*** Batch done." << std::endl;  // XXX
 }
 
 BOOST_AUTO_TEST_SUITE_END()

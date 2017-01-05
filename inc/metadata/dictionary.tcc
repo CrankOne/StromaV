@@ -75,6 +75,17 @@ public:
     /// Returns metadata type name based on its index.
     const std::string & metadata_type_name( MetadataTypeIndex idx ) const;
 
+    /// Returns reference to metadata type by its name.
+    const iSpecificEventIDMetdataType & metadata_type(
+                                            const std::string & tnm ) const {
+        auto it = _namedIndex.find( tnm );
+        if( _namedIndex.end() == it ) {
+            emraise( noSuchKey, "Metadata types dictionary %p has no metadata "
+                    "type \"%s\" registered.", this, tnm.c_str() );
+        }
+        return *(it->second);
+    }
+
     /// Payload cast method for metadata instance.
     template<typename T> T & cast( C_Metadata & md ) const {
         typedef iMetadataType<EventID, T> ItsType;

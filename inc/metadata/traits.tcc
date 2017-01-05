@@ -73,8 +73,8 @@ protected:
             }
         } else {
             _typeIndex = desiredIdx;
-            sV_log2( "Index %zu assigned for metadata type traits "
-                     "\"%s\" (%p).\n", (size_t) desiredIdx, &_typeIndex );
+            //sV_log2( "Index %zu assigned for metadata type traits "
+            //         "\"%s\" (%p).\n", (size_t) desiredIdx, &_typeIndex );
         }
     }
 public:
@@ -122,8 +122,8 @@ protected:
             }
         } else {
             _typeIndex = desiredIdx;
-            sV_log2( "Index %zu assigned for metadata type traits "
-                     "\"%s\" (%p).\n", (size_t) desiredIdx, &_typeIndex );
+            //sV_log2( "Index %zu assigned for metadata type traits "
+            //         "(%p).\n", (size_t) desiredIdx, &_typeIndex );
         }
     }
 public:
