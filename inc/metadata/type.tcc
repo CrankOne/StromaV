@@ -48,7 +48,7 @@ class iMetadataType :
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
-    typedef iBatchEventSource<EventID, SpecificMetadata> DataSource;
+    typedef iBulkEventSource<EventID, SpecificMetadata> DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     typedef sV::aux::iTemplatedEventIDMetadataType<EventID> Parent;
     typedef MetadataTypeTraits<EventID, SpecificMetadata> SpecificTraits;

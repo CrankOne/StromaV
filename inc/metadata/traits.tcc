@@ -32,6 +32,7 @@ template<typename T> class MetadataDictionary;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> class iSectionalEventSource;
 template<typename EventIDT, typename MetadataT> class iMetadataType;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> class iCachedMetadataType;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> class iMetadataStore;
 
 /**???
  * Generic MetadataTypeTraits<> template used for sectioned source.
@@ -52,6 +53,8 @@ public:
     typedef iSectionalEventSource<EventID, Metadata, SourceID> iEventSource;
     typedef iCachedMetadataType<EventID, Metadata, SourceID>
             iSpecificMetadataType;
+    typedef iMetadataStore<EventID, Metadata, SourceID>
+            iSpecificMetadataStore;
 private:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s
@@ -90,7 +93,7 @@ template<typename EventIDT,
 MetadataTypeIndex MetadataTypeTraits<EventIDT, SpecificMetadataT, SourceIDT>::_typeIndex = 0;
 
 /**???
- * Partial MetadataTypeTraits<> template used for batch source.
+ * Partial MetadataTypeTraits<> template used for bulk source.
  */
 template<typename EventIDT,
          typename SpecificMetadataT>
@@ -99,7 +102,7 @@ public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef MetadataDictionary<EventID> MetadataTypesDictionary;
-    typedef iBatchEventSource<EventID, SpecificMetadata> iEventSource;
+    typedef iBulkEventSource<EventID, SpecificMetadata> iEventSource;
     typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
 private:
     /// Metadata type identifier that has to be set upon construction. Note,

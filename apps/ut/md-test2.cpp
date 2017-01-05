@@ -106,6 +106,11 @@ struct MetadataEntry {
 // The metadata for a fragment is just a list here (but might be a DB handle).
 class Metadata : public std::list<MetadataEntry> {
 public:
+    // IMPORTANT NOTE:
+    // Raising the exception is not a best way to report about the fact
+    // that particular event can not be found at this metadata since one may
+    // need to consider this situation as notmal while querying metadata
+    // instances inside of a store object(s).
     const MetadataEntry & query_word_loc( const EventID & eid ) const {
         for( const auto & it : *this ) {
             //std::cout << " XXX " << it.eid << " =?= " << eid << std::endl;
@@ -120,11 +125,13 @@ public:
 namespace auxTest2 {
 
 void
-extract_test2_metadata( Metadata & md, const char * const s ) {
-    MetadataEntry me = {{ 0, 0, 0 }, 0, 0};
+extract_test2_metadata( Metadata & md,
+                        const char * const s,
+                        unsigned char initialStanzaNo ) {
+    MetadataEntry me = {{ initialStanzaNo, 0, 0 }, 0, 0};
     bool doesIterateWord = false,
          done = false;
-    std::cout << "[0-0] ";
+    std::cout << "[" << (int) initialStanzaNo << "-0] ";
     for( const char * c = s; !done; c++ ) {
         if( std::isalnum(*c) ) {
             if( !doesIterateWord ) {
@@ -166,6 +173,10 @@ typedef sV::MetadataTypeTraits<EventID, Metadata, uint8_t> MetadataTraits;
 
 //
 // Defining the routines:
+
+// This object has to be available from various locations and normally is
+// placed inside singleton.
+MetadataTraits::MetadataTypesDictionary * _static_MTDPtr = nullptr;
 
 // - data stream supporting metadata indexing:
 class DataSource : public MetadataTraits::iEventSource {
@@ -283,12 +294,23 @@ protected:
             emraise( badState, "Fragment number is not set when metadata "
                 "acquisition routine invoked." );
         }
+
+        // Source ID usually carries external information that has to be used
+        // for proper identifiaction of additional information of metadata
+        // that can not be obtained from provided section or fragment. In this
+        // testing case we have to obtain initial stanza number. The easiest
+        // way is to define it manually since this mechanism is not related to
+        // routines we're currently testing.
+        static unsigned char _static_initialStanzaNos[] = {1, 3, 5};
+        unsigned char initialStanzaNo = _static_initialStanzaNos[*sidPtr-1];
+
         if( !mdPtrRef ) {
             mdPtrRef = new Metadata();
         }
         auxTest2::extract_test2_metadata(
                             *mdPtrRef,
-                            static_cast<mdTest2::DataSource&>(ds).content() );
+                            static_cast<mdTest2::DataSource&>(ds).content(),
+                            initialStanzaNo );
         return true;
     }
 
@@ -305,14 +327,87 @@ protected:
     }
 
     virtual void _V_cache_metadata(
-                            const SourceID &,
-                            const SpecificMetadata &,
-                            std::list<MetadataStore *> & ) const override {
-        _TODO_  // TODO
+                        const SourceID & sid,
+                        const SpecificMetadata & mdRef,
+                        std::list<MetadataStore *> & stores_ ) const override {
+        stores_.front()->put_metadata( sid, mdRef );
     }
 public:
     MetadataType() : MetadataTraits::iSpecificMetadataType("Testing2") {}
-};  // MetadataType
+};  // class MetadataType
+
+
+class Store : public MetadataTraits::iSpecificMetadataStore {
+private:
+    std::map<SourceID, Metadata *> _mdatCache;
+protected:
+    virtual SpecificMetadata * _V_get_metadata_for(
+                                        const SourceID & sid) const override {
+        auto it = _mdatCache.find(sid);
+        if( _mdatCache.end() == it ) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
+    virtual void _V_put_metadata( const SourceID & sid,
+                                  const SpecificMetadata & mdRef ) override {
+        // well, proper way would be: allocate new metadata object and copy it,
+        // but who cares? Anywhay, metadata instances will has to be cleaned
+        // somewhere and stores is a best place to do it in this UT.
+        _mdatCache[sid] = const_cast<SpecificMetadata *>(&mdRef);
+    }
+
+    virtual iSpecificSectionalEventSource * 
+                                _V_source( const SourceID & sid ) override {
+        return new DataSource( sid, _static_srcEN[sid-1], *_static_MTDPtr );
+    }
+
+    virtual void _V_free_source(
+                            iSpecificSectionalEventSource * srcPtr ) override {
+        delete srcPtr;
+    }
+
+    virtual bool _V_source_id_for( const EventID & eid,
+                                   SourceID & sid) const override {
+        MetadataEntry mde = {{0, 0, 0}, 0, 0};
+        SourceID foundSID;
+        for( const auto & p : _mdatCache ) {
+            Metadata & md = *(p.second);
+            // See note at the Metadata::query_word_loc() implem.
+            try {
+                mde = md.query_word_loc( eid );
+                foundSID = p.first;
+            } catch( goo::Exception & e ) {
+                if( goo::Exception::noSuchKey != e.code() ) {
+                    throw;
+                }
+            }
+        }
+        if( !(mde.eid == eid) ) {
+            // Normal way to report that current store instance was unable to
+            // locate word.
+            return false;
+        }
+        sid = foundSID;
+        return true;
+    }
+
+    virtual void _V_collect_source_ids_for_range(
+                                const EventID & from,
+                                const EventID & to,
+                                std::list<SourceID> & ) const override {
+        _TODO_  // TODO
+    }
+
+    virtual void _V_collect_source_ids_for_set(
+                                const std::list<EventID> &,
+                                std::list<SourceID> & ) const override {
+        _TODO_  // TODO
+    }
+public:
+    Store() {}
+};  // class Store
 
 }  // namespace mdTest2
 }  // namespace sV
@@ -327,17 +422,22 @@ public:
 BOOST_AUTO_TEST_SUITE( Metadata_suite )
 
 BOOST_AUTO_TEST_CASE( SectionalSource,
-            * boost::unit_test::depends_on("Metadata_suite/BatchSource") ) {
+            * boost::unit_test::depends_on("Metadata_suite/BulkSource") ) {
     using namespace sV::mdTest2;
     using namespace sV::test;
 
     //Metadata md;
-    //auxTest2::extract_test2_metadata( md, _static_srcEN[0] );
+    //auxTest2::extract_test2_metadata( md, _static_srcEN[0], 0 );
 
     // This part has may be run at user code at somewhat "init" section:
     MetadataTraits::MetadataTypesDictionary dict;
+    _static_MTDPtr = &dict;
     MetadataType mdt;
     dict.register_metadata_type( mdt );
+
+    Store store;
+    mdt.add_store( store );
+
     DataSource * s[3] = {
             new DataSource( 1, _static_srcEN[0], dict ),
             new DataSource( 2, _static_srcEN[1], dict ),
@@ -345,7 +445,7 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
         };
 
     {
-        // First of all, let's test look-up capabilities for one word that
+        // First, let's test look-up capabilities for one word that
         // definetely located at the provided source:
         EventID eid { /* Stanza no ............... */ 4,
                       /* Line no in stanza ....... */ 1,
@@ -358,7 +458,7 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
     {
         // This case is special --- upon now or routines has to utilize
         // cached metadata information for fragment. TODO: automatic check
-        // that upon this time we do not re-caching metadata.
+        // that at this time we do not re-caching metadata?
         EventID eid { /* Stanza no ............... */ 4,
                       /* Line no in stanza ....... */ 1,
                       /* Word no in line ......... */ 6 };
@@ -379,14 +479,21 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
     delete s[2]; s[2] = nullptr;
 
     // Now we have metadata indexing two of three fragments available in store
-    // and can gain access it by using interim batch events ource representing
-    // all the indexed sources. Let's check that acquizition may be performed
-    // as if it is a continious array.
+    // and can gain access it by using interim batch events source representing
+    // all the indexed sources.
     auto & mdt2 = static_cast<const MetadataType &>(
                                     dict.metadata_type( "Testing2" ));
     BOOST_REQUIRE( &mdt == &mdt2 );
     auto & batchHandle = mdt2.batch_handle();
-    /*TODO: src = */batchHandle.event_read_range( {2, 0, 0}, {3, 0, 0} );
+
+    // Try to obtain a word using this batch abstraction:
+    BOOST_REQUIRE( get_word_from_event(
+                *batchHandle.event_read_single({3, 1, 6}) ) == "Tal" );
+
+    // Let's check that acquizition may be performed as if it is a continious
+    // array.
+
+    ///*TODO: src = */ batchHandle.event_read_range( {4, 0, 0}, {5, 0, 0} );
 
     // Finaly, we make the first fragment's metadata to be cached by explicit
     // acquizition of the words:

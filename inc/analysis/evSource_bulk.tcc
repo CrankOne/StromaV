@@ -20,15 +20,15 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_BATCH_EVENT_SOURCE_H
-# define H_STROMA_V_BATCH_EVENT_SOURCE_H
+# ifndef H_STROMA_V_BULK_EVENT_SOURCE_H
+# define H_STROMA_V_BULK_EVENT_SOURCE_H
 
 # include "evSource_RA.tcc"
 # include "metadata/dictionary.tcc"
 
 namespace sV {
 
-/**@class iBatchEventSource
+/**@class iBulkEventSource
  * @brief Interface class for unique event source supporting metadata for
  *        random access.
  * 
@@ -47,7 +47,7 @@ namespace sV {
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iBatchEventSource :
+class iBulkEventSource :
             public aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> {
 public:
     typedef EventIDT EventID;
@@ -64,15 +64,15 @@ protected:
         return &( mdt.acquire_metadata( *this ) );
     }
 
-    iBatchEventSource() : Parent( 0x0 ) {}
+    iBulkEventSource() : Parent( 0x0 ) {}
 
-    iBatchEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
+    iBulkEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
                 Parent( mdtDictRef, 0x0 ) {}
 public:
-    virtual ~iBatchEventSource() {}
-};  // class iBatchEventSource
+    virtual ~iBulkEventSource() {}
+};  // class iBulkEventSource
 
 }  // namespace sV
 
-# endif  // H_STROMA_V_BATCH_EVENT_SOURCE_H
+# endif  // H_STROMA_V_BULK_EVENT_SOURCE_H
 

@@ -20,7 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "analysis/evSource_batch.tcc"
+# include "analysis/evSource_bulk.tcc"
 # include "md-test-common.hpp"
 
 namespace sV {
@@ -218,7 +218,7 @@ MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
 
 BOOST_AUTO_TEST_SUITE( Metadata_suite )
 
-BOOST_AUTO_TEST_CASE( BatchSource ) {
+BOOST_AUTO_TEST_CASE( BulkSource ) {
     using namespace sV::mdTest1;
     using namespace sV::test;
 
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( BatchSource ) {
         //                    << obtainedPhrase << "'" << std::endl;
         BOOST_REQUIRE( obtainedPhrase == expectedPhrase );
     }
-    std::cout << "*** Batch done." << std::endl;  // XXX
+    std::cout << "*** Bulk source test done." << std::endl;  // XXX
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -28,16 +28,42 @@
 
 namespace sV {
 
+/**@struct IRandomAccessEventStream
+ * @brief An interface for random access to events stream.
+ *
+ * Note, that the class implementing this interface has also to provide
+ * implementation of a query result --- a descendant of the iEventSequence
+ * for methods returning multiple events. These events may or may not be
+ * located in memory at once.
+ *
+ * This struct is a pure interface.
+ *
+ * @see iEventSequence
+ */
+template<typename EventIDT>
+struct IRandomAccessEventStream {
+    virtual aux::iEventSequence::Event * event_read_single(
+                                    const EventIDT & eid ) = 0;
+
+    virtual std::unique_ptr<aux::iEventSequence> event_read_range(
+                                    const EventIDT & lower,
+                                    const EventIDT & upper ) = 0;
+    virtual std::unique_ptr<aux::iEventSequence> event_read_list(
+                                    const std::list<EventIDT> & list ) = 0;
+};
+
 namespace aux {
 
 /**@class iRandomAccessEventSource
  * @brief An interim interface providing random access mthods.
  *
  * User code has to define particular metadata application routines.
+ * @see IRandomAccessEventStream
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iRandomAccessEventSource : virtual public iEventSequence {
+class iRandomAccessEventSource : virtual public iEventSequence,
+                                 public IRandomAccessEventStream<EventIDT> {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
@@ -63,16 +89,17 @@ protected:
     virtual Event * _V_md_event_read_single( const SpecificMetadata & md,
                                              const EventIDT & eid ) = 0;
 
-    /// This abstract method has to read range of events using metadata
-    /// instance (IF).
+    /// (IF) This abstract method has to read range of events using metadata
+    /// instance.
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
                                         const SpecificMetadata & md,
                                         const EventIDT & eidFrom,
                                         const EventIDT & eidTo ) = 0;
-
+    /// (IF) Has to read a list of events in given order.
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
                                     const SpecificMetadata & md,
                                     const std::list<EventID> & eidsList ) = 0;
+
     iRandomAccessEventSource( iEventSequence::Features_t fts ) :
                         iRandomAccessEventSource(
                                     new MetadataDictionary<EventID>(),
@@ -90,16 +117,16 @@ public:
             delete _mdtDictPtr;
         }
     }
-    virtual Event * event_read_single( const EventID & eid ) {
+    virtual Event * event_read_single( const EventID & eid ) override {
         return _V_md_event_read_single( metadata(), eid ); }
 
     virtual std::unique_ptr<iEventSequence> event_read_range(
-                                    const EventID & lower,
-                                    const EventID & upper ) {
+                                const EventID & lower,
+                                const EventID & upper ) override {
         return _V_md_event_read_range( metadata(), lower, upper ); }
 
     virtual std::unique_ptr<iEventSequence> event_read_list(
-                                    const std::list<EventID> & list ) {
+                                const std::list<EventID> & list ) override {
         return _V_md_event_read_list(metadata(), list); }
 
     MetadataDictionary<EventIDT> & metadata_types_dict() { return *_mdtDictPtr; }

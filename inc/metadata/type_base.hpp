@@ -39,7 +39,7 @@ namespace sV {
 typedef sV_MetadataTypeIndex MetadataTypeIndex;
 typedef sV_Metadata C_Metadata;
 template<typename EventIDT, typename SpecificMetadataT>
-        class iBatchEventSource;
+        class iBulkEventSource;
 template<typename EventIDT>
         class MetadataDictionary;
 

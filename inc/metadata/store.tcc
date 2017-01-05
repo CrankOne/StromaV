@@ -25,6 +25,7 @@
 
 # include "dictionary.tcc"
 # include "analysis/pipeline.hpp"
+# include "analysis/evSource_bulk.tcc"
 
 namespace sV {
 
@@ -35,11 +36,23 @@ class iSectionalEventSource;
 
 template<typename EventIDT,
          typename SpecificMetadataT>
-class iBatchEventSource;
+class iBulkEventSource;
 
 /**@class iMetadataStore
  * @brief Interface to entities storing metadata of specific type, performing
  *        look-up and querying operations for events range and sources.
+ * 
+ * This abstract class declares logic for retreiving and caching methadata
+ * fragments for sectioned (fragmentated) sources whose metadata is partially
+ * extracted from sectional source.
+ *
+ * The actual implementation of its methods may imply in-memory collections
+ * (like hashmaps) as well as database handle. One important case is the
+ * store keeping pointers to currently opened files.
+ *
+ * Note: may be "store" is not a best choice for naming such entities but I had
+ * to higlight that it is not a collection but rather a deposition place in a
+ * wide sense.
  **/
 template<typename EventIDT,
          typename SpecificMetadataT,
@@ -57,10 +70,24 @@ protected:
     /// sectional source.
     virtual SpecificMetadata * _V_get_metadata_for(const SourceID &) const = 0;
 
-    /// (IF) Has to construct an instance of sectional data source
-    /// corresponding to particular source ID.
+    /// (IF) Has to save metadata associated with provided source ID.
+    virtual void _V_put_metadata( const SourceID &,
+                                  const SpecificMetadata & ) = 0;
+
+    /// (IF) Has to return an instance of sectional data source
+    /// corresponding to particular source ID or return null pointer if store
+    /// instance does not support such function.
+    /// (todo: move to another class?)
     virtual iSpecificSectionalEventSource * 
-                                _V_source_for( const SourceID & ) const = 0;
+                                _V_source( const SourceID & ) = 0;
+
+    /// (IF) Has to free previously acquired event source by ptr, if needed.
+    /// (todo: move to another class?)
+    virtual void _V_free_source( iSpecificSectionalEventSource * srcPtr ) = 0;
+
+    /// (IF) Has to return an identifier of sectional source containing the
+    /// event with specific ID.
+    virtual bool _V_source_id_for( const EventID &, SourceID & ) const = 0;
 
     /// (IF) Has to perform filling of source identifiers list corresponding
     /// to specific range of event identifiers.
@@ -82,11 +109,29 @@ public:
     virtual SpecificMetadata * get_metadata_for( const SourceID & sid ) const
         { return _V_get_metadata_for( sid ); }
 
+    /// Saves metadata associated with given source ID.
+    virtual void put_metadata( const SourceID & sid,
+                               const SpecificMetadata & mdRef )
+        { _V_put_metadata( sid, mdRef ); }
+
     /// Constructs an instance of sectional data source corresponding to
     /// particular source ID.
-    virtual iSpecificSectionalEventSource * 
-                                source_for( const SourceID & sid ) const {
-        return _V_source_for(sid); }
+    ///
+    ///@see iMetadataStore::free_source()
+    virtual iSpecificSectionalEventSource *
+                                source( const SourceID & sid ) {
+        return _V_source(sid); }
+
+    /// Frees previously constructed event source.
+    ///
+    ///@see iMetadataStore::source()
+    virtual void free_source( iSpecificSectionalEventSource * srcPtr ) {
+        return _V_free_source( srcPtr );}
+
+    /// Returns source identifier for specific event.
+    virtual bool source_id_for( const EventID & eid, SourceID & sid ) const {
+        return _V_source_id_for( eid, sid );
+    }
 
     /// Fills the list of source identifiers corresponding to specific range
     /// of event identifiers.
@@ -108,7 +153,7 @@ namespace aux {
 template<typename EventIDT,
          typename SpecificMetadataT,
          typename SourceIDT>
-class CohesiveEventSource;
+class BatchEventsHandle;
 }  // namespace aux
 
 /**@class iCachedMetadataType
@@ -130,10 +175,12 @@ public:
     typedef SourceIDT SourceID;
     typedef iMetadataType<EventID, SpecificMetadata> ImmanentParent;
     typedef iSectionalEventSource<EventID, SpecificMetadata, SourceIDT> DataSource;
-    typedef iBatchEventSource<EventID, SpecificMetadata> BaseDataSource;
+    typedef iBulkEventSource<EventID, SpecificMetadata> BaseDataSource;
     typedef iMetadataStore<EventID, SpecificMetadata, SourceID> MetadataStore;
 private:
     mutable std::list<MetadataStore *> _mdStores;
+    mutable aux::BatchEventsHandle<EventID,
+                                    SpecificMetadata, SourceID> _batchHandle;
 protected:
     /// Tries to find metadata instance for given source ID.
     virtual SpecificMetadata * _look_up_for( const SourceID & ) const;
@@ -175,13 +222,18 @@ protected:
                                      SpecificMetadata & md ) const = 0;
 
     /// (IF) This method has to implement saving of the metadata at specific
-    /// storaging instance(s).
+    /// storaging instance(s). It may to operate with one particular store or
+    /// distribute metadata parts among available stores provided at third
+    /// argument. Metadata may be associated with source by its ID
+    /// with store's `put_metadata()` method.
     virtual void _V_cache_metadata( const SourceID &,
                                     const SpecificMetadata &,
                                     std::list<MetadataStore *> & ) const = 0;
 public:
     /// Default ctr (no store associated).
-    iCachedMetadataType( const std::string & tnm ) : ImmanentParent(tnm) {}
+    iCachedMetadataType( const std::string & tnm ) :
+                                            ImmanentParent(tnm),
+                                            _batchHandle(*this) {}
 
     /// Ctr immediately associating type with store.
     iCachedMetadataType(MetadataStore & store) { _mdStores.push_back(&store); }
@@ -224,8 +276,10 @@ public:
 
     /// Returns interim object incapsulating acquizition events from specific
     /// source instances.
-    virtual aux::CohesiveEventSource<EventID, SpecificMetadata, EventID> &
-    cohesive_handle() const;  // TODO
+    virtual aux::BatchEventsHandle<EventID, SpecificMetadata, SourceID> &
+    batch_handle() const { return _batchHandle; }
+
+    std::list<MetadataStore *> & stores() const { return _mdStores; }
 };  // iCachedMetadataType
 
 
@@ -296,7 +350,7 @@ iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::acquire_metadata_fo
         }
         sV_log2( "Metadata extracted for source %p.\n", &s );
         if( sidPtr && !_mdStores.empty() ) {
-            _V_cache_metadata( *sidPtr, *metadataPtr, _mdStores );
+            _V_cache_metadata( *sidPtr, *metadataPtr, stores() );
         } else {
             sV_logw( "Metadata for source \"%s\" (%p) can not be stored since "
                 "either the ID for source is not set, or no reentrant indexes "
@@ -326,19 +380,24 @@ iCachedMetadataType<EventIDT, SpecificMetadataT, SourceIDT>::_V_acquire_metadata
 
 namespace aux {
 
-/**@class CohesiveEventSource
+/**@class BatchEventsHandle
  * @brief Auxilliary class representing a subset all of iSectionalEventSource
  *        instances of particular type.
  * 
  * This interim class is usually instantiated by the internals of
  * iCachedMetadataType in order to provide unified look-up mechanics among
  * available stores by providing a proxy instance referring to metadata type's
- * stores list.
+ * stores list. User can consider it as a one humongous data source containing
+ * all available events physically distributed among multiple artifacts. User
+ * probably will never instantiate it directly but rather obtaine a reference
+ * to it via the `batch_handle()` method of corresponding metadata type.
+ *
+ * @see IRandomAccessEventStream
  */
 template<typename EventIDT,
          typename SpecificMetadataT,
          typename SourceIDT>
-class CohesiveEventSource {
+class BatchEventsHandle : public IRandomAccessEventStream<EventIDT> {
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
@@ -347,29 +406,77 @@ public:
     typedef iMetadataStore<EventID, SpecificMetadata, SourceID> MetadataStore;
     typedef iCachedMetadataType<EventID, SpecificMetadata, SourceID>
             iSpecificCachedMetadataType;
+    typedef iSectionalEventSource<EventID, SpecificMetadata, SourceID>
+            iSpecificSectionalEventSource;
 private:
-    std::list<MetadataStore *> _mdStores;
+    iSpecificCachedMetadataType & _mdt;
+    void _assert_mdt_non_empty() {
+        if( _mdt.stores().empty() ) {
+            emraise( badState, "No stores associated with cached metadata "
+                     "type \"%s\" (id:%#x, ptr:%p). Unable to retreive "
+                     "cached metadata.", _mdt.name().c_str(),
+                     _mdt.type_index(), &_mdt );
+        }
+    }
+    Event _reentrantSingleEvent;
 public:
-    CohesiveEventSource( const std::list<MetadataStore *> & mdStores ) :
-                                                    _mdStores(mdStores) {}
-    virtual ~CohesiveEventSource() {}
+    BatchEventsHandle( iSpecificCachedMetadataType & mdt ) :
+                                                    _mdt(mdt) {}
+    virtual ~BatchEventsHandle() {}
 
-    virtual Event * event_read_single( const EventID & eid ) {
-        _TODO_  // TODO
+    /// Note that returned event ptr refers to internal reentrant instance and
+    /// will be re-written on next invokation of this method. Lifetime of
+    /// this instance is restricted by lifetime of owning iCachedMetadataType
+    /// instance.
+    virtual Event * event_read_single( const EventID & eid ) override {
+        _assert_mdt_non_empty();
+        SourceID sid;
+        bool found = false;
+        for( auto storePtr : _mdt.stores() ) {
+            if( (found = storePtr->source_id_for( eid, sid )) ) {
+                break;
+            }
+        }
+        if( !found ) {
+            emraise( noSuchKey, "Unable to locate source containing event "
+                                "with specified ID." );
+        }
+        iSpecificSectionalEventSource * evSourcePtr = nullptr;
+        MetadataStore * owningStore = nullptr;
+        for( auto storePtr : _mdt.stores() ) {
+            if( nullptr != (evSourcePtr = storePtr->source(sid)) ) {
+                owningStore = storePtr;
+                break;
+            }
+        }
+        if( !owningStore ) {
+            emraise( badState, "Event with specified ID located, but none of "
+                "available metadata caching store instances can provide "
+                "accessible handle to source." );
+        }
+        // todo: may optimize it a little by using direct querying of metadata
+        // here:
+        //Event * eventReadPtr = evSourcePtr->_md_event_read_single( eid );
+        Event * eventReadPtr = evSourcePtr->event_read_single( eid );
+        _reentrantSingleEvent.CopyFrom( *eventReadPtr );
+        owningStore->free_source(evSourcePtr);
+        return &_reentrantSingleEvent;
     }
 
     virtual std::unique_ptr<iEventSequence> event_read_range(
-                                    const EventID & lower,
-                                    const EventID & upper ) {
+                                const EventID & lower,
+                                const EventID & upper ) override {
+        _assert_mdt_non_empty();
         _TODO_  // TODO
     }
 
     virtual std::unique_ptr<iEventSequence> event_read_list(
-                                    const std::list<EventID> & list ) {
+                                const std::list<EventID> & list ) override {
+        _assert_mdt_non_empty();
         _TODO_  // TODO
     }
     
-};  // class CohesiveEventSource
+};  // class BatchEventsHandle
 
 }  // namespace aux
 

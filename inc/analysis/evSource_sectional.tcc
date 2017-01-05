@@ -30,6 +30,13 @@
 
 namespace sV {
 
+namespace aux {
+template<typename EventIDT,
+         typename SpecificMetadataT,
+         typename SourceIDT>
+class BatchEventsHandle;
+}  // namespace aux
+
 /**@class iSectionalEventSource
  * @brief Interface base class for identifiable event sources.
  *
@@ -41,7 +48,7 @@ namespace sV {
  * Such artifacts usually supports random access at their own scope.
  * For non-sectional data sources with random access but without internal
  * sectioning, the similar template class called
- * iBatchEventSource<...> was designed.
+ * iBulkEventSource<...> was designed.
  *
  * Adjoint metadata template base class is called iCachedMetadataType.
  * */
@@ -58,6 +65,7 @@ public:
             iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>
             Parent;
+    typedef aux::iEventSequence::Event Event;
 protected:
     virtual const SpecificMetadata * _V_acquire_my_metadata() final {
         const iSpecificMetadataType & mdt =
@@ -65,6 +73,27 @@ protected:
                     Parent::metadata_types_dict().template get_metadata_type<SpecificMetadata>() );
         return &( mdt.acquire_metadata_for( *this ) );
     }
+
+    # if 0  // see notes at BatchEventHandle::event_read_*
+    /// Protected accessor method used by proxy event source class.
+    /// @see BatchEventsHandle
+    Event * _md_event_read_single( const SpecificMetadata & md,
+                                           const EventIDT & eid ) {
+        return _V_md_event_read_single(md, eid); }
+    /// Protected accessor method used by proxy event source class.
+    /// @see BatchEventsHandle
+    std::unique_ptr<aux::iEventSequence> _md_event_read_range(
+                                        const SpecificMetadata & md,
+                                        const EventIDT & eidFrom,
+                                        const EventIDT & eidTo ) {
+        return _V_md_event_read_range(md, eidFrom, eidTo); }
+    /// Protected accessor method used by proxy event source class.
+    /// @see BatchEventsHandle
+    std::unique_ptr<aux::iEventSequence> _md_event_read_list(
+                                    const SpecificMetadata & md,
+                                    const std::list<EventID> & eidsList ) {
+        return _V_md_event_read_list(md, eidsList); }
+    # endif
 public:
     iSectionalEventSource( SourceIDT & id,
                            aux::iEventSequence::Features_t fts=0x0 ) :
@@ -82,6 +111,8 @@ public:
             mixins::iIdentifiableEventSource<SourceIDT>( id, fts ) {}
 
     virtual ~iSectionalEventSource() {}
+
+    friend class aux::BatchEventsHandle<EventID, SpecificMetadata, SourceIDT>;
 };  // class iSectionalEventSource
 
 }  // namespace sV
