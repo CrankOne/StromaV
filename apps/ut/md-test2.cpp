@@ -21,6 +21,7 @@
  */
 
 # include "analysis/evSource_sectional.tcc"
+# include "metadata/type_cached.tcc"
 # include "md-test-common.hpp"
 
 namespace sV {
@@ -104,7 +105,7 @@ struct MetadataEntry {
     size_t offset, length;
 };
 // The metadata for a fragment is just a list here (but might be a DB handle).
-class Metadata : public std::list<MetadataEntry> {
+class Test2Metadata : public std::list<MetadataEntry> {
 public:
     // IMPORTANT NOTE:
     // Raising the exception is not a best way to report about the fact
@@ -125,7 +126,7 @@ public:
 namespace auxTest2 {
 
 void
-extract_test2_metadata( Metadata & md,
+extract_test2_metadata( Test2Metadata & md,
                         const char * const s,
                         unsigned char initialStanzaNo ) {
     MetadataEntry me = {{ initialStanzaNo, 0, 0 }, 0, 0};
@@ -169,7 +170,7 @@ extract_test2_metadata( Metadata & md,
 
 // Considering source identifier as a just pointer to fragment, let us define
 // the trats type:
-typedef sV::MetadataTypeTraits<EventID, Metadata, uint8_t> MetadataTraits;
+typedef sV::MetadataTypeTraits<EventID, Test2Metadata, uint8_t> MetadataTraits;
 
 //
 // Defining the routines:
@@ -224,7 +225,7 @@ protected:
     //
     // Metadata access for RA source
     virtual Event * _V_md_event_read_single(
-                            const Metadata & md,
+                            const Test2Metadata & md,
                             const EventID & wordID ) override {
         auto mde = md.query_word_loc( wordID );
         std::string word( _content + mde.offset, mde.length );
@@ -233,13 +234,13 @@ protected:
     }
 
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_range(
-                            const Metadata & md,
+                            const Test2Metadata & md,
                             const EventID & lower,
                             const EventID & upper ) override {
         _TODO_  // TODO
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
-                            const Metadata & md,
+                            const Test2Metadata & md,
                             const std::list<EventID> & eidsList ) override {
         _TODO_  // TODO
     }
@@ -275,11 +276,13 @@ public:
 
 // - metadata type implementation describing necessary routines of how
 //   metadata has to be applied:
-class MetadataType : public MetadataTraits::iSpecificMetadataType {
+class MetadataType : public MetadataTraits::iMetadataType {
+public:
+    sV_METADATA_IMPORT_SECT_TRAITS( EventID, Test2Metadata, SourceID );
 protected:
     //
     // Metadata handling
-    virtual bool _V_is_complete( const SpecificMetadata & ) const override {
+    virtual bool _V_is_complete( const Test2Metadata & ) const override {
         // Note: this method is reserved for further additions and extensions
         // made in metadata data type.
         return true;
@@ -287,9 +290,9 @@ protected:
 
     virtual bool _V_extract_metadata(
                             const SourceID * sidPtr,
-                            DataSource & ds,
-                            SpecificMetadata *& mdPtrRef,
-                            std::list<MetadataStore *> stores) const override {
+                            MetadataTraits::iEventSource & ds,
+                            Test2Metadata *& mdPtrRef,
+                            std::list<iMetadataStore *> stores) const override {
         if( !sidPtr || !*sidPtr ) {
             emraise( badState, "Fragment number is not set when metadata "
                 "acquisition routine invoked." );
@@ -305,7 +308,7 @@ protected:
         unsigned char initialStanzaNo = _static_initialStanzaNos[*sidPtr-1];
 
         if( !mdPtrRef ) {
-            mdPtrRef = new Metadata();
+            mdPtrRef = new Test2Metadata();
         }
         auxTest2::extract_test2_metadata(
                             *mdPtrRef,
@@ -314,13 +317,13 @@ protected:
         return true;
     }
 
-    virtual SpecificMetadata * _V_merge_metadata(
-                    const std::list<SpecificMetadata *> & ) const override {
+    virtual Test2Metadata * _V_merge_metadata(
+                    const std::list<Test2Metadata *> & ) const override {
         _TODO_  // TODO
     }
     
-    virtual bool _V_append_metadata( DataSource & s,
-                                     SpecificMetadata & md ) const override {
+    virtual bool _V_append_metadata( MetadataTraits::iEventSource & s,
+                                     Test2Metadata & md ) const override {
         // Since our testing metadata instances are always complete, there
         // is no possibility to get here.
         _FORBIDDEN_CALL_;
@@ -328,20 +331,32 @@ protected:
 
     virtual void _V_cache_metadata(
                         const SourceID & sid,
-                        const SpecificMetadata & mdRef,
-                        std::list<MetadataStore *> & stores_ ) const override {
+                        const Test2Metadata & mdRef,
+                        std::list<iMetadataStore *> & stores_ ) const override {
         stores_.front()->put_metadata( sid, mdRef );
     }
+
+    virtual void _V_get_subrange(
+                    const EventID & low, const EventID & up,
+                    const SourceID & sid,
+                    typename Traits::SubrangeMarkup & muRef ) const override {
+        _TODO_  // TODO
+    }
 public:
-    MetadataType() : MetadataTraits::iSpecificMetadataType("Testing2") {}
+    MetadataType() : MetadataTraits::iMetadataType("Testing2") {}
 };  // class MetadataType
 
 
-class Store : public MetadataTraits::iSpecificMetadataStore {
+class Store : public MetadataTraits::iDisposableSourceManager,
+              public MetadataTraits::iEventQueryableStore {
+public:
+    sV_METADATA_IMPORT_SECT_TRAITS( mdTest2::EventID,
+                                    mdTest2::Test2Metadata,
+                                    uint8_t );
 private:
-    std::map<SourceID, Metadata *> _mdatCache;
-protected:
-    virtual SpecificMetadata * _V_get_metadata_for(
+    std::map<SourceID, Test2Metadata *> _mdatCache;
+public:
+    virtual Test2Metadata * get_metadata_for(
                                         const SourceID & sid) const override {
         auto it = _mdatCache.find(sid);
         if( _mdatCache.end() == it ) {
@@ -350,31 +365,29 @@ protected:
         return it->second;
     }
 
-    virtual void _V_put_metadata( const SourceID & sid,
-                                  const SpecificMetadata & mdRef ) override {
+    virtual void put_metadata( const SourceID & sid,
+                                  const Test2Metadata & mdRef ) override {
         // well, proper way would be: allocate new metadata object and copy it,
         // but who cares? Anywhay, metadata instances will has to be cleaned
         // somewhere and stores is a best place to do it in this UT.
-        _mdatCache[sid] = const_cast<SpecificMetadata *>(&mdRef);
+        _mdatCache[sid] = const_cast<Test2Metadata *>(&mdRef);
     }
 
-    virtual iSpecificSectionalEventSource * 
-                                _V_source( const SourceID & sid ) override {
+    virtual iEventSource * source( const SourceID & sid ) override {
         return new DataSource( sid, _static_srcEN[sid-1], *_static_MTDPtr );
     }
 
-    virtual void _V_free_source(
-                            iSpecificSectionalEventSource * srcPtr ) override {
+    virtual void free_source( iEventSource * srcPtr ) override {
         delete srcPtr;
     }
 
-    virtual bool _V_source_id_for( const EventID & eid,
+    virtual bool source_id_for( const EventID & eid,
                                    SourceID & sid) const override {
         MetadataEntry mde = {{0, 0, 0}, 0, 0};
         SourceID foundSID;
         for( const auto & p : _mdatCache ) {
-            Metadata & md = *(p.second);
-            // See note at the Metadata::query_word_loc() implem.
+            Test2Metadata & md = *(p.second);
+            // See note at the Test2Metadata::query_word_loc() implem.
             try {
                 mde = md.query_word_loc( eid );
                 foundSID = p.first;
@@ -392,17 +405,7 @@ protected:
         sid = foundSID;
         return true;
     }
-
-    virtual void _V_collect_source_ids_for_range(
-                                const EventID & from,
-                                const EventID & to,
-                                std::list<SourceID> & ) const override {
-        _TODO_  // TODO
-    }
-
-    virtual void _V_collect_source_ids_for_set(
-                                const std::list<EventID> &,
-                                std::list<SourceID> & ) const override {
+    void erase_metadata_for( const SourceID & sid ) override {
         _TODO_  // TODO
     }
 public:

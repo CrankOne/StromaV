@@ -43,7 +43,7 @@ namespace sV {
  * iEventSource which provides additional identification mechanics for
  * multiple source instances of the same type.
  *
- * Adjoint metadata template base class is called iMetadataType.
+ * Adjoint metadata template base class is called iTMetadataType.
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>
@@ -52,7 +52,7 @@ class iBulkEventSource :
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
-    typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
+    typedef iTMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT> Parent;
     typedef typename Parent::Event Event;
 protected:

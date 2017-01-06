@@ -23,12 +23,15 @@
 # ifndef H_STROMA_V_METADATA_TYPE_IFACE_H
 # define H_STROMA_V_METADATA_TYPE_IFACE_H
 
-# include "type_base.hpp"
 # include "traits.tcc"
+# include "type_base.hpp"
 
 namespace sV {
 
-/**@class iMetadataType
+//template<typename EventIDT>
+//struct IRandomAccessEventStream;
+
+/**@class iTMetadataType
  * @brief Metadata type intefrace for certain event identificator.
  *
  * The metadata type abstraction is responsible for acquizition the metadata
@@ -43,12 +46,13 @@ namespace sV {
  * */
 template<typename EventIDT,
         typename SpecificMetadataT>
-class iMetadataType :
+class iTMetadataType :
             public sV::aux::iTemplatedEventIDMetadataType<EventIDT> {
 public:
     typedef EventIDT                                EventID;
     typedef SpecificMetadataT                       SpecificMetadata;
     typedef iBulkEventSource<EventID, SpecificMetadata> DataSource;
+    //typedef IRandomAccessEventStream<EventID>       DataSource;
     typedef MetadataDictionary<EventID>             SpecificDictionary;
     typedef sV::aux::iTemplatedEventIDMetadataType<EventID> Parent;
     typedef MetadataTypeTraits<EventID, SpecificMetadata> SpecificTraits;
@@ -63,7 +67,7 @@ protected:
     /// among side cache resource (monolithic).
     virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
 public:
-    iMetadataType( const std::string & tnm ) : Parent( tnm ) {}
+    iTMetadataType( const std::string & tnm ) : Parent( tnm ) {}
 
     /// Obtains metadata for provided source.
     SpecificMetadata & acquire_metadata( DataSource & s ) const {
@@ -77,10 +81,10 @@ public:
     virtual MetadataTypeIndex get_index() const override {
         return SpecificTraits::index();
     }
-};  // class iMetadataType
+};  // class iTMetadataType
 
 //template<typename EventIDT, typename SpecificMetadataT>
-//MetadataTypeIndex iMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;
+//MetadataTypeIndex iTMetadataType<EventIDT, SpecificMetadataT>::_typeIndex = 0;
 
 }  // namespace sV
 

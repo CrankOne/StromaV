@@ -88,34 +88,34 @@ public:
 
     /// Payload cast method for metadata instance.
     template<typename T> T & cast( C_Metadata & md ) const {
-        typedef iMetadataType<EventID, T> ItsType;
+        typedef iTMetadataType<EventID, T> ItsType;
         _cast_typecheck( md, ItsType::type_index() );
         return *reinterpret_cast<T*>(md.payload);
     }
 
     /// Payload cast method for metadata instance.
     template<typename T> const T & cast( const C_Metadata & md ) const {
-        typedef iMetadataType<EventID, T> ItsType;
+        typedef iTMetadataType<EventID, T> ItsType;
         _cast_typecheck( md, ItsType::type_index() );
         return *reinterpret_cast<const T*>(md.payload);
     }
 
     template<typename SpecificMetadataT>
-    const iMetadataType<EventID, SpecificMetadataT> &
+    const iTMetadataType<EventID, SpecificMetadataT> &
     get_metadata_type() const {
         // This method will be called with specific metadata objec C++-type
         // as a template argument. It has to return an instance of
-        // corresponding iMetadataType --- just found instance of the
-        // iMetadataType<EventID, SpecificMetadataT>. Here we involve a
+        // corresponding iTMetadataType --- just found instance of the
+        // iTMetadataType<EventID, SpecificMetadataT>. Here we involve a
         // idiomatic "virtual static method".
         auto it = _encodedIndex.find(
-                    iMetadataType<EventID, SpecificMetadataT>::type_index() );
+                    iTMetadataType<EventID, SpecificMetadataT>::type_index() );
         if( _encodedIndex.end() == it ) {
             emraise( notFound, "Metadata types dictionary %p has no "
                      " type registered with ID %u.", this,
-                     iMetadataType<EventID, SpecificMetadataT>::type_index() );
+                     iTMetadataType<EventID, SpecificMetadataT>::type_index() );
         }
-        return static_cast<const iMetadataType<EventID, SpecificMetadataT> &>(
+        return static_cast<const iTMetadataType<EventID, SpecificMetadataT> &>(
                                                                 *(it->second));
     }
 };  // class MetadataDictionary

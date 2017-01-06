@@ -30,20 +30,24 @@ namespace sV {
 // FWD
 namespace aux {
 template<typename EventIDT,
-         typename SpecificMetadataT,
+         typename MetadataT,
          typename SourceIDT> struct RangeReadingMarkupEntry;
 }  // namespace aux
 template<typename T> class MetadataDictionary;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> class iSectionalEventSource;
-template<typename EventIDT, typename MetadataT> class iMetadataType;
-template<typename EventIDT, typename MetadataT, typename SourceIDT> class iCachedMetadataType;
-template<typename EventIDT, typename MetadataT, typename SourceIDT> class iMetadataStore;
+template<typename EventIDT, typename MetadataT> class iTMetadataType;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> class iTCachedMetadataType;
 
+template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITMetadataStore;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITDisposableSourceManager;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITEventQueryableStore;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITRangeQueryableStore;
+template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITSetQueryableStore;
 /**???
  * Generic MetadataTypeTraits<> template used for sectioned source.
  */
 template<typename EventIDT,
-         typename SpecificMetadataT,
+         typename MetadataT,
          typename SourceIDT=void>
 class MetadataTypeTraits {
 public:
@@ -51,17 +55,37 @@ public:
     static_assert( !std::is_void<SourceIDT>::value,
                    "Class with SourceIDT=void has explicit specialization." );
     # endif
+    /* Basic types */
     typedef EventIDT EventID;
-    typedef SpecificMetadataT Metadata;
-    typedef MetadataDictionary<EventID> MetadataTypesDictionary;
+    typedef MetadataT Metadata;
     typedef SourceIDT SourceID;
-    typedef iSectionalEventSource<EventID, Metadata, SourceID> iEventSource;
-    typedef iCachedMetadataType<EventID, Metadata, SourceID>
-            iSpecificMetadataType;
-    typedef iMetadataStore<EventID, Metadata, SourceID>
-            iSpecificMetadataStore;
+    /* Induced types */
+    typedef MetadataDictionary<EventID>                         MetadataTypesDictionary;
+    typedef iTCachedMetadataType<EventID, Metadata, SourceID>    iMetadataType;
+    typedef iSectionalEventSource<EventID, Metadata, SourceID>  iEventSource;
+    /* Induced store interfaces */
     typedef aux::RangeReadingMarkupEntry<EventID, Metadata, SourceID>
             SubrangeMarkup;
+    typedef ITMetadataStore<EventID, Metadata, SourceID>            iMetadataStore;
+    typedef ITDisposableSourceManager<EventID, Metadata, SourceID>  iDisposableSourceManager;
+    typedef ITEventQueryableStore<EventID, Metadata, SourceID>      iEventQueryableStore;
+    typedef ITRangeQueryableStore<EventID, Metadata, SourceID>      iRangeQueryableStore;
+    typedef ITSetQueryableStore<EventID, Metadata, SourceID>        iSetQueryableStore;
+
+    # define sV_METADATA_IMPORT_SECT_TRAITS( EIDT, MDTT, SIDT )             \
+    /* Basic types */                                                       \
+    typedef EIDT EventID;                                                   \
+    typedef MDTT Metadata;                                                  \
+    typedef SIDT SourceID;                                                  \
+    typedef ::sV::MetadataTypeTraits<EventID, Metadata, SourceID> Traits;   \
+    /* Induced types */                                                     \
+    typedef typename Traits::MetadataTypesDictionary TypesDictionary;       \
+    typedef typename Traits::iMetadataType iMetadataType;                   \
+    typedef typename Traits::iEventSource iEventSource;                     \
+    typedef typename Traits::iMetadataStore iMetadataStore;                 \
+    typedef typename Traits::SubrangeMarkup SubrangeMarkup;                 \
+    /* ... */
+
 private:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s
@@ -90,27 +114,38 @@ protected:
 public:
     static MetadataTypeIndex index() { return _typeIndex; }
     friend class MetadataDictionary<EventID>;
-    friend class iMetadataType<EventIDT, SpecificMetadataT>;
+    friend class iTMetadataType<EventIDT, MetadataT>;
 };
 
 // Note that CLANG will probably generate a side instance for wrappers.
 template<typename EventIDT,
-         typename SpecificMetadataT,
+         typename MetadataT,
          typename SourceIDT>
-MetadataTypeIndex MetadataTypeTraits<EventIDT, SpecificMetadataT, SourceIDT>::_typeIndex = 0;
+MetadataTypeIndex MetadataTypeTraits<EventIDT, MetadataT, SourceIDT>::_typeIndex = 0;
 
 /**???
  * Partial MetadataTypeTraits<> template used for bulk source.
  */
 template<typename EventIDT,
-         typename SpecificMetadataT>
-struct MetadataTypeTraits<EventIDT, SpecificMetadataT, void> {
+         typename MetadataT>
+struct MetadataTypeTraits<EventIDT, MetadataT, void> {
 public:
     typedef EventIDT EventID;
-    typedef SpecificMetadataT SpecificMetadata;
-    typedef MetadataDictionary<EventID> MetadataTypesDictionary;
-    typedef iBulkEventSource<EventID, SpecificMetadata> iEventSource;
-    typedef iMetadataType<EventID, SpecificMetadata> iSpecificMetadataType;
+    typedef MetadataT Metadata;
+    typedef MetadataDictionary<EventID> TypesDictionary;
+    typedef iBulkEventSource<EventID, Metadata> iEventSource;
+    typedef iTMetadataType<EventID, Metadata> iMetadataType;
+
+    # define sV_METADATA_IMPORT_BULK_TRAITS( EIDT, MDTT )                   \
+    /* Basic types */                                                       \
+    typedef EIDT EventID;                                                   \
+    typedef MDTT Metadata;                                                  \
+    typedef ::sV::MetadataTypeTraits<EIDT, MDTT, void> Traits;              \
+    /* Induced types */                                                     \
+    typedef typename Traits::MetadataTypesDictionary TypesDictionary;       \
+    typedef typename Traits::iEventSource iEventSource;                     \
+    typedef typename Traits::iMetadataType iMetadataType;                   \
+    /* ... */
 private:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s
@@ -139,26 +174,26 @@ protected:
 public:
     static MetadataTypeIndex index() { return _typeIndex; }
     friend class MetadataDictionary<EventID>;
-    friend class iMetadataType<EventIDT, SpecificMetadataT>;
+    friend class iTMetadataType<EventIDT, MetadataT>;
 };
 
 // Note that CLANG will probably generate a side instance for wrappers.
 template<typename EventIDT,
-         typename SpecificMetadataT>
-MetadataTypeIndex MetadataTypeTraits<EventIDT, SpecificMetadataT, void>::_typeIndex = 0;
+         typename MetadataT>
+MetadataTypeIndex MetadataTypeTraits<EventIDT, MetadataT, void>::_typeIndex = 0;
 
 # if 0
-template<typename EventIDT, typename SpecificMetadataT> void
-iMetadataType<EventIDT, SpecificMetadataT>::_set_type_index(
+template<typename EventIDT, typename MetadataT> void
+iTMetadataType<EventIDT, MetadataT>::_set_type_index(
                                             MetadataTypeIndex desiredIdx ) {
-    MetadataTypeTraits<EventIDT, SpecificMetadataT>
+    MetadataTypeTraits<EventIDT, MetadataT>
                                             ::_set_type_index( desiredIdx );
 }
 
-template<typename EventIDT, typename SpecificMetadataT>
+template<typename EventIDT, typename MetadataT>
 MetadataTypeIndex 
-iMetadataType<EventIDT, SpecificMetadataT>::get_index() const {
-    return MetadataTypeTraits<EventIDT, SpecificMetadataT>::index();
+iTMetadataType<EventIDT, MetadataT>::get_index() const {
+    return MetadataTypeTraits<EventIDT, MetadataT>::index();
 }
 # endif
 

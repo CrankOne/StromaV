@@ -50,7 +50,7 @@ class BatchEventsHandle;
  * sectioning, the similar template class called
  * iBulkEventSource<...> was designed.
  *
- * Adjoint metadata template base class is called iCachedMetadataType.
+ * Adjoint metadata template base class is called iTCachedMetadataType.
  * */
 template<typename EventIDT,
          typename SpecificMetadataT,
@@ -61,7 +61,7 @@ class iSectionalEventSource :
 public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
-    typedef iCachedMetadataType<EventID, SpecificMetadata, SourceIDT>
+    typedef iTCachedMetadataType<EventID, SpecificMetadata, SourceIDT>
             iSpecificMetadataType;
     typedef aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>
             Parent;

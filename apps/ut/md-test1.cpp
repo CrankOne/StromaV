@@ -172,7 +172,7 @@ public:
                     _it = _words.begin();
                 }
     DataSource( const char * const c,
-                MetadataTraits::MetadataTypesDictionary & mdDictRef ) :
+                MetadataTraits::TypesDictionary & mdDictRef ) :
                     aux::iEventSequence( aux::iEventSequence::randomAccess ),
                     MetadataTraits::iEventSource(mdDictRef),
                     _content(c) {
@@ -184,12 +184,12 @@ public:
 
 // - metadata type implementation describing necessary routines of how
 //   metadata has to be applied:
-class MetadataType : public MetadataTraits::iSpecificMetadataType {
+class MetadataType : public MetadataTraits::iMetadataType {
 protected:
     SpecificMetadata & _V_acquire_metadata(
                             MetadataTraits::iEventSource & s ) const override;
 public:
-    MetadataType() : MetadataTraits::iSpecificMetadataType("Testing1") {}
+    MetadataType() : MetadataTraits::iMetadataType("Testing1") {}
 };  // MetadataType
 
 // Implementation of metadata getting method.
