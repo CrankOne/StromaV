@@ -493,7 +493,7 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
     // Let's check that acquizition may be performed as if it is a continious
     // array.
 
-    ///*TODO: src = */ batchHandle.event_read_range( {4, 0, 0}, {5, 0, 0} );
+    /*TODO: src = */ batchHandle.event_read_range( {4, 0, 0}, {5, 0, 0} );
 
     // Finaly, we make the first fragment's metadata to be cached by explicit
     // acquizition of the words:

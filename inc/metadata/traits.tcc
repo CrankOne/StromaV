@@ -28,6 +28,11 @@
 namespace sV {
 
 // FWD
+namespace aux {
+template<typename EventIDT,
+         typename SpecificMetadataT,
+         typename SourceIDT> struct RangeReadingMarkupEntry;
+}  // namespace aux
 template<typename T> class MetadataDictionary;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> class iSectionalEventSource;
 template<typename EventIDT, typename MetadataT> class iMetadataType;
@@ -55,6 +60,8 @@ public:
             iSpecificMetadataType;
     typedef iMetadataStore<EventID, Metadata, SourceID>
             iSpecificMetadataStore;
+    typedef aux::RangeReadingMarkupEntry<EventID, Metadata, SourceID>
+            SubrangeMarkup;
 private:
     /// Metadata type identifier that has to be set upon construction. Note,
     /// that this static-template field need to be s

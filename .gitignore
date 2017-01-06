@@ -32,3 +32,4 @@ inc/g4extras/auto.out/*
 assets/contrib/cmake/FindROOT.cmake
 StromaVConfig.cmake
 inc/config.h
+nbproject/

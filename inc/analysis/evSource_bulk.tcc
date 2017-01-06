@@ -64,9 +64,11 @@ protected:
         return &( mdt.acquire_metadata( *this ) );
     }
 
-    iBulkEventSource() : Parent( 0x0 ) {}
+    iBulkEventSource() : aux::iEventSequence( 0x0 ), 
+                         Parent( 0x0 ) {}
 
     iBulkEventSource( MetadataDictionary<EventID> & mdtDictRef ) :
+                aux::iEventSequence( 0x0 ),
                 Parent( mdtDictRef, 0x0 ) {}
 public:
     virtual ~iBulkEventSource() {}

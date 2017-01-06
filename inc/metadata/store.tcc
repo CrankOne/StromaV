@@ -38,6 +38,23 @@ template<typename EventIDT,
          typename SpecificMetadataT>
 class iBulkEventSource;
 
+namespace aux {
+
+/// Aux struct describing interval of events that can be read from a particular
+/// sectioned source. Optionally, can refer to metadata and existing source
+/// instance (otherwise, these fields are set to null).
+template<typename EventIDT,
+         typename SpecificMetadataT,
+         typename SourceIDT>
+struct RangeReadingMarkupEntry {
+    EventIDT from, to;
+    SourceIDT sid;
+    SpecificMetadataT * mdPtr;
+    iSectionalEventSource<EventIDT, SpecificMetadataT, SourceIDT> * srcPtr;
+};
+
+}  // namespace aux
+
 /**@class iMetadataStore
  * @brief Interface to entities storing metadata of specific type, performing
  *        look-up and querying operations for events range and sources.
@@ -62,9 +79,10 @@ public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef SourceIDT SourceID;
-    typedef iMetadataType<EventID, SpecificMetadata> SpecificMetadataType;
-    typedef iSectionalEventSource<EventID, SpecificMetadata, SourceID>
-            iSpecificSectionalEventSource;
+
+    typedef MetadataTypeTraits<EventID, SpecificMetadata, SourceID> Traits;
+
+    typedef typename Traits::iEventSource iSpecificSectionalEventSource;
 protected:
     /// (IF) Returns pointer to metadata instance corresponding to specific
     /// sectional source.
@@ -173,10 +191,15 @@ public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef SourceIDT SourceID;
+
+    typedef MetadataTypeTraits<EventID, SpecificMetadata, SourceID> Traits;
+
+    typedef typename Traits::SubrangeMarkup         SubrangeMarkup;
+    typedef typename Traits::iEventSource           DataSource;
+    typedef typename Traits::iSpecificMetadataStore MetadataStore;
+
     typedef iMetadataType<EventID, SpecificMetadata> ImmanentParent;
-    typedef iSectionalEventSource<EventID, SpecificMetadata, SourceIDT> DataSource;
     typedef iBulkEventSource<EventID, SpecificMetadata> BaseDataSource;
-    typedef iMetadataStore<EventID, SpecificMetadata, SourceID> MetadataStore;
 private:
     mutable std::list<MetadataStore *> _mdStores;
     mutable aux::BatchEventsHandle<EventID,
@@ -241,6 +264,9 @@ public:
     /// Dtr.
     virtual ~iCachedMetadataType() {}
 
+    /// Stores list getter.
+    std::list<MetadataStore *> & stores() const { return _mdStores; }
+
     /// Associates store with type.
     void add_store( MetadataStore & store ) { _mdStores.push_back(&store); }
 
@@ -277,9 +303,14 @@ public:
     /// Returns interim object incapsulating acquizition events from specific
     /// source instances.
     virtual aux::BatchEventsHandle<EventID, SpecificMetadata, SourceID> &
-    batch_handle() const { return _batchHandle; }
+                                batch_handle() const { return _batchHandle; }
 
-    std::list<MetadataStore *> & stores() const { return _mdStores; }
+    /// Sets range-read mark-up entry with ranges available for source with a
+    /// given ID. May also set the source/metadata ptrs.
+    virtual void get_subrange( const EventID & low, const EventID & up,
+                               const SourceID & sid,
+                               typename Traits::SubrangeMarkup & muRef );  // TODO
+
 };  // iCachedMetadataType
 
 
@@ -402,12 +433,45 @@ public:
     typedef EventIDT EventID;
     typedef SpecificMetadataT SpecificMetadata;
     typedef SourceIDT SourceID;
+
+    typedef MetadataTypeTraits<EventID, SpecificMetadata, SourceID> Traits;
+
+    
+    typedef typename Traits::iSpecificMetadataStore MetadataStore;
+    typedef typename Traits::iSpecificMetadataType iSpecificCachedMetadataType;
+    typedef typename Traits::iEventSource iSpecificSectionalEventSource;
+    typedef typename Traits::SubrangeMarkup SubrangeMarkup;
+
     typedef sV::events::Event Event;
-    typedef iMetadataStore<EventID, SpecificMetadata, SourceID> MetadataStore;
-    typedef iCachedMetadataType<EventID, SpecificMetadata, SourceID>
-            iSpecificCachedMetadataType;
-    typedef iSectionalEventSource<EventID, SpecificMetadata, SourceID>
-            iSpecificSectionalEventSource;
+
+    typedef BatchEventsHandle<EventID, SpecificMetadata, SourceID> Self;
+protected:
+    /// Internal helper class routing events iteration in range.
+    class ProxyRangeSequence : aux::iEventSequence {
+    public:
+        typedef std::list<SubrangeMarkup> ReadingMarkup;
+    private:
+        Self & _handleRef;
+        ReadingMarkup * _markup;
+    protected:
+        ProxyRangeSequence( Self & self, ReadingMarkup * markupPtr ) :
+                        _handleRef(self), _markup(markupPtr) {}
+        ~ProxyRangeSequence() {
+            delete _markup;
+        }
+        virtual bool _V_is_good() override {
+            _TODO_  // TODO
+        }
+        virtual void _V_next_event( Event *& ) override {
+            _TODO_  // TODO
+        }
+        virtual Event * _V_initialize_reading() override {
+            _TODO_  // TODO
+        }
+        virtual void _V_finalize_reading() override {
+            _TODO_  // TODO
+        }
+    };
 private:
     iSpecificCachedMetadataType & _mdt;
     void _assert_mdt_non_empty() {
@@ -467,7 +531,21 @@ public:
                                 const EventID & lower,
                                 const EventID & upper ) override {
         _assert_mdt_non_empty();
-        _TODO_  // TODO
+        std::list<SourceID> sids;
+        for( auto storePtr : _mdt.stores() ) {
+            collect_source_ids_for_range( lower, upper, sids );
+        }
+
+        // Keeps ranges corresponding to particular sources.
+        auto rmuPtr = new typename ProxyRangeSequence::ReadingMarkup();
+
+        for( const auto & sid : sids ) {
+            SubrangeMarkup entry;
+            _mdt.get_subrange( lower, upper, sid, entry );
+            rmuPtr->pushBack( entry );
+        }
+
+        return new ProxyRangeSequence( *this, rmuPtr );
     }
 
     virtual std::unique_ptr<iEventSequence> event_read_list(
