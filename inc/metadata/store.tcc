@@ -136,7 +136,7 @@ struct ITRangeQueryableStore : virtual public ITMetadataStore<EventIDT,
     virtual void collect_source_ids_for_range(
                                 const EventID & from,
                                 const EventID & to,
-                                std::list<SourceID> & ) const = 0;
+                                std::list<SubrangeMarkup> & ) const = 0;
 };  // class iRangeQueryableStore
 
 template<typename EventIDT,
@@ -149,9 +149,9 @@ struct ITSetQueryableStore : virtual public ITMetadataStore<EventIDT,
 
     /// (IF) Has to perform filling of source identifiers list corresponding
     /// to list of specific event identifiers.
-    virtual void _V_collect_source_ids_for_set(
+    virtual void collect_source_ids_for_set(
                                 const std::list<EventID> &,
-                                std::list<SourceID> & ) const = 0;
+                                std::list<SubrangeMarkup> & ) const = 0;
 };  // class iRangeQueryableStore
 
 }  // namespace sV

@@ -187,14 +187,14 @@ public:
 class MetadataType : public MetadataTraits::iMetadataType {
 protected:
     SpecificMetadata & _V_acquire_metadata(
-                            MetadataTraits::iEventSource & s ) const override;
+                            MetadataTraits::iEventSource & s ) override;
 public:
     MetadataType() : MetadataTraits::iMetadataType("Testing1") {}
 };  // MetadataType
 
 // Implementation of metadata getting method.
 MetadataType::SpecificMetadata &
-MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) const  {
+MetadataType::_V_acquire_metadata( MetadataTraits::iEventSource & s_ ) {
     ::sV::mdTest1::DataSource & s = dynamic_cast<::sV::mdTest1::DataSource &>(s_);
     size_t wordNo = 0;
     Metadata & md = *(new Metadata);

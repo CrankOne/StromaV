@@ -113,13 +113,25 @@ public:
     // need to consider this situation as notmal while querying metadata
     // instances inside of a store object(s).
     const MetadataEntry & query_word_loc( const EventID & eid ) const {
-        for( const auto & it : *this ) {
-            //std::cout << " XXX " << it.eid << " =?= " << eid << std::endl;
-            if( it.eid == eid ) {
-                return it;
+        if( contains(eid) ) {
+            for( const auto & it : *this ) {
+                //std::cout << " XXX " << it.eid << " =?= " << eid << std::endl;
+                if( it.eid == eid ) {
+                    return it;
+                }
             }
         }
         emraise( noSuchKey, "Word with given ID not found in this metadata." );
+    }
+
+    // aux method returning true when event is owned by the source.
+    bool contains( const EventID & eid ) const {
+        const EventID first = front().eid,
+                      last = back().eid;
+        return (first.stanzaNo <= eid.stanzaNo && last.stanzaNo >= eid.stanzaNo )
+            && (first.lineNo <= eid.lineNo && last.lineNo >= eid.lineNo )
+            && (first.wordNo <= eid.wordNo && last.wordNo >= eid.wordNo )
+            ;
     }
 };
 
@@ -237,12 +249,32 @@ protected:
                             const Test2Metadata & md,
                             const EventID & lower,
                             const EventID & upper ) override {
+        # if 1
         _TODO_  // TODO
+        # else
+        std::list<std::string> words;
+        for( size_t i = lower; !(i > upper); ++i ) {
+            auto wp = md.find(i)->second;
+            words.push_back( std::string(_content + wp.first, wp.second) );
+        }
+        return std::unique_ptr<sV::aux::iEventSequence>(
+                                        new test::ExtractedWords( words ));
+        # endif
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
                             const Test2Metadata & md,
                             const std::list<EventID> & eidsList ) override {
+        # if 1
         _TODO_  // TODO
+        # else
+        std::list<std::string> words;
+        for( const auto & nw : eidsList ) {
+            auto wp = md.find(nw)->second;
+            words.push_back( std::string(_content + wp.first, wp.second) );
+        }
+        return std::unique_ptr<sV::aux::iEventSequence>(
+                                        new test::ExtractedWords( words ));
+        # endif
     }
 
     virtual const char * _V_textual_id(const SourceID *sidPtr) const override {
@@ -348,7 +380,8 @@ public:
 
 
 class Store : public MetadataTraits::iDisposableSourceManager,
-              public MetadataTraits::iEventQueryableStore {
+              public MetadataTraits::iEventQueryableStore,
+              public MetadataTraits::iRangeQueryableStore {
 public:
     sV_METADATA_IMPORT_SECT_TRAITS( mdTest2::EventID,
                                     mdTest2::Test2Metadata,
@@ -382,7 +415,7 @@ public:
     }
 
     virtual bool source_id_for( const EventID & eid,
-                                   SourceID & sid) const override {
+                                      SourceID & sid) const override {
         MetadataEntry mde = {{0, 0, 0}, 0, 0};
         SourceID foundSID;
         for( const auto & p : _mdatCache ) {
@@ -407,6 +440,76 @@ public:
     }
     void erase_metadata_for( const SourceID & sid ) override {
         _TODO_  // TODO
+    }
+
+    void collect_source_ids_for_range(
+                                const EventID & from,
+                                const EventID & to,
+                                std::list<SubrangeMarkup> & output ) const override {
+        if( _mdatCache.empty() ) {
+            emraise( uTestFailure, "Empty metadata store." );
+        }
+        // TODO: fix --- all sources that does not contain neither "from"
+        // neither "to" will be omitted.
+        for( const auto & mdePair : _mdatCache ) {
+            if( mdePair.second->contains( from ) ) {
+                output.push_back( MetadataTraits::SubrangeMarkup {
+                    {0, 0, 0},
+                    {0, 0, 0},
+                    mdePair.first,
+                    nullptr, nullptr } ); // < Note, that we hadn't set md
+                                          // here to check run-time md
+                                          // acquizition.
+                std::cout << " XXX set for begin." << std::endl;
+            } else if( mdePair.second->contains( to ) ) {
+                output.push_back( MetadataTraits::SubrangeMarkup {
+                    {0, 0, 0},
+                    {0, 0, 0},
+                    mdePair.first,
+                    mdePair.second, nullptr } ); // < Here, md ptr is set.
+                std::cout << " XXX set for end." << std::endl;
+            }
+        }
+        bool hasStarted = false,
+             hasEnded = false;
+        for( SubrangeMarkup & entry : output ) {
+            // Retreive metadata for source:
+            const Test2Metadata * mdPtr = _mdatCache.find( entry.sid )->second;
+            // Retreive range for mdPtr:
+            // * Since its merely a list just iterate it until either end of a
+            //   list, or end of a super-range will be reached to find end.
+            // * Iteration has to start from beginning.
+            EventID foundFrom, foundTo;
+            for( const auto & mde : *mdPtr ) {
+                if( !hasStarted ) {
+                    // Check start condition:
+                    if( mde.eid.stanzaNo >= from.stanzaNo
+                     && mde.eid.lineNo >= from.lineNo
+                     && mde.eid.wordNo >= from.wordNo ) {
+                        foundFrom = mde.eid;
+                        hasStarted = true;
+                    }
+                } else {
+                    if( mde.eid.stanzaNo >= to.stanzaNo
+                     && mde.eid.lineNo >= to.lineNo
+                     && mde.eid.wordNo >= to.wordNo ) {
+                        foundTo = mde.eid;
+                        hasEnded = true;
+                        break;  // Done
+                    }
+                }
+            }
+            if( hasStarted && !hasEnded ) {
+                foundFrom = mdPtr->back().eid;
+            } else if( hasEnded ) {
+                break;
+            }
+        }
+        if( !hasStarted || !hasEnded ) {
+            emraise( uTestFailure, "Range integrity failed: begin %s, end %s.",
+                ( hasStarted ? "found" : "not found" ),
+                ( hasEnded ? "found" : "not found" ) );
+        }
     }
 public:
     Store() {}
@@ -496,7 +599,13 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
     // Let's check that acquizition may be performed as if it is a continious
     // array.
 
-    /*TODO: src = */ batchHandle.event_read_range( {4, 0, 0}, {5, 0, 0} );
+    auto src = batchHandle.event_read_range( {4, 1, 2}, {5, 1, 2} );
+    std::cout << "Extracted in range:" << std::endl << "<<<";
+    for( auto eventPtr = src->initialize_reading();
+         src->is_good(); src->next_event(eventPtr) ) {
+        std::cout << get_word_from_event(*eventPtr) << " ";
+    }
+    std::cout << ">>>" << std::endl;
 
     // Finaly, we make the first fragment's metadata to be cached by explicit
     // acquizition of the words:

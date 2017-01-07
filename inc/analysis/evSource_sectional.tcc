@@ -68,9 +68,10 @@ public:
     typedef aux::iEventSequence::Event Event;
 protected:
     virtual const SpecificMetadata * _V_acquire_my_metadata() final {
-        const iSpecificMetadataType & mdt =
-                    static_cast<const iSpecificMetadataType &> (
-                    Parent::metadata_types_dict().template get_metadata_type<SpecificMetadata>() );
+        iSpecificMetadataType & mdt =
+                    static_cast<iSpecificMetadataType &> (
+                    Parent::metadata_types_dict()
+                    .template get_metadata_type<SpecificMetadata>() );
         return &( mdt.acquire_metadata_for( *this ) );
     }
 

@@ -50,6 +50,7 @@ public:
     typedef EventIDT EventID;
     typedef sV::aux::iTemplatedEventIDMetadataType<EventID>
             iSpecificEventIDMetdataType;
+    typedef MetadataDictionary<EventIDT> Self;
 private:
     void _cast_typecheck( const C_Metadata & md,
                           MetadataTypeIndex toTypeIdx ) const;
@@ -117,6 +118,14 @@ public:
         }
         return static_cast<const iTMetadataType<EventID, SpecificMetadataT> &>(
                                                                 *(it->second));
+    }
+
+    template<typename SpecificMetadataT>
+    iTMetadataType<EventID, SpecificMetadataT> &
+    get_metadata_type() {
+        return const_cast<iTMetadataType<EventID, SpecificMetadataT> &>(
+                static_cast<const Self *>(this)
+                ->get_metadata_type<SpecificMetadataT>());
     }
 };  // class MetadataDictionary
 

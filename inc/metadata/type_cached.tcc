@@ -32,14 +32,12 @@
 
 namespace sV {
 
-# if 0
 namespace aux {
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
 class BatchEventsHandle;
 }  // namespace aux
-# endif
 
 /**@class iTCachedMetadataType
  * @brief Interfacing template for storable metadata that can be cached or
@@ -60,8 +58,40 @@ public:
     typedef iTMetadataType<EventID, Metadata> ImmanentParent;
     typedef iBulkEventSource<EventID, Metadata> BaseDataSource;
 private:
-    mutable std::list<iMetadataStore *> _mdStores;
+    std::list<iMetadataStore *> _mdStores;
+    std::list<typename Traits::iDisposableSourceManager *> _dspSrcMngrs;
+    std::list<typename Traits::iEventQueryableStore *> _singleEventQueryables;
+    std::list<typename Traits::iRangeQueryableStore *> _rangeQueryables;
+    std::list<typename Traits::iSetQueryableStore *> _setQueryables;
+
+    /// Handle for querying events. May change its state after being retreived.
     mutable aux::BatchEventsHandle<EventID, Metadata, SourceID> _batchHandle;
+
+    /// Aux method adding particular store instance into appropriate list.
+    void _put_store( iMetadataStore * basePtr ) {
+        _mdStores.push_back( basePtr );
+        # define M_sV_store_put( tname, lname ) {                           \
+            auto ptr = dynamic_cast<typename Traits:: tname *>(basePtr);    \
+            if( ptr ) { lname.push_back(ptr); } }
+        M_sV_store_put( iDisposableSourceManager, _dspSrcMngrs )
+        M_sV_store_put( iEventQueryableStore, _singleEventQueryables )
+        M_sV_store_put( iRangeQueryableStore, _rangeQueryables )
+        M_sV_store_put( iSetQueryableStore, _setQueryables )
+        # undef M_sV_store_put
+    }
+
+    /// Aux method removing particular store instance into appropriate list.
+    void _remove_store( iMetadataStore * basePtr ) {
+        # define M_sV_store_put( tname, lname ) {                           \
+            auto ptr = dynamic_cast<typename Traits:: tname *>(basePtr);    \
+            if( ptr ) { lname.remove(ptr); } }
+        M_sV_store_put( iDisposableSourceManager, _dspSrcMngrs )
+        M_sV_store_put( iEventQueryableStore, _singleEventQueryables )
+        M_sV_store_put( iRangeQueryableStore, _rangeQueryables )
+        M_sV_store_put( iSetQueryableStore, _setQueryables )
+        # undef M_sV_store_put
+        _mdStores.remove( basePtr );
+    }
 protected:
     /// Tries to find metadata instance for given source ID.
     virtual Metadata * _look_up_for( const SourceID & ) const;
@@ -69,8 +99,7 @@ protected:
     /// Overrides unidentifiable source access with dynamic cast. Note, that
     /// this call can affect performance or cause emerging of std::bad_cast
     /// exception and is not using in sV API for iTCachedMetadataType.
-    virtual Metadata & _V_acquire_metadata(
-                                BaseDataSource & ds ) const final;
+    virtual Metadata & _V_acquire_metadata( BaseDataSource & ds ) final;
 
     /// (IF) Returns true if metadata information is full.
     virtual bool _V_is_complete( const Metadata & ) const = 0;
@@ -131,14 +160,11 @@ public:
     /// Dtr.
     virtual ~iTCachedMetadataType() {}
 
-    /// Stores list getter.
-    std::list<iMetadataStore *> & stores() const { return _mdStores; }
-
     /// Associates store with type.
-    void add_store( iMetadataStore & store ) { _mdStores.push_back(&store); }
+    void add_store( iMetadataStore & store ) { _put_store(&store); }
 
     /// Removes association between store and type.
-    void remove_store( iMetadataStore & store ) { _mdStores.remove(&store); }
+    void remove_store( iMetadataStore & store ) { _remove_store(&store); }
 
     /// Whether the provided metadata instance is complete?
     bool is_complete( const Metadata & md ) const
@@ -165,7 +191,7 @@ public:
 
     /// Obtaines or (re)caches metadata for given source performing interaction
     /// with associated metadata store instance(s).
-    virtual Metadata & acquire_metadata_for( iEventSource & s ) const;
+    virtual Metadata & acquire_metadata_for( iEventSource & s );
 
     /// Returns interim object incapsulating acquizition events from specific
     /// source instances.
@@ -179,6 +205,7 @@ public:
                                typename Traits::SubrangeMarkup & muRef ) const
         { _V_get_subrange( low, up, sid, muRef ); }
 
+    friend class aux::BatchEventsHandle<EventIDT, MetadataT, SourceIDT>;
 };  // iTCachedMetadataType
 
 
@@ -220,7 +247,7 @@ template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT> MetadataT &
 iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
-            iEventSource & s ) const {
+            iEventSource & s ) {
     const SourceID * sidPtr = s.id_ptr();
     Metadata * metadataPtr = nullptr;
     if( ! _mdStores.empty() ) {
@@ -249,7 +276,7 @@ iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
         }
         sV_log2( "Metadata extracted for source %p.\n", &s );
         if( sidPtr && !_mdStores.empty() ) {
-            _V_cache_metadata( *sidPtr, *metadataPtr, stores() );
+            _V_cache_metadata( *sidPtr, *metadataPtr, _mdStores );  //< TODO?
         } else {
             sV_logw( "Metadata for source \"%s\" (%p) can not be stored since "
                 "either the ID for source is not set, or no reentrant indexes "
@@ -269,7 +296,7 @@ template<typename EventIDT,
          typename SourceIDT>
 MetadataT &
 iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::_V_acquire_metadata(
-                            BaseDataSource & ds_ ) const {
+                            BaseDataSource & ds_ ) {
     sV_log3( "Inetrface method acquire_metadata() called for "
              "iTCachedMetadataType<...> type. Can affect performance.\n" );
     iEventSource & ds = dynamic_cast<iEventSource &>(ds_);

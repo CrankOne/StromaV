@@ -65,12 +65,12 @@ protected:
     /// (IM) Obtains metadata from provided source. The particular
     /// implementation can include direct acquizition or look-up
     /// among side cache resource (monolithic).
-    virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) const = 0;
+    virtual SpecificMetadata & _V_acquire_metadata( DataSource & ) = 0;
 public:
     iTMetadataType( const std::string & tnm ) : Parent( tnm ) {}
 
     /// Obtains metadata for provided source.
-    SpecificMetadata & acquire_metadata( DataSource & s ) const {
+    SpecificMetadata & acquire_metadata( DataSource & s ) {
                 return _V_acquire_metadata(s); }
 
     /// Returns encoded type.

@@ -26,6 +26,8 @@
 namespace sV {
 
 # include "store.tcc"
+# include "analysis/evSource_RA.tcc"
+# include <cstdint>
 
 namespace aux {
 
@@ -65,44 +67,98 @@ protected:
     class ProxyRangeSequence : aux::iEventSequence {
     public:
         typedef std::list<SubrangeMarkup> ReadingMarkup;
+        typedef typename Traits::iDisposableSourceManager Manager;
+        typedef std::list<Manager *> Managers;
     private:
-        Self & _handleRef;
+        Event & _reentrantEvent;
+        iEventSource * _cEvSrc;
+        std::unique_ptr<iEventSequence> _rangeReadingSrc;
+        Managers & _mngrs;
+        typename Managers::iterator _evSrcOwnerIt;
+
         ReadingMarkup * _markup;
+        typename ReadingMarkup::iterator _rmuIt;
     protected:
-        ProxyRangeSequence( Self & self, ReadingMarkup * markupPtr ) :
-                    aux::iEventSequence( aux::iEventSequence::randomAccess ),
-                    _handleRef(self), _markup(markupPtr) {}
+        void _dispose_source() {
+            _evSrcOwnerIt = _mngrs.end();
+            // TODO: use existing source if available in _rmuIt
+            for( auto mngrIt = _mngrs.begin();
+                 _mngrs.end() != mngrIt; ++mngrIt ) {
+                if( (_cEvSrc = (*mngrIt)->source(_rmuIt->sid) ) ) {
+                    _evSrcOwnerIt = mngrIt;
+                    // TODO: use acquired MD instance if available in _rmuIt
+                    _rangeReadingSrc = _cEvSrc->event_read_range(
+                                                    _rmuIt->from, _rmuIt->to );
+                    break;
+                }
+            }
+            if( _mngrs.end() == _evSrcOwnerIt ) {
+                emraise( badState, "Proxy event source instance can not "
+                    "acquire disposable event source among %zu stores.",
+                    _mngrs.size() );
+            }
+        }
+
+        void _dispose_next_source() {
+            if( _cEvSrc ) {
+                // Free current source.
+                (*_evSrcOwnerIt)->free_source(_cEvSrc);
+                _cEvSrc = nullptr;
+                _evSrcOwnerIt = _mngrs.end();
+            }
+            ++_rmuIt;
+            if( _rmuIt != _markup->end() ) {
+                _dispose_source();
+            }
+        }
+
+        ProxyRangeSequence( Event & evRef,
+                            Managers & mngrs,
+                            ReadingMarkup * markupPtr ) :
+                    aux::iEventSequence( 0x0 ),
+                    _reentrantEvent( evRef ),
+                    _cEvSrc(nullptr),
+                    _mngrs(mngrs),
+                    _evSrcOwnerIt(mngrs.end()),
+                    _markup(markupPtr),
+                    _rmuIt(markupPtr->end()) {}
         ~ProxyRangeSequence() {
             delete _markup;
         }
+
         virtual bool _V_is_good() override {
-            _TODO_  // TODO
+            return _rmuIt != _markup->end() && _cEvSrc && _cEvSrc->is_good();
         }
-        virtual void _V_next_event( Event *& ) override {
-            _TODO_  // TODO
+
+        virtual void _V_next_event( Event *& evPtrRef ) override {
+            if( _cEvSrc->is_good() ) {
+                _cEvSrc->next_event( evPtrRef );
+            } else {
+                _dispose_next_source();
+            }
         }
+
         virtual Event * _V_initialize_reading() override {
-            _TODO_  // TODO
+            _rmuIt = _markup->begin();
+            _dispose_source();
+            return &_reentrantEvent;
         }
+
         virtual void _V_finalize_reading() override {
-            _TODO_  // TODO
+            if( _cEvSrc ) {
+                // Free current source.
+                (*_evSrcOwnerIt)->free_source(_cEvSrc);
+                _cEvSrc = nullptr;
+                _evSrcOwnerIt = _mngrs.end();
+            }
         }
         friend class BatchEventsHandle<EventIDT, MetadataT, SourceIDT>;
     };
 private:
     iMetadataType & _mdt;
-    void _assert_mdt_non_empty() {
-        if( _mdt.stores().empty() ) {
-            emraise( badState, "No stores associated with cached metadata "
-                     "type \"%s\" (id:%#x, ptr:%p). Unable to retreive "
-                     "cached metadata.", _mdt.name().c_str(),
-                     _mdt.type_index(), &_mdt );
-        }
-    }
     Event _reentrantSingleEvent;
 public:
-    BatchEventsHandle( iMetadataType & mdt ) :
-                                                    _mdt(mdt) {}
+    BatchEventsHandle( iMetadataType & mdt ) : _mdt(mdt) {}
     virtual ~BatchEventsHandle() {}
 
     /// Note that returned event ptr refers to internal reentrant instance and
@@ -110,24 +166,36 @@ public:
     /// this instance is restricted by lifetime of owning iCachedMetadataType
     /// instance.
     virtual Event * event_read_single( const EventID & eid ) override {
-        # if 1
-        _TODO_  // TODO
-        # else
-        _assert_mdt_non_empty();
+        if( _mdt._singleEventQueryables.empty() ) {
+            emraise( badState, "No stores associated with cached metadata "
+                     "type \"%s\" (id:%#x, ptr:%p) which could perform single "
+                     "event look-up. Unable to retreive source ID.",
+                     _mdt.name().c_str(),
+                     _mdt.type_index(), &_mdt );
+        }
+        if( _mdt._dspSrcMngrs.empty() ) {
+            emraise( badState, "No stores associated with cached metadata "
+                     "type \"%s\" (id:%#x, ptr:%p) which could perform "
+                     "proxying of events reading (creation of disposable event "
+                     "source). Unable to retreive event by ID.",
+                     _mdt.name().c_str(),
+                     _mdt.type_index(), &_mdt );
+        }
+
         SourceID sid;
         bool found = false;
-        for( auto storePtr : _mdt.stores() ) {
+        for( auto storePtr : _mdt._singleEventQueryables ) {
             if( (found = storePtr->source_id_for( eid, sid )) ) {
                 break;
             }
         }
         if( !found ) {
-            emraise( noSuchKey, "Unable to locate source containing event "
+            emraise( noSuchKey, "Unable to find source containing event "
                                 "with specified ID." );
         }
         iEventSource * evSourcePtr = nullptr;
-        iMetadataStore * owningStore = nullptr;
-        for( auto storePtr : _mdt.stores() ) {
+        typename Traits::iDisposableSourceManager * owningStore = nullptr;
+        for( auto storePtr : _mdt._dspSrcMngrs ) {
             if( nullptr != (evSourcePtr = storePtr->source(sid)) ) {
                 owningStore = storePtr;
                 break;
@@ -135,8 +203,8 @@ public:
         }
         if( !owningStore ) {
             emraise( badState, "Event with specified ID located, but none of "
-                "available metadata caching store instances can provide "
-                "accessible handle to source." );
+                "available metadata caching store instances were able to "
+                " provide disposable streaming instance." );
         }
         // todo: may optimize it a little by using direct querying of metadata
         // here:
@@ -145,38 +213,43 @@ public:
         _reentrantSingleEvent.CopyFrom( *eventReadPtr );
         owningStore->free_source(evSourcePtr);
         return &_reentrantSingleEvent;
-        # endif
     }
 
     virtual std::unique_ptr<aux::iEventSequence> event_read_range(
                                 const EventID & lower,
                                 const EventID & upper ) override {
-        # if 1
-        _TODO_  // TODO
-        # else
-        _assert_mdt_non_empty();
-        std::list<SourceID> sids;
-        for( auto storePtr : _mdt.stores() ) {
-            storePtr->collect_source_ids_for_range( lower, upper, sids );
+        if( _mdt._rangeQueryables.empty() ) {
+            emraise( badState, "No stores associated with cached metadata "
+                     "type \"%s\" (id:%#x, ptr:%p) which could perform "
+                     "querying of events sub-ranges appropriate to particular "
+                     "sectioned source instances. Unable to retreive events "
+                     "sub-ranges.",
+                     _mdt.name().c_str(),
+                     _mdt.type_index(), &_mdt );
         }
-
+        if( _mdt._dspSrcMngrs.empty() ) {
+            emraise( badState, "No stores associated with cached metadata "
+                     "type \"%s\" (id:%#x, ptr:%p) which could perform "
+                     "proxying of events reading (creation of disposable event "
+                     "source). Unable to retreive events by ID range.",
+                     _mdt.name().c_str(),
+                     _mdt.type_index(), &_mdt );
+        }
         // Keeps ranges corresponding to particular sources.
         auto rmuPtr = new typename ProxyRangeSequence::ReadingMarkup();
 
-        for( const auto & sid : sids ) {
-            SubrangeMarkup entry;
-            _mdt.get_subrange( lower, upper, sid, entry );
-            rmuPtr->push_back( entry );
+        for( auto storePtr : _mdt._rangeQueryables ) {
+            storePtr->collect_source_ids_for_range( lower, upper, *rmuPtr );
         }
 
         return std::unique_ptr<aux::iEventSequence>(
-                                    new ProxyRangeSequence( *this, rmuPtr ));
-        # endif
+                new ProxyRangeSequence( _reentrantSingleEvent,
+                                        _mdt._dspSrcMngrs,
+                                        rmuPtr ));
     }
 
     virtual std::unique_ptr<aux::iEventSequence> event_read_list(
-                                const std::list<EventID> & list ) override {
-        _assert_mdt_non_empty();
+                                const std::list<EventID> & list ) override { 
         _TODO_  // TODO
     }
     
