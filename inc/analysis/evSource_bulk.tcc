@@ -57,7 +57,6 @@ public:
     typedef typename Parent::Event Event;
 protected:
     virtual const SpecificMetadata * _V_acquire_my_metadata() final {
-        std::cout << "***" << std::endl;
         iSpecificMetadataType & mdt = 
                     Parent
                     ::metadata_types_dict()

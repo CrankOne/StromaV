@@ -27,6 +27,9 @@
 namespace sV {
 namespace mdTest2 {
 
+// Local log-streaming source for unit (supp. dev info):
+static std::ostream & los = std::cout;
+
 // (Einsturzende Neubauten, "Nagorny Karabach", 2007)
 // Note: pity, but std::alnum() does not recognize unicode ä, ö, ü symbols
 // here. Since this text is just for testing I won't fix the code but
@@ -90,6 +93,28 @@ struct EventID {
             && ( eid.wordNo == wordNo )
             ;
     }
+
+    bool operator>(const EventID & eid) const {
+        return (
+                this->stanzaNo > eid.stanzaNo
+             || (this->stanzaNo == eid.stanzaNo &&
+                    (this->lineNo > eid.lineNo
+                 || ( this->lineNo == eid.lineNo &&
+                        this->wordNo > eid.wordNo ))
+                )
+            );
+    }
+
+    bool operator<(const EventID & eid) const {
+        return (
+                this->stanzaNo < eid.stanzaNo
+             || (this->stanzaNo == eid.stanzaNo &&
+                    (this->lineNo < eid.lineNo
+                 || ( this->lineNo == eid.lineNo &&
+                        this->wordNo < eid.wordNo ))
+                )
+            );
+    }
 };
 std::ostream & operator<<(std::ostream & os, const EventID & eid ) {
     os << "{s#" << (int) eid.stanzaNo
@@ -115,7 +140,7 @@ public:
     const MetadataEntry & query_word_loc( const EventID & eid ) const {
         if( contains(eid) ) {
             for( const auto & it : *this ) {
-                //std::cout << " XXX " << it.eid << " =?= " << eid << std::endl;
+                los << "[==] " << it.eid << " =?= " << eid << std::endl;
                 if( it.eid == eid ) {
                     return it;
                 }
@@ -135,6 +160,10 @@ public:
     }
 };
 
+bool operator==(const MetadataEntry & mde, const EventID & eid) {
+    return mde.eid == eid;
+}
+
 namespace auxTest2 {
 
 void
@@ -144,7 +173,7 @@ extract_test2_metadata( Test2Metadata & md,
     MetadataEntry me = {{ initialStanzaNo, 0, 0 }, 0, 0};
     bool doesIterateWord = false,
          done = false;
-    std::cout << "[" << (int) initialStanzaNo << "-0] ";
+    los << "[==] [" << (int) initialStanzaNo << "-0] ";
     for( const char * c = s; !done; c++ ) {
         if( std::isalnum(*c) ) {
             if( !doesIterateWord ) {
@@ -157,8 +186,8 @@ extract_test2_metadata( Test2Metadata & md,
                 ++me.eid.wordNo;
                 md.push_back( me );
                 doesIterateWord = false;
-                std::cout << std::string( s + me.offset, me.length )
-                          << "(" << me.eid.wordNo << ") ";
+                los << std::string( s + me.offset, me.length )
+                    << "(" << me.eid.wordNo << ") ";
             }
             if( '\n' == *c ) {
                 ++me.eid.lineNo;
@@ -167,15 +196,15 @@ extract_test2_metadata( Test2Metadata & md,
                     me.eid.lineNo = 0;
                     ++me.eid.stanzaNo;
                 }
-                std::cout << std::endl
-                          << "[" << (int) me.eid.stanzaNo
-                          << "-" << (int) me.eid.lineNo
-                          << "]" << " ";
+                los << std::endl << "[==] "
+                    << "[" << (int) me.eid.stanzaNo
+                    << "-" << (int) me.eid.lineNo
+                    << "]" << " ";
             }
         }
         done = ('\0' == *c);
     }
-    std::cout << std::endl;
+    los << std::endl;
 }
 
 }  // namespace aux
@@ -249,17 +278,26 @@ protected:
                             const Test2Metadata & md,
                             const EventID & lower,
                             const EventID & upper ) override {
-        # if 1
-        _TODO_  // TODO
-        # else
-        std::list<std::string> words;
-        for( size_t i = lower; !(i > upper); ++i ) {
-            auto wp = md.find(i)->second;
-            words.push_back( std::string(_content + wp.first, wp.second) );
+        auto mdeFromIt = std::find( md.begin(), md.end(), lower ),
+               mdeToIt = std::find( md.begin(), md.end(), upper ),
+                     c = mdeFromIt
+                       ;
+        if( mdeFromIt == md.end() || mdeToIt == md.end() ) {
+            std::cerr << " |Requested from: " << lower << std::endl
+                      << " |            to: " << upper << std::endl
+                      << " |fragent begins: " << md.front().eid << std::endl
+                      << " | fragment ends: " << md.back().eid << std::endl
+                      ;
+            emraise( uTestFailure, "Wrong event ID for source. Previous "
+                "routines found incorrect source:." )
         }
+        ++mdeToIt;
+        std::list<std::string> words;
+        do {
+            words.push_back( std::string( _content + c->offset, c->length ) );
+        } while( ++c != mdeToIt );
         return std::unique_ptr<sV::aux::iEventSequence>(
                                         new test::ExtractedWords( words ));
-        # endif
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
                             const Test2Metadata & md,
@@ -460,19 +498,19 @@ public:
                     nullptr, nullptr } ); // < Note, that we hadn't set md
                                           // here to check run-time md
                                           // acquizition.
-                std::cout << " XXX set for begin." << std::endl;
+                los << "[==] set for begin." << std::endl;
             } else if( mdePair.second->contains( to ) ) {
                 output.push_back( MetadataTraits::SubrangeMarkup {
                     {0, 0, 0},
                     {0, 0, 0},
                     mdePair.first,
                     mdePair.second, nullptr } ); // < Here, md ptr is set.
-                std::cout << " XXX set for end." << std::endl;
+                los << "[==] set for end." << std::endl;
             }
         }
-        bool hasStarted = false,
-             hasEnded = false;
         for( SubrangeMarkup & entry : output ) {
+            bool hasStarted = false,
+                 hasEnded = false;
             // Retreive metadata for source:
             const Test2Metadata * mdPtr = _mdatCache.find( entry.sid )->second;
             // Retreive range for mdPtr:
@@ -483,32 +521,35 @@ public:
             for( const auto & mde : *mdPtr ) {
                 if( !hasStarted ) {
                     // Check start condition:
-                    if( mde.eid.stanzaNo >= from.stanzaNo
-                     && mde.eid.lineNo >= from.lineNo
-                     && mde.eid.wordNo >= from.wordNo ) {
+                    if( !( mde.eid < from) ) {
                         foundFrom = mde.eid;
                         hasStarted = true;
+                        los << "[==] starts: " << mde.eid
+                            << "..." << std::endl;
                     }
                 } else {
-                    if( mde.eid.stanzaNo >= to.stanzaNo
-                     && mde.eid.lineNo >= to.lineNo
-                     && mde.eid.wordNo >= to.wordNo ) {
+                    if( !( mde.eid < to) ) {
                         foundTo = mde.eid;
                         hasEnded = true;
+                        los << "[==] ...ends: " << mde.eid << std::endl;
                         break;  // Done
                     }
                 }
             }
             if( hasStarted && !hasEnded ) {
-                foundFrom = mdPtr->back().eid;
-            } else if( hasEnded ) {
+                foundTo = mdPtr->back().eid;
+                hasEnded = true;
+                los << "[==] ...ends: " << mdPtr->back().eid << std::endl;
+            } /*else if( hasEnded ) {
                 break;
+            }*/
+            if( !hasStarted || !hasEnded ) {
+                emraise( uTestFailure, "Range integrity failed: begin %s, end %s.",
+                    ( hasStarted ? "found" : "not found" ),
+                    ( hasEnded ? "found" : "not found" ) );
             }
-        }
-        if( !hasStarted || !hasEnded ) {
-            emraise( uTestFailure, "Range integrity failed: begin %s, end %s.",
-                ( hasStarted ? "found" : "not found" ),
-                ( hasEnded ? "found" : "not found" ) );
+            entry.from = foundFrom;
+            entry.to = foundTo;
         }
     }
 public:
@@ -550,6 +591,9 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
             new DataSource( 3, _static_srcEN[2], dict )
         };
 
+    BOOST_TEST_MESSAGE( "[==] Dict, type, store and sources constructed and "
+        "seems being ready to operate..." );
+
     {
         // First, let's test look-up capabilities for one word that
         // definetely located at the provided source:
@@ -579,10 +623,16 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
         s[1]->metadata();
         s[2]->metadata();
     }
+    BOOST_TEST_MESSAGE( "[==] By-event selection tests passed. Freeing "
+                        "sources..." );
     // Clear sources.
     delete s[0]; s[0] = nullptr;
     delete s[1]; s[1] = nullptr;
     delete s[2]; s[2] = nullptr;
+
+    BOOST_TEST_MESSAGE( "[==] ...initial sources cleared. "
+        "Testing operations with "
+        "sectional data..." );
 
     // Now we have metadata indexing two of three fragments available in store
     // and can gain access it by using interim batch events source representing
@@ -598,14 +648,23 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
 
     // Let's check that acquizition may be performed as if it is a continious
     // array.
-
-    auto src = batchHandle.event_read_range( {4, 1, 2}, {5, 1, 2} );
-    std::cout << "Extracted in range:" << std::endl << "<<<";
-    for( auto eventPtr = src->initialize_reading();
-         src->is_good(); src->next_event(eventPtr) ) {
-        std::cout << get_word_from_event(*eventPtr) << " ";
+    {
+        const std::string & expectedSequence = "die Pflaumen aus dem Baum"
+                                            " Ob die andre Stadt mich lieb hat"
+                                            " In der Enklave meiner Wahl"
+                                            " in der "
+                                            ;
+        auto src = batchHandle.event_read_range( {4, 1, 2}, {5, 1, 2} );
+        std::stringstream ss;
+        for( auto eventPtr = src->initialize_reading();
+             src->is_good(); src->next_event(eventPtr) ) {
+            ss << get_word_from_event(*eventPtr) << " ";
+        }
+        //std::cout << "'" << expectedSequence << "'" << std::endl
+        //          << "'" << ss.str() << "'" << std::endl;
+        BOOST_REQUIRE( ss.str() == expectedSequence );
     }
-    std::cout << ">>>" << std::endl;
+    //std::cout << ">>>" << std::endl;
 
     // Finaly, we make the first fragment's metadata to be cached by explicit
     // acquizition of the words:

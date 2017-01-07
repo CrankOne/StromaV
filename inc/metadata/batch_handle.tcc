@@ -70,7 +70,6 @@ protected:
         typedef typename Traits::iDisposableSourceManager Manager;
         typedef std::list<Manager *> Managers;
     private:
-        Event & _reentrantEvent;
         iEventSource * _cEvSrc;
         std::unique_ptr<iEventSequence> _rangeReadingSrc;
         Managers & _mngrs;
@@ -79,7 +78,7 @@ protected:
         ReadingMarkup * _markup;
         typename ReadingMarkup::iterator _rmuIt;
     protected:
-        void _dispose_source() {
+        Event * _dispose_source() {
             _evSrcOwnerIt = _mngrs.end();
             // TODO: use existing source if available in _rmuIt
             for( auto mngrIt = _mngrs.begin();
@@ -89,17 +88,15 @@ protected:
                     // TODO: use acquired MD instance if available in _rmuIt
                     _rangeReadingSrc = _cEvSrc->event_read_range(
                                                     _rmuIt->from, _rmuIt->to );
-                    break;
+                    return _rangeReadingSrc->initialize_reading();
                 }
             }
-            if( _mngrs.end() == _evSrcOwnerIt ) {
-                emraise( badState, "Proxy event source instance can not "
-                    "acquire disposable event source among %zu stores.",
-                    _mngrs.size() );
-            }
+            emraise( badState, "Proxy event source instance could not "
+                "acquire disposable event source among %zu stores.",
+                _mngrs.size() );
         }
 
-        void _dispose_next_source() {
+        Event * _dispose_next_source() {
             if( _cEvSrc ) {
                 // Free current source.
                 (*_evSrcOwnerIt)->free_source(_cEvSrc);
@@ -108,7 +105,9 @@ protected:
             }
             ++_rmuIt;
             if( _rmuIt != _markup->end() ) {
-                _dispose_source();
+                return _dispose_source();
+            } else {
+                return nullptr;
             }
         }
 
@@ -116,7 +115,6 @@ protected:
                             Managers & mngrs,
                             ReadingMarkup * markupPtr ) :
                     aux::iEventSequence( 0x0 ),
-                    _reentrantEvent( evRef ),
                     _cEvSrc(nullptr),
                     _mngrs(mngrs),
                     _evSrcOwnerIt(mngrs.end()),
@@ -127,21 +125,20 @@ protected:
         }
 
         virtual bool _V_is_good() override {
-            return _rmuIt != _markup->end() && _cEvSrc && _cEvSrc->is_good();
+            return _rmuIt != _markup->end();
         }
 
         virtual void _V_next_event( Event *& evPtrRef ) override {
-            if( _cEvSrc->is_good() ) {
-                _cEvSrc->next_event( evPtrRef );
-            } else {
-                _dispose_next_source();
+            _rangeReadingSrc->next_event( evPtrRef );
+            if( !_rangeReadingSrc->is_good() ) {  // sic!
+                _rangeReadingSrc->finalize_reading();
+                evPtrRef = _dispose_next_source();
             }
         }
 
         virtual Event * _V_initialize_reading() override {
             _rmuIt = _markup->begin();
-            _dispose_source();
-            return &_reentrantEvent;
+            return _dispose_source();
         }
 
         virtual void _V_finalize_reading() override {
