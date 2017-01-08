@@ -256,7 +256,7 @@ iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
         } else {
             sV_logw( "Can not permanently store/retrieve "
                 "metadata information for source \"%s\" (%p) since it has no "
-                "ID set.\n", s.textual_id(), &s );
+                "ID set.\n", s.textual_id().c_str(), &s );
         }
     } else {
         // Has no stores associated.
@@ -264,15 +264,15 @@ iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
                  "information for source \"%s\" (%p) since metadata type "
                  "\"%s\" (id:%#x, ptr:%p) has no associated reentrant "
                  "indexes storage.\n",
-                 s.textual_id(), &s, this );
+                 s.textual_id().c_str(), &s, this );
     }
 
     if( !metadataPtr ) {
         sV_log2( "Extracting metadata information for source \"%s\" (%p).\n",
-                 s.textual_id(), &s );
+                 s.textual_id().c_str(), &s );
         if( !extract_metadata( sidPtr, s, metadataPtr ) ) {
             emraise( thirdParty, "Unable to extract metadata from "
-                     "source \"%s\" (%p).", s.textual_id(), &s );
+                     "source \"%s\" (%p).", s.textual_id().c_str(), &s );
         }
         sV_log2( "Metadata extracted for source %p.\n", &s );
         if( sidPtr && !_mdStores.empty() ) {
@@ -281,7 +281,7 @@ iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
             sV_logw( "Metadata for source \"%s\" (%p) can not be stored since "
                 "either the ID for source is not set, or no reentrant indexes "
                 "storages were associated with type \"%s\" (id:%#x, ptr:%p).\n",
-                s.textual_id(), &s, this->name().c_str(),
+                s.textual_id().c_str(), &s, this->name().c_str(),
                 (int) this->type_index(), this );
         }
     }

@@ -72,7 +72,7 @@ private:
     SourceID _id;
 protected:
     /// (IF) Has to return verbose string ID identifier (can be NULL).
-    virtual const char * _V_textual_id( const SourceID * ) const = 0;
+    virtual std::string _V_textual_id( const SourceID * ) const = 0;
 public:
     /// Default ctr for instances with uninitialized ID.
     iIdentifiableEventSource( aux::iEventSequence::Features_t fts ) :
@@ -80,7 +80,7 @@ public:
             _isIDInitialized(false) {}
 
     /// Ctr. Initializes ID attr.
-    iIdentifiableEventSource( SourceID & id,
+    iIdentifiableEventSource( const SourceID & id,
                               aux::iEventSequence::Features_t fts ) :
             aux::iEventSequence( fts | aux::iEventSequence::identifiable ),
             _isIDInitialized(true),
@@ -104,7 +104,7 @@ public:
     }
 
     /// Returns verbose string ID identifier.
-    virtual const char * textual_id() const
+    virtual std::string textual_id() const
         { return _V_textual_id( id_ptr() ); }
 
     /// Shortcut to ID parser invokation.

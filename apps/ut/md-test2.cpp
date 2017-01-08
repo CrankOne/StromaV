@@ -315,7 +315,7 @@ protected:
         # endif
     }
 
-    virtual const char * _V_textual_id(const SourceID *sidPtr) const override {
+    virtual std::string _V_textual_id(const SourceID *sidPtr) const override {
         static const char fn[][32] = { "<first>", "<second>", "<third>" };
         if( !sidPtr ) {
             return "<null>";

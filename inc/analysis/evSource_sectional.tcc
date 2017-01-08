@@ -27,6 +27,7 @@
 # include "evSource_identifiable.tcc"
 # include "metadata/dictionary.tcc"
 # include "metadata/store.tcc"
+# include "metadata/type_cached.tcc"
 
 namespace sV {
 
@@ -96,14 +97,14 @@ protected:
         return _V_md_event_read_list(md, eidsList); }
     # endif
 public:
-    iSectionalEventSource( SourceIDT & id,
+    iSectionalEventSource( const SourceIDT & id,
                            aux::iEventSequence::Features_t fts=0x0 ) :
             aux::iEventSequence( fts
                                | aux::iEventSequence::identifiable ),
             aux::iRandomAccessEventSource<EventIDT, SpecificMetadataT>( fts ),
-            mixins::iIdentifiableEventSource<SourceIDT>( fts, id ) {}
+            mixins::iIdentifiableEventSource<SourceIDT>( id, fts ) {}
 
-    iSectionalEventSource( SourceIDT & id,
+    iSectionalEventSource( const SourceIDT & id,
                            MetadataDictionary<EventIDT> & mtDict,
                            aux::iEventSequence::Features_t fts=0x0 ) :
             aux::iEventSequence( fts
