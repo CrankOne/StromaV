@@ -50,6 +50,8 @@ struct IRandomAccessEventStream {
                                     const EventIDT & upper ) = 0;
     virtual std::unique_ptr<aux::iEventSequence> event_read_list(
                                     const std::list<EventIDT> & list ) = 0;
+
+    virtual ~IRandomAccessEventStream() {}
 };
 
 namespace aux {

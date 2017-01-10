@@ -42,7 +42,8 @@ class iEventSequence;
 /// Event processor reader object representation.
 class iEventProcessor;
 /// Processor stub helper for concrete event processors.
-template<typename PayloadT> class iEventPayloadProcessor;
+template<typename EventClassT, typename PayloadT>
+            class iTEventPayloadProcessor;
 /// Aux interfacing class implementing pushing hooks.
 class iEventPayloadProcessorBase;
 }  // namespace aux
@@ -106,7 +107,8 @@ public:
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
     virtual int process( iEventSequence * );
 
-    template<typename PayloadT> friend class aux::iEventPayloadProcessor;
+    template<typename EventClassT, typename PayloadT>
+    friend class aux::iTEventPayloadProcessor;
 };  // class AnalysisPipeline
 
 namespace aux {
@@ -216,39 +218,42 @@ protected:
     friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
 
-/**@class AnalysisApplication::iEventPayloadProcessor
+/**@class AnalysisApplication::iTEventPayloadProcessor
  *
  * This template base for processors incapsulates (re)caching logic for
  * concrete data payload instances inside event messages. Since gprotobuf3
  * does not provide any extension/inheritance mechanics, we have to implement
- * some helper code.
+ * some helper code here.
  * */
-template<typename PayloadT>
-class iEventPayloadProcessor : public iEventPayloadProcessorBase {
+template<typename EventClassT,
+         typename PayloadT>
+class iTEventPayloadProcessor : public iEventPayloadProcessorBase {
 public:
     typedef AnalysisPipeline::Event Event;
-private:
+protected:
     /// Reentrant static field. Should be initialized to NULL by analysis
     /// application at the beginning of each new event.
     static PayloadT * _reentrantPayloadPtr;
 public:
     /// Must be called at the beginning of each new event by management class.
     static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
-private:
-    /// Will be called if current event has payload of required type.
-    static void unpack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-                 ->mutable_payload()
-                 ->UnpackTo(_reentrantPayloadPtr);
-    }
-    /// Will be called at the end of event processing pipeline.
-    static void pack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-                 ->mutable_payload()
-                 ->PackFrom(*_reentrantPayloadPtr);
-    }
 protected:
-    iEventPayloadProcessor( const std::string & pn ) :
+    /// Will be called if current event has payload of required type.
+    static void (*unpack_payload)( Event * );
+    //static void unpack_payload( Event * uEventPtr ) {
+    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
+    //             ->mutable_payload()
+    //             ->UnpackTo(_reentrantPayloadPtr);
+    //}
+    /// Will be called at the end of event processing pipeline.
+    static void (*pack_payload)( Event * );
+    //static void pack_payload( Event * uEventPtr ) {
+    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
+    //             ->mutable_payload()
+    //             ->PackFrom(*_reentrantPayloadPtr);
+    //}
+protected:
+    iTEventPayloadProcessor( const std::string & pn ) :
                             iEventPayloadProcessorBase(pn) {}
 
     /// Should return 'false' if processing in chain has to be aborted.
@@ -284,7 +289,54 @@ public:
     /// Helper method registering pack/unpack caching functions. Invoked by
     /// pipeline
     friend class ::sV::AnalysisPipeline;
-};
+};  // class iTEventPayloadProcessor
+
+template<typename EventClassT,
+         typename PayloadT>
+PayloadT * iTEventPayloadProcessor<EventClassT, PayloadT>
+                                            ::_reentrantPayloadPtr = nullptr;
+
+template<typename EventClassT,
+         typename PayloadT>
+void (*iTEventPayloadProcessor<EventClassT, PayloadT>::unpack_payload)
+                                    ( AnalysisPipeline::Event * ) = nullptr;
+
+template<typename EventClassT,
+         typename PayloadT>
+void (*iTEventPayloadProcessor<EventClassT, PayloadT>::pack_payload)
+                                    ( AnalysisPipeline::Event * ) = nullptr;
+
+
+template<typename PayloadT>
+class iTExperimentalEventPayloadProcessor :
+        public iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> {
+public:
+    typedef AnalysisPipeline::Event Event;
+    typedef iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> Parent;
+private:
+    /// Will be called if current event has payload of required type.
+    static void _unpack_payload( Event * uEventPtr ) {
+        uEventPtr->mutable_experimental()
+                 ->mutable_payload()
+                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+    }
+    /// Will be called at the end of event processing pipeline.
+    static void _pack_payload( Event * uEventPtr ) {
+        uEventPtr->mutable_experimental()
+                 ->mutable_payload()
+                 ->PackFrom(*Parent::_reentrantPayloadPtr);
+    }
+protected:
+    iTExperimentalEventPayloadProcessor( const std::string & pn ) :
+                            Parent(pn) {
+        if( Parent::unpack_payload ) {
+            Parent::unpack_payload = _unpack_payload;
+        }
+        if( Parent::pack_payload ) {
+            Parent::pack_payload = _pack_payload;
+        }
+    }
+};  // class iExperimentalEventPayloadProcessor
 
 }  // namespace aux
 
