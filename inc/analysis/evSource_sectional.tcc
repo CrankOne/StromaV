@@ -76,7 +76,7 @@ protected:
         return &( mdt.acquire_metadata_for( *this ) );
     }
 
-    # if 0  // see notes at BatchEventHandle::event_read_*
+    # if 0  // see notes at BulkEventHandle::event_read_*
     /// Protected accessor method used by proxy event source class.
     /// @see BatchEventsHandle
     Event * _md_event_read_single( const SpecificMetadata & md,

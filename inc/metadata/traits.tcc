@@ -60,7 +60,7 @@ public:
     typedef MetadataT Metadata;
     typedef SourceIDT SourceID;
     /* Induced types */
-    typedef MetadataDictionary<EventID>                         MetadataTypesDictionary;
+    typedef MetadataDictionary<EventID> TypesDictionary;
     typedef iTCachedMetadataType<EventID, Metadata, SourceID>    iMetadataType;
     typedef iSectionalEventSource<EventID, Metadata, SourceID>  iEventSource;
     /* Induced store interfaces */
@@ -79,7 +79,7 @@ public:
     typedef SIDT SourceID;                                                  \
     typedef ::sV::MetadataTypeTraits<EventID, Metadata, SourceID> Traits;   \
     /* Induced types */                                                     \
-    typedef typename Traits::MetadataTypesDictionary TypesDictionary;       \
+    typedef typename Traits::TypesDictionary TypesDictionary;       \
     typedef typename Traits::iMetadataType iMetadataType;                   \
     typedef typename Traits::iEventSource iEventSource;                     \
     typedef typename Traits::iMetadataStore iMetadataStore;                 \
@@ -142,7 +142,7 @@ public:
     typedef MDTT Metadata;                                                  \
     typedef ::sV::MetadataTypeTraits<EIDT, MDTT, void> Traits;              \
     /* Induced types */                                                     \
-    typedef typename Traits::MetadataTypesDictionary TypesDictionary;       \
+    typedef typename Traits::TypesDictionary TypesDictionary;               \
     typedef typename Traits::iEventSource iEventSource;                     \
     typedef typename Traits::iMetadataType iMetadataType;                   \
     /* ... */

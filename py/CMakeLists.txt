@@ -27,6 +27,7 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
     install( FILES
              pipeline.i
              std_unique_ptr.i
+             std_stream.i
              DESTINATION ${SWIG_IFACES_DIR} )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 

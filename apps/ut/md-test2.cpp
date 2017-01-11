@@ -218,7 +218,7 @@ typedef sV::MetadataTypeTraits<EventID, Test2Metadata, uint8_t> MetadataTraits;
 
 // This object has to be available from various locations and normally is
 // placed inside singleton.
-MetadataTraits::MetadataTypesDictionary * _static_MTDPtr = nullptr;
+MetadataTraits::TypesDictionary * _static_MTDPtr = nullptr;
 
 // - data stream supporting metadata indexing:
 class DataSource : public MetadataTraits::iEventSource {
@@ -333,7 +333,7 @@ public:
                     _it = _words.begin();
                 }
     DataSource( SourceID sid, const char * const c,
-                MetadataTraits::MetadataTypesDictionary & mdDictRef ) :
+                MetadataTraits::TypesDictionary & mdDictRef ) :
                     aux::iEventSequence( aux::iEventSequence::randomAccess
                                        | aux::iEventSequence::identifiable ),
                     MetadataTraits::iEventSource(sid, mdDictRef),
@@ -577,7 +577,7 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
     //auxTest2::extract_test2_metadata( md, _static_srcEN[0], 0 );
 
     // This part has may be run at user code at somewhat "init" section:
-    MetadataTraits::MetadataTypesDictionary dict;
+    MetadataTraits::TypesDictionary dict;
     _static_MTDPtr = &dict;
     MetadataType mdt;
     dict.register_metadata_type( mdt );

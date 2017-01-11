@@ -1,3 +1,7 @@
+// This is a helper file for shared_ptr and should not be included directly.
+// Implementation proposed by Flexo at StackOverflow:
+//          http://stackoverflow.com/a/27699663/1734499
+
 namespace std {
   %feature("novaluewrapper") unique_ptr;
   template <typename Type>
