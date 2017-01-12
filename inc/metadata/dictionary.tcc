@@ -113,7 +113,7 @@ public:
                     iTMetadataType<EventID, SpecificMetadataT>::type_index() );
         if( _encodedIndex.end() == it ) {
             emraise( notFound, "Metadata types dictionary %p has no "
-                     " type registered with ID %u.", this,
+                     " type registered with ID %#x.", this,
                      iTMetadataType<EventID, SpecificMetadataT>::type_index() );
         }
         return static_cast<const iTMetadataType<EventID, SpecificMetadataT> &>(
@@ -133,7 +133,7 @@ template<typename EventIDT> void
 MetadataDictionary<EventIDT>::_cast_typecheck( const C_Metadata & md,
                                         MetadataTypeIndex toTypeIdx ) const {
     if( md.typeIndex != toTypeIdx ) {
-        sV_loge("Metadata %p has type 0x%x (%s) while type cast to 0x%x (%s) "
+        sV_loge("Metadata %p has type %#x (%s) while type cast to %#x (%s) "
                 "was requested.", md.payload,
                 (uint16_t) md.typeIndex,
                 metadata_type_name( md.typeIndex ).c_str(),
@@ -168,7 +168,7 @@ MetadataDictionary<EventIDT>::register_metadata_type(
         mdt._set_type_index( newIdx );
         _encodedIndex.emplace( newIdx, &mdt );
         sV_log2( "Metadata type %s (%p) registered at dictionary %p "
-                 "with index %d.\n",
+                 "with index %#x.\n",
                  mdt.name().c_str(), &mdt, this, (int) newIdx );
         return newIdx;
     }

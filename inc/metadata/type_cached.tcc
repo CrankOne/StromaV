@@ -264,7 +264,8 @@ iTCachedMetadataType<EventIDT, MetadataT, SourceIDT>::acquire_metadata_for(
                  "information for source \"%s\" (%p) since metadata type "
                  "\"%s\" (id:%#x, ptr:%p) has no associated reentrant "
                  "indexes storage.\n",
-                 s.textual_id().c_str(), &s, this );
+                 s.textual_id().c_str(), &s,
+                 this->name().c_str(), this->get_index(), this );
     }
 
     if( !metadataPtr ) {

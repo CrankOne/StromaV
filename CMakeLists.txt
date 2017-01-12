@@ -119,7 +119,12 @@ find_package( ROOT
 # Boost library is common for most modern Linux distros. Implements a lot
 # of extended functionality: containers, threading, I/O, etc.
 find_package( Boost ${Boost_FORCE_VERSION}
-              COMPONENTS program_options system thread unit_test_framework REQUIRED )
+              COMPONENTS program_options
+                         system
+                         thread
+                         unit_test_framework
+                         iostreams
+              REQUIRED )
 
 # StromaV uses Google Protocol Buffers as a base layer for event structure
 # representation. This dependency is optional and needed only if event

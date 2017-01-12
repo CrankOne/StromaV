@@ -6,11 +6,22 @@
 # include <stdio.h>
 # include <boost/iostreams/stream.hpp>
 # include <boost/iostreams/device/file_descriptor.hpp>
+
 namespace io = boost::iostreams;
 typedef io::stream_buffer<io::file_descriptor_sink> boost_ofdstream;
 typedef io::stream_buffer<io::file_descriptor_source> boost_ifdstream;
+
+struct in_StreamWrappingBundle {
+    boost_ifdstream * inFdstreamPtr;
+    std::shared_ptr<std::istream> inStreamShrdPtr;
+};
 %}
 
+//
+// Ordinary i/ostream
+////////////////////
+
+# if 0
 %typemap(in) std::ostream& (boost_ofdstream *stream=NULL) {
     FILE * f = PyFile_AsFile($input); // Verify the semantics of this
     if( !f ) {
@@ -44,3 +55,36 @@ typedef io::stream_buffer<io::file_descriptor_source> boost_ifdstream;
     delete $1;
     delete stream$argnum;
 }
+# endif
+
+//
+// Shared ptr
+////////////
+
+%typemap(in) std::shared_ptr<std::istream> (in_StreamWrappingBundle * streamBundle=NULL) {
+    FILE * f = PyFile_AsFile( $input );
+    // Verify that this returns NULL for non-files
+    if( !f ) {
+        SWIG_Error(SWIG_TypeError, "File object expected.");  
+        SWIG_fail;
+    } else {
+        streamBundle = new in_StreamWrappingBundle;
+        streamBundle->inFdstreamPtr
+                    = new boost_ifdstream(fileno(f),
+                                          io::never_close_handle);
+        streamBundle->inStreamShrdPtr.reset( new std::istream(
+                                                streamBundle->inFdstreamPtr ),
+                                             [$input, streamBundle](std::istream * p){
+                PyFile_DecUseCount( (PyFileObject *) $input );
+                delete streamBundle->inFdstreamPtr;
+            } );
+        $1 = streamBundle->inStreamShrdPtr;
+        PyFile_IncUseCount( (PyFileObject *) $input );
+    }
+}
+
+%typemap(freearg) std::shared_ptr<std::istream> {
+    delete streamBundle$argnum;
+}
+
+
