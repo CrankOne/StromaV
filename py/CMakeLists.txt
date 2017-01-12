@@ -28,7 +28,7 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
              pipeline.i
              std_unique_ptr.i
              std_stream.i
-             DESTINATION ${SWIG_IFACES_DIR} )
+             DESTINATION ${SWIG_IFACES_DIR}/sV )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )

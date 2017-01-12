@@ -21,7 +21,7 @@ struct in_StreamWrappingBundle {
 // Ordinary i/ostream
 ////////////////////
 
-# if 0
+# if 1
 %typemap(in) std::ostream& (boost_ofdstream *stream=NULL) {
     FILE * f = PyFile_AsFile($input); // Verify the semantics of this
     if( !f ) {
@@ -61,7 +61,7 @@ struct in_StreamWrappingBundle {
 // Shared ptr
 ////////////
 
-%typemap(in) std::shared_ptr<std::istream> (in_StreamWrappingBundle * streamBundle=NULL) {
+%typemap(in) std::shared_ptr<std::istream> & (in_StreamWrappingBundle * streamBundle=NULL) {
     FILE * f = PyFile_AsFile( $input );
     // Verify that this returns NULL for non-files
     if( !f ) {
@@ -76,14 +76,14 @@ struct in_StreamWrappingBundle {
                                                 streamBundle->inFdstreamPtr ),
                                              [$input, streamBundle](std::istream * p){
                 PyFile_DecUseCount( (PyFileObject *) $input );
-                delete streamBundle->inFdstreamPtr;
+                delete p;
             } );
-        $1 = streamBundle->inStreamShrdPtr;
+        $1 = &(streamBundle->inStreamShrdPtr);
         PyFile_IncUseCount( (PyFileObject *) $input );
     }
 }
 
-%typemap(freearg) std::shared_ptr<std::istream> {
+%typemap(freearg) std::shared_ptr<std::istream> & {
     delete streamBundle$argnum;
 }
 
