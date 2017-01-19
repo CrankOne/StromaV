@@ -31,22 +31,29 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
              DESTINATION ${SWIG_IFACES_DIR}/sV )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
-set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
-Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
-                   LINK_LIBS ${StromaV_LIB}
-                   WRAPPER_SOUCES WRAPPER_SRCS
-                   SETUP_TEMPLATE setup.py.in )
+if ( StromaV_PYMODULES )
+    set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
+    Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
+                       LINK_LIBS ${StromaV_LIB}
+                       WRAPPER_SOUCES WRAPPER_SRCS
+                       SETUP_TEMPLATE setup.py.in )
+    # Create symlink to make python's eggs mechanics happy:
+    add_custom_target( py_link_target ALL
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/py ${CMAKE_BINARY_DIR}/StromaV)
+    
 
-# Note: workarounds for recent C++ compiler warnings
-set_source_files_properties( ${WRAPPER_SRCS}
-        PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign" )
+    # Note: workarounds for recent C++ compiler warnings
+    set_source_files_properties( ${WRAPPER_SRCS}
+            PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign" )
 
-# TODO
-if( RPC_PROTOCOLS )
-    protobuf_generate_python( PY_MSG_MODULES ../event.proto )
-    add_custom_target( sVPyEvent ALL DEPENDS ${PY_MSG_MODULES} )
-    #install( FILES ${PY_MSG_MODULES} DESTINATION ${PY_MODULES_INSTALL_DIR}/${PYPKGNM} )
-endif( RPC_PROTOCOLS )
+    if( RPC_PROTOCOLS )
+        protobuf_generate_python( PY_MSG_MODULES ../event.proto )
+        add_custom_target( sVPyEvent ALL DEPENDS ${PY_MSG_MODULES} )
+        #install( FILES ${PY_MSG_MODULES} DESTINATION ${PY_MODULES_INSTALL_DIR}/${PYPKGNM} )
+    endif( RPC_PROTOCOLS )
 
-set( StromaV_SWIG_IFACES_DIR ${SWIG_IFACES_DIR} PARENT_SCOPE )
+    set( StromaV_SWIG_IFACES_DIR ${SWIG_IFACES_DIR} PARENT_SCOPE )
+else( StromaV_PYMODULES )
+    message( STATUS "No py-bindings to be generated" )
+endif( StromaV_PYMODULES )
 

@@ -28,12 +28,12 @@ setup(
     version         = "@StromaV_VERSION@",
     author          = "Renat R. Dusaev",
     author_email    = "crank@qcrypt.org",
-    description     = ( "Software toolkit for integrating various tools in  "
+    description     = ( "Software toolkit for integrating various tools in "
                         "frame of experimental high-energy phyiscs."),
     license         = "MIT",
     keywords        = "HEP physics science",
     url             = "https://github.com/CrankOne/StromaV",
-    package_dir     = {'': 'py'},
+    packages        = ["StromaV"],
     #packages        = ['extGDML', 'tests'],  # TODO
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
