@@ -30,7 +30,7 @@ set( StromaV_VERSION_MINOR 1  )
 set( StromaV_VERSION_PATCH dev )
 set( StromaV_VERSION ${StromaV_VERSION_MAJOR}.${StromaV_VERSION_MINOR}.${StromaV_VERSION_PATCH} )
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+list( APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     "/etc/root/cmake" )  # <- This one is a new ROOT convention.
 
 #
@@ -41,7 +41,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 # logic: logging, config files, exception handling, etc. We need to find Goo
 # right here because of a subset of its useful CMake-modules.
 find_package( Goo REQUIRED )
-
+find_package( extGDML REQUIRED )
 # This will define a dependant-options check function upon build:
 include(${Goo_CMAKE_MODULES_DIR}/OptionDepend.cmake)
 # This will check for out-of-source build:
@@ -251,13 +251,13 @@ include_directories( SYSTEM ${dirs} )
 include_directories( "inc"
                      "rootPlugins"
                      SYSTEM ${Goo_INCLUDE_DIRS}
+                     ${extGDML_INCLUDE_DIRS}/..
                      ${GSL_INCLUDE_DIRS}
                      ${Boost_INCLUDE_DIRS}
                      ${ROOT_INCLUDE_DIRS}
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
-
 if( genfit_INCLUDE_DIRS )
     include_directories( ${genfit_INCLUDE_DIRS} )
 endif( genfit_INCLUDE_DIRS )
