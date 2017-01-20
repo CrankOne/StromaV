@@ -268,7 +268,7 @@ endif( genfit_INCLUDE_DIRS )
 #################
 
 link_directories( ${Goo_LIBRARY_DIR} )
-
+link_directories( ${extGDML_LIBRARY_DIR} )
 if( genfit_LIBRARY_DIR )
     link_directories( ${genfit_LIBRARY_DIR} )
 endif( genfit_LIBRARY_DIR )
@@ -440,6 +440,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
 target_link_libraries( ${StromaV_LIB} ${Goo_LIBRARIES}   )
 target_link_libraries( ${StromaV_LIB} ${Boost_LIBRARIES} )
 target_link_libraries( ${StromaV_LIB} ${ROOT_LIBRARIES}  )
+target_link_libraries( ${StromaV_LIB} ${extGDML_LIBRARIES} )
 if( GEANT4_MC_MODEL )
     target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )

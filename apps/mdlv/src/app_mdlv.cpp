@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -32,7 +33,7 @@
 //# include "g4_DC.hh"
 # include "dummy_PG.hh"
 # include "dummy_PhL.hh"
-# include "g4extras/auxInfoProcessor.hpp"
+# include "ext.gdml/auxInfoProcessor.hpp"
 
 # ifndef G4_MDL_GUI
 # error "Need G4_MDL_GUI to be enabled as mdlv is pure GUI-oriented util."

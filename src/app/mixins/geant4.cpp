@@ -47,6 +47,8 @@
 # include <ext.gdml/SensDetDict.hpp>
 # include <ext.gdml/auxInfoProcessor.hpp>
 # include <ext.gdml/DetectorConstruction.hpp>
+# include <ext.gdml/extras.hpp>
+# include <ext.gdml/gdml_aux_visStyles.hpp>
 
 # include <TFile.h>
 
@@ -261,7 +263,8 @@ Geant4Application::_initialize_geometry() {
     sV_log2("Setting up GEANT4 run manager on default volume \"%s\".\n",
                 _setupName.c_str());
     G4RunManager::GetRunManager()->SetUserInitialization(
-                new sV::DetectorConstruction( gdml_parser_ptr()->GetWorldVolume( _setupName ) ));
+                new extGDML::DetectorConstruction
+                        (gdml_parser_ptr()->GetWorldVolume(_setupName)) );
 }
 
 void
@@ -353,8 +356,8 @@ Geant4Application::_run_session( bool isBatch, const std::string & macroFilePath
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
     sV_log2("Processing aux info.\n");
-    sV::GDMLAuxInfoProcessor::self().apply( *gdml_parser_ptr() );
-    sV::extras::apply_styles_selector( _setupName );
+    extGDML::GDMLAuxInfoProcessor::self().apply( *gdml_parser_ptr() );
+    extGDML::extras::apply_styles_selector( _setupName );
 
     if( isBatch ) {
         rc = _batch_run( macroFilePath );
