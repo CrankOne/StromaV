@@ -49,7 +49,7 @@ public:
     typedef ::sV::events::DetectorSummary Hit;
 protected:
     const Hit * _lastHitPtr;
-    virtual bool _V_treat_new_hit( const Hit & hit ) = 0;
+    virtual bool _V_treat_new_hit( const Hit & ) = 0;
     virtual bool _V_reset_hits() = 0;
 public:
     ReceptiveDetector( const std::string & fn,
@@ -71,7 +71,7 @@ class CachedPayloadReceptiveDetector : public ReceptiveDetector {
 protected:
     ConcreteHitT _reentrantHit;
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit ) override {
+    virtual bool _V_treat_new_hit( const Hit & hit_ ) override {
         _TODO_  // TODO
     }
 public:
@@ -86,7 +86,7 @@ template<typename ConcreteHitT>
 class ReceptiveDetectorGroup : public virtual \
                         CachedPayloadReceptiveDetector<::sV::events::DetectorSummaryGroup> {
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit ) final {
+    virtual bool _V_treat_new_hit( const Hit & hit_ ) final {
         _TODO_  // TODO
     }
 public:
