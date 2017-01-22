@@ -101,7 +101,7 @@ message DeflatedBucketMetaInfo {
 
 message DeflatedBucket {
     DeflatedBucketMetaInfo  metainfo = 1;
-    google.protobuf.Any     deflatedContent = 2;
+    bytes                   deflatedContent = 2;
 }
 
 // Misc
