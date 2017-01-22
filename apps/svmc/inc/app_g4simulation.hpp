@@ -21,36 +21,46 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+# ifndef H_APP_G4SIMULATION_H
+# define H_APP_G4SIMULATION_H
+
+# include "config.h"
 
 # include "app/mixins/geant4.hpp"
+# include "app/mixins/root.hpp"
 
-namespace mdlv {
+# include <fstream>
+# ifdef RPC_PROTOCOLS
+# include "app/mixins/protobuf.hpp"
+# endif  // RPC_PROTOCOL
 
-class Application : public sV::mixins::Geant4Application {
+namespace svmc {
+
+class Application : public sV::mixins::Geant4Application,
+                    public sV::mixins::RootApplication
+                    # ifdef RPC_PROTOCOLS
+                    , public sV::mixins::PBEventApp
+                    # endif  // RPC_PROTOCOLS
+                    {
 public:
     typedef sV::mixins::Geant4Application Parent;
     typedef Parent::Config Config;
+    typedef sV::mixins::Geant4Application G4AppMixin;
 protected:
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
     virtual std::vector<sV::po::options_description> _V_get_options() const override;
     virtual void _V_configure_concrete_app() override;
     virtual int _V_run() override;
 
-    virtual sV::po::options_description _geant4_options() const override;
-
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
+    virtual void _initialize_tracking_action() override;
+    virtual void _initialize_event_action() override;
+    std::fstream _fileRef;
 public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
-
-    void dump_build_info( std::ostream & ) const;
+    Application( Config * cfg );
+    virtual ~Application();
 };
 
-}  // namespace ecal
+}  // namespace svmc
 
-# endif  // H_APP_MDLV_H
-
+# endif  // H_APP_G4SIMULATION_H
 

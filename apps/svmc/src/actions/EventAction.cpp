@@ -20,37 +20,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+# include "actions/EventAction.hpp"
+# include "app/mixins/protobuf.hpp"
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+namespace svmc {
 
-# include "app/mixins/geant4.hpp"
+EventAction::EventAction( std::ostream & fileRef) :
+    PlainStreamBucketDispatcher(
+        fileRef,
+        (uint8_t)goo::app<sV::AbstractApplication>().cfg_option<int>
+        ("b-dispatcher.maxBucketSize.KB"),
+        (uint8_t)goo::app<sV::AbstractApplication>().cfg_option<int>
+        ("b-dispatcher.maxBucketSize.events")
+        ) {
 
-namespace mdlv {
+    //_fileRef.open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
+    //    ("b-dispatcher.outFile"), std::ios::out | std::ios::binary |
+    //                              std::ios::app );
+    //_streamRef(_fileRef);
+}
 
-class Application : public sV::mixins::Geant4Application {
-public:
-    typedef sV::mixins::Geant4Application Parent;
-    typedef Parent::Config Config;
-protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
-    virtual int _V_run() override;
+EventAction::~EventAction() {
+    //_fileRef.close();
+}
 
-    virtual sV::po::options_description _geant4_options() const override;
+void EventAction::EventAction::BeginOfEventAction(const G4Event* ) {
+    // sV::mixins::PBEventApp::c_event().mutable_simulated();
+}
 
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
-public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
+//  manage Buckets with UEvents
+void EventAction::EndOfEventAction(const G4Event* ) {
+    # ifdef RPC_PROTOCOLS
+    push_event(sV::mixins::PBEventApp::c_event());
+    sV::mixins::PBEventApp::c_event().mutable_simulated()->Clear();
+    # endif
+}
 
-    void dump_build_info( std::ostream & ) const;
-};
-
-}  // namespace ecal
-
-# endif  // H_APP_MDLV_H
-
+}  // namespace svmc
 

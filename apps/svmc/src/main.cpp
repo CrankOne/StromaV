@@ -21,36 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+# include "app_g4simulation.hpp"
+# include "app/implement_app.hpp"
 
-# include "app/mixins/geant4.hpp"
-
-namespace mdlv {
-
-class Application : public sV::mixins::Geant4Application {
-public:
-    typedef sV::mixins::Geant4Application Parent;
-    typedef Parent::Config Config;
-protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
-    virtual int _V_run() override;
-
-    virtual sV::po::options_description _geant4_options() const override;
-
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
-public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
-
-    void dump_build_info( std::ostream & ) const;
-};
-
-}  // namespace ecal
-
-# endif  // H_APP_MDLV_H
+StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( svmc::Application )
 
 

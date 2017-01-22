@@ -20,37 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+# ifndef H_SV_EVENT_ACTION_H
+# define H_SV_EVENT_ACTION_H
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+# include <Geant4/G4UserEventAction.hh>
 
-# include "app/mixins/geant4.hpp"
+# include "config.h"
 
-namespace mdlv {
+# ifdef RPC_PROTOCOLS
+# include "buckets/PlainStreamBucketDispatcher.hpp"
+# endif  // RPC_PROTOCOL
+# include <ostream>
 
-class Application : public sV::mixins::Geant4Application {
-public:
-    typedef sV::mixins::Geant4Application Parent;
-    typedef Parent::Config Config;
-protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
-    virtual int _V_run() override;
+namespace svmc {
 
-    virtual sV::po::options_description _geant4_options() const override;
+class EventAction : public G4UserEventAction
+    # ifdef RPC_PROTOCOLS
+    , public sV::PlainStreamBucketDispatcher
+    # endif  // RPC_PROTOCOL
+    {
+    public:
+        EventAction( std::ostream & fileRef);
+        virtual ~EventAction();
 
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
-public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
+        virtual void BeginOfEventAction(const G4Event* ) final;
+        virtual void EndOfEventAction(const G4Event* ) final;
+    protected:
+        // std::ostream & _streamRef;
+        // std::fstream & _fileRef;
 
-    void dump_build_info( std::ostream & ) const;
-};
+};  // class EventAction
 
-}  // namespace ecal
-
-# endif  // H_APP_MDLV_H
-
+}  //  namespace svmc
+# endif  //  H_SV_EVENT_ACTION_H
 

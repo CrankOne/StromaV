@@ -1,8 +1,7 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
- *
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -21,36 +20,57 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+// # include "config.h"
+# include <G4MagneticField.hh>
+# include <G4ThreeVector.hh>
+# include <G4SystemOfUnits.hh>
+# include <G4Field.hh>
 
-# include "app/mixins/geant4.hpp"
+# include "g4extras/FieldDict.hpp"
 
-namespace mdlv {
+namespace p348 {
 
-class Application : public sV::mixins::Geant4Application {
+class MagneticField : public G4MagneticField {
+
 public:
-    typedef sV::mixins::Geant4Application Parent;
-    typedef Parent::Config Config;
-protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
-    virtual int _V_run() override;
+    MagneticField();
+    MagneticField(const G4ThreeVector & fieldValue);
 
-    virtual sV::po::options_description _geant4_options() const override;
+    virtual ~MagneticField();
 
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
-public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
+    virtual void GetFieldValue(const G4double [4], double* bField) const override;
 
-    void dump_build_info( std::ostream & ) const;
-};
+    G4ThreeVector field_value() const { return _fieldValue; }
+    void          field_value(const G4ThreeVector & fieldValue)
+                    { _fieldValue = fieldValue; }
 
-}  // namespace ecal
+protected :
+    G4ThreeVector _fieldValue;
+};       // class MagneticField
 
-# endif  // H_APP_MDLV_H
+// IMPLEMENTATION
+
+MagneticField::MagneticField()
+    : G4MagneticField(), _fieldValue(0., 0., 0.)
+{}
+
+MagneticField::MagneticField(const G4ThreeVector & fieldValue)
+    : G4MagneticField(), _fieldValue(fieldValue)
+{}
+
+
+MagneticField::~MagneticField()
+{}
+
+void MagneticField::GetFieldValue(const G4double [4], double* bField) const
+{
+    bField[0] = _fieldValue[0]*tesla;
+    bField[1] = _fieldValue[1]*tesla;
+    bField[2] = _fieldValue[2]*tesla;
+}
+
+P348_G4_REGISTER_FIELD ( MagneticField )
+
+}  // namespace p348
 
 

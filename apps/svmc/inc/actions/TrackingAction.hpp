@@ -21,36 +21,49 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_APP_MDLV_H
-# define H_APP_MDLV_H
+# ifndef H_SV_G4_TRACKING_ACTION_H
+# define H_SV_G4_TRACKING_ACTION_H
 
-# include "app/mixins/geant4.hpp"
+//  # include "g4extras/DetectorConstruction.hpp"
 
-namespace mdlv {
+# include <Geant4/G4UserTrackingAction.hh>
+# include <Geant4/G4Track.hh>
+# include <G4TrackStatus.hh>
+# include <root/TTree.h>
 
-class Application : public sV::mixins::Geant4Application {
-public:
-    typedef sV::mixins::Geant4Application Parent;
-    typedef Parent::Config Config;
-protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
-    virtual int _V_run() override;
+namespace svmc {
 
-    virtual sV::po::options_description _geant4_options() const override;
+class TrackingAction :
+    public G4UserTrackingAction {
+    public:
+        TrackingAction ();
+        ~TrackingAction ();
 
-    virtual void _initialize_physics() override;
-    virtual void _initialize_primary_generator_action() override {}
-public:
-    Application( Config * cfg ) : sV::AbstractApplication(cfg), Parent( cfg ) {}
-    virtual ~Application() {}
+        virtual void  PreUserTrackingAction(const G4Track*) override {}
+        virtual void PostUserTrackingAction(const G4Track*) override;
 
-    void dump_build_info( std::ostream & ) const;
-};
+    protected:
+    private:
+        /*  This tree store information about particle
+         *  parameters in Aprime generation reaction
+         */
+        TTree * aprimeInfo = new TTree("aprimeInfo", "Info about A' production reaction");
 
-}  // namespace ecal
+        struct vertex {
+            double posX,
+                   posY,
+                   posZ;
+            double momentumX,
+                   momentumY,
+                   momentumZ;
+            double totalEnergy;
+            double kineticEnergy;
+            //  G4TrackStatus trackStatus;
+        }aprimeVertex;
+};  // class UserTrackingAction
 
-# endif  // H_APP_MDLV_H
 
+}  // namespace svmc
+
+# endif  // H_SV_G4_TRACKING_ACTION_H
 
