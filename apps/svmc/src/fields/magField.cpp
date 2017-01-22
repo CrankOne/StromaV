@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -26,9 +27,9 @@
 # include <G4SystemOfUnits.hh>
 # include <G4Field.hh>
 
-# include "g4extras/FieldDict.hpp"
+# include "ext.gdml/FieldDict.hpp"
 
-namespace p348 {
+namespace sV {
 
 class MagneticField : public G4MagneticField {
 
@@ -69,8 +70,8 @@ void MagneticField::GetFieldValue(const G4double [4], double* bField) const
     bField[2] = _fieldValue[2]*tesla;
 }
 
-P348_G4_REGISTER_FIELD ( MagneticField )
+extGDML_REGISTER_FIELD ( MagneticField )
 
-}  // namespace p348
+}  // namespace sV
 
 

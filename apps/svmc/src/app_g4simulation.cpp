@@ -37,7 +37,7 @@
 # include "actions/EventAction.hpp"
 # include "g4extras/PhysList.hpp"
 # include "g4extras/PGA.hpp"
-# include "g4extras/SensDetDict.hpp"
+# include "ext.gdml/SensDetDict.hpp"
 
 # ifdef G4_MDL_VIS
 # include <G4VisManager.hh>
@@ -49,7 +49,7 @@
 #   include <G4UIExecutive.hh>
 # endif
 
-namespace g4sim {
+namespace svmc {
 
 Application::Application( Config * cfg) :
                                 AbstractApplication(cfg),
@@ -70,32 +70,32 @@ Application::_V_construct_config_object( int argc, char * const argv[] ) const {
     return Parent::_V_construct_config_object(argc, argv);
 }
 
-std::vector<p348::po::options_description>
+std::vector<sV::po::options_description>
 Application::_V_get_options() const /*{{{*/ {
     auto res = Parent::_V_get_options();
     res.push_back( _geant4_options() );
     res.push_back( _geant4_gdml_options() );
-    res.push_back( p348::iBucketDispatcher::_dispatcher_options());  // BucketDispatcher options
+    res.push_back( sV::iBucketDispatcher::_dispatcher_options());  // BucketDispatcher options
     {
-        p348::po::options_description g4SDCfg;
+        sV::po::options_description g4SDCfg;
         g4SDCfg.add_options()
             ("g4-SD-ECAL_cell.timeVSedepHisto",
-                p348::po::value<bool>()->default_value(true),
+                sV::po::value<bool>()->default_value(true),
                 "XXX")
             ("g4-SD-ECAL_cell.timeVSedepMaxTime-ns",
-                p348::po::value<double>()->default_value(5),
+                sV::po::value<double>()->default_value(5),
                 "XXX")
             ("g4-SD-ECAL_cell.timeVSedep-timeNBins",
-                p348::po::value<int>()->default_value(200),
+                sV::po::value<int>()->default_value(200),
                 "XXX")
             ("g4-SD-ECAL_cell.timeVSedepMaxEDep-MeV",
-                p348::po::value<double>()->default_value(2),
+                sV::po::value<double>()->default_value(2),
                 "XXX")
             ("g4-SD-ECAL_cell.timeVSedep-edepNBins",
-                p348::po::value<int>()->default_value(200),
+                sV::po::value<int>()->default_value(200),
                 "XXX")
             ("g4-SD-ECAL_cell.scorerPool-NCells",
-                p348::po::value<int32_t>()->default_value(10000),
+                sV::po::value<int32_t>()->default_value(10000),
                 "Scorer pool size (number of values stored per event) for \"ECAL_cell\" detector.")
             ;
         res.push_back( g4SDCfg );
@@ -106,20 +106,20 @@ Application::_V_get_options() const /*{{{*/ {
 void
 Application::_initialize_tracking_action() {
     G4RunManager::GetRunManager()->SetUserAction(new TrackingAction());
-    p348g4_log2("User TrackingAction has been initialized\n");
+    sV_log2("User TrackingAction has been initialized\n");
 }
 
 void
 Application::_initialize_event_action() {
-    _fileRef.open(goo::app<p348::AbstractApplication>().cfg_option<std::string>
+    _fileRef.open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
         ("b-dispatcher.outFile"), std::ios::out | std::ios::binary |
                                   std::ios::app );
     G4RunManager::GetRunManager()->SetUserAction(new EventAction(_fileRef));
-    p348g4_log2("User EventAction has been initialized\n");
+    sV_log2("User EventAction has been initialized\n");
 }
 void
 Application::_V_configure_concrete_app() /*{{{*/ {
-    const p348::po::variables_map & vm = goo::app<p348::AbstractApplication>().co();
+    const sV::po::variables_map & vm = goo::app<sV::AbstractApplication>().co();
     if( do_immediate_exit() ) return;
     _treat_geant4_options(      goo::app<Application>().co() );
     if( do_immediate_exit() ) return;
@@ -128,51 +128,51 @@ Application::_V_configure_concrete_app() /*{{{*/ {
 
     if( vm.count("g4.list-physics") ) {
         // Physics list:
-        auto phll = p348::available_physics_lists()
+        auto phll = sV::available_physics_lists()
                 # ifdef GEANT4_DYNAMIC_PHYSICS
-                , mdls = p348::ModularPhysicsList::available_physics_modules()
+                , mdls = sV::ModularPhysicsList::available_physics_modules()
                 # endif  // GEANT4_DYNAMIC_PHYSICS
              ;
         if( phll.empty() ) {
-            p348g4_loge( "No physics list available at current build!\n" );
+            sV_loge( "No physics list available at current build!\n" );
         }
         int i = 1;
-        p348g4_log1( ESC_CLRBOLD "Pre-formed physics list:" ESC_CLRCLEAR "\n" );
+        sV_log1( ESC_CLRBOLD "Pre-formed physics list:" ESC_CLRCLEAR "\n" );
         for( auto it = phll.cbegin(); phll.cend() != it; ++it, ++i ) {
-            p348g4_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
         }
         i = 1;
-        p348g4_log1( "\n" ESC_CLRBOLD "Physics modules:" ESC_CLRCLEAR "\n" );
+        sV_log1( "\n" ESC_CLRBOLD "Physics modules:" ESC_CLRCLEAR "\n" );
         # ifdef GEANT4_DYNAMIC_PHYSICS
         for( auto it = mdls.cbegin(); mdls.cend() != it; ++it, ++i ) {
-            p348g4_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
         }
         # else  // GEANT4_DYNAMIC_PHYSICS
-        p348g4_loge( "No physics modules are available at current build (since -DGEANT4_DYNAMIC_PHYSICS=OFF)!\n" );
+        sV_loge( "No physics modules are available at current build (since -DGEANT4_DYNAMIC_PHYSICS=OFF)!\n" );
         # endif // GEANT4_DYNAMIC_PHYSICS
         // PGAs
-        auto pgal = p348::user_primary_generator_actions_list();
+        auto pgal = sV::user_primary_generator_actions_list();
         if( pgal.empty() ) {
-            p348g4_loge( "No primary generators available at current build!\n" );
+            sV_loge( "No primary generators available at current build!\n" );
         }
         i = 1;
-        p348g4_log1( "\n" ESC_CLRBOLD "Primary generators:" ESC_CLRCLEAR "\n" );
+        sV_log1( "\n" ESC_CLRBOLD "Primary generators:" ESC_CLRCLEAR "\n" );
         for( auto it = pgal.cbegin(); pgal.cend() != it; ++it, ++i ) {
-            p348g4_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
         }
-        p348g4_log1( "\n" );
+        sV_log1( "\n" );
         _immediateExit = true;
         return;
     }
 
     if ( vm.count("g4.sensitiveDetectorsList") ) {
         std::cout << "List of available sensitive detectors:" << std::endl;
-        p348::SDDictionary::self().print_SD_List();
+        sV::SDDictionary::self().print_SD_List();
         std::cout << "* Basically, value of sensDet should consist of two parts separated with column ':' sign."
         << std::endl << "* E.g.:" << std::endl
-        << "* ECAL_cell:/p348det/ecal" << std::endl
+        << "* ECAL_cell:/sVdet/ecal" << std::endl
         << "* Will refer to SensitiveDetector subclass named 'ECAL_cell' and create an instance"
-        << std::endl << "* named '/p348det/ecal'." << std::endl;                    // TODO
+        << std::endl << "* named '/sVdet/ecal'." << std::endl;                    // TODO
         _immediateExit = true;
         return;
     }
@@ -188,5 +188,5 @@ Application::_V_run() /*{{{*/ {
     return rc;
 }  /*}}}*/
 
-} // namespace g4sim
+} // namespace svmc
 

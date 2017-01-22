@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -20,30 +21,30 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_P348_G4_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
-# define H_P348_G4_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
+# ifndef H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
+# define H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
 
-# include "p348g4_config.h"
+# include "config.h"
 # include "nsp_scorer.tcc"
 
 # include "app/app.h"
 # include <Geant4/G4VSensitiveDetector.hh>
 # include <Geant4/G4LogicalVolumeStore.hh>
-# include "g4extras/SensDetDict.hpp"
+# include "ext.gdml/SensDetDict.hpp"
 //# include "g4_DC.hh"
 # include "app_g4simulation.hpp"
-# include "p348g4_detector_ids.h"
+# include "detector_ids.h"
 
 # include <TH2F.h>
 # include <TFile.h>
 # include <TTree.h>
 
 # ifdef RPC_PROTOCOLS
-# include "p348g4_uevent.hpp"
+# include "uevent.hpp"
 # include "app/mixins/protobuf.hpp"
 # endif  // RPC_PROTOCOLS
 
-/**@file p348_ecal_SD.cpp
+/**@file ecal_SD.cpp
  * @brief A generic-purpose ECAL information writer.
  *
  * Collects an entire energy deposition in ECAL during  a run. As a direct
@@ -51,7 +52,7 @@
  * by themselves.
  */
 
-namespace p348 {
+namespace sV {
 
 //
 // Sensitive detector descendant
@@ -112,7 +113,7 @@ private:
                     ;
 
     # ifdef RPC_PROTOCOLS
-    p348::events::SimulatedEvent* _lastEvent;
+    sV::events::SimulatedEvent* _lastEvent;
     # endif  // RPC_PROTOCOLS
 
     void _allocate_data_tree_for_segmentated_version();
@@ -151,28 +152,28 @@ ECAL_cell::ECAL_cell( const std::string & name ) :
     if( "ECAL_segm" == detID ) {
         _allocate_data_tree_for_segmentated_version();
         _features |= segmentated;
-        p348g4_log3( ESC_CLRCYAN "ECAL_cell" ESC_CLRCLEAR
+        sV_log3( ESC_CLRCYAN "ECAL_cell" ESC_CLRCLEAR
                      " %p:" ESC_CLRGREEN "%s" ESC_CLRCLEAR " sensDet constructed in segmentated layer variant.\n", this, name.c_str() );
     } else if( "ECAL_nosegm" == detID ) {
         _TODO_  // TODO
-        p348g4_log3( ESC_CLRCYAN "ECAL_cell" ESC_CLRCLEAR
+        sV_log3( ESC_CLRCYAN "ECAL_cell" ESC_CLRCLEAR
                      " %p:" ESC_CLRGREEN "%s" ESC_CLRCLEAR " constructed in monolithic layer variant.\n", this, name.c_str() );
     } else {
         emraise( malformedArguments,
             "Please, specify \"ECAL_segm\" or \"ECAL_nosegm\" sensDet for ECAL's cell." );
     }
     # ifdef RPC_PROTOCOLS
-    _lastEvent = p348::mixins::PBEventApp::c_event().mutable_simulated();
+    _lastEvent = sV::mixins::PBEventApp::c_event().mutable_simulated();
     # endif
 }
 
 ECAL_cell::PMTStatistics *
 ECAL_cell::_new_pmt_stats( uint32_t detNo, uint32_t layerXNo, uint32_t cellNo) {
     auto res = new PMTStatistics;
-    uint32_t poolNNodes = goo::app<p348::AbstractApplication>().cfg_option<int32_t>("g4-SD-ECAL_cell.scorerPool-NCells");
+    uint32_t poolNNodes = goo::app<sV::AbstractApplication>().cfg_option<int32_t>("g4-SD-ECAL_cell.scorerPool-NCells");
     res->_response = new Scorer( poolNNodes );
     res->_edep = new Scorer( poolNNodes );
-    if( goo::app<p348::AbstractApplication>().cfg_option<bool>("g4-SD-ECAL_cell.timeVSedepHisto")) {
+    if( goo::app<sV::AbstractApplication>().cfg_option<bool>("g4-SD-ECAL_cell.timeVSedepHisto")) {
         char nameBF[64], labelBF[128];
         snprintf( nameBF, sizeof(nameBF), "eVSt:%x%x%x;singleEvent",
                     detNo, layerXNo, cellNo );
@@ -180,10 +181,10 @@ ECAL_cell::_new_pmt_stats( uint32_t detNo, uint32_t layerXNo, uint32_t cellNo) {
                     detNo, layerXNo, cellNo );
         //res->_edepVStime = new TH2F(
         //        nameBF, labelBF,
-        //        goo::app<p348::AbstractApplication>().cfg_option<int>("g4-SD-ECAL_cell.timeVSedep-edepNBins"),
-        //        0., goo::app<p348::AbstractApplication>().cfg_option<double>("g4-SD-ECAL_cell.timeVSedepMaxEDep-MeV"),
-        //        goo::app<p348::AbstractApplication>().cfg_option<int>("g4-SD-ECAL_cell.timeVSedep-timeNBins"),
-        //        0., goo::app<p348::AbstractApplication>().cfg_option<double>("g4-SD-ECAL_cell.timeVSedepMaxTime-ns")
+        //        goo::app<sV::AbstractApplication>().cfg_option<int>("g4-SD-ECAL_cell.timeVSedep-edepNBins"),
+        //        0., goo::app<sV::AbstractApplication>().cfg_option<double>("g4-SD-ECAL_cell.timeVSedepMaxEDep-MeV"),
+        //        goo::app<sV::AbstractApplication>().cfg_option<int>("g4-SD-ECAL_cell.timeVSedep-timeNBins"),
+        //        0., goo::app<sV::AbstractApplication>().cfg_option<double>("g4-SD-ECAL_cell.timeVSedepMaxTime-ns")
         //    );
     } else {
         //res->_edepVStime = nullptr;
@@ -209,7 +210,7 @@ ECAL_cell::Initialize(G4HCofThisEvent* /*HCE*/) {
                          "\"preshower\" and \"ECAL\" logical volumes defined on scene." );
             }
         }
-        p348g4_log2( "ECAL_cell %p initialized. ECAL volume: %p, preshower: %p.\n",
+        sV_log2( "ECAL_cell %p initialized. ECAL volume: %p, preshower: %p.\n",
                 this, _ecalLVPtr, _preshowerLVPtr );
         # if 0
         if( !gFile ) {
@@ -225,7 +226,7 @@ ECAL_cell::Initialize(G4HCofThisEvent* /*HCE*/) {
         _boundsSet = true;
     }
     //::g4sim::Application::c_event().Clear();  // TODO: clear it somewhere
-    // p348::events::SimulatedEvent
+    // sV::events::SimulatedEvent
 }
 
 G4bool
@@ -247,7 +248,7 @@ ECAL_cell::ProcessHits( G4Step * aStep,
         } else if( volptr == _preshowerLVPtr ) {
             dID.byFields.det_No = EnumScope::d_ECAL0;
         } else {
-            p348g4_logw( "Expected ECAL/preshower volume; got %s at %p instead on 4 replica number depth.\n",
+            sV_logw( "Expected ECAL/preshower volume; got %s at %p instead on 4 replica number depth.\n",
                          touchable->GetVolume(4)->GetName().c_str(), volptr );
         }
     }
@@ -269,7 +270,7 @@ ECAL_cell::ProcessHits( G4Step * aStep,
         if( !rp.second ) {
             emraise( badArchitect, "Stats insertion failed." );
         } else {
-            p348g4_log3( "Allocated stats for %u (%x/%x/%x) PMT.\n",
+            sV_log3( "Allocated stats for %u (%x/%x/%x) PMT.\n",
                         dID.wholenum,
                         (int) dID.byFields.det_No,
                         (int) dID.byFields.layerX_No,
@@ -322,7 +323,7 @@ ECAL_cell::EndOfEvent(G4HCofThisEvent *) {
                   << it->second->_response->sum() / it->second->_edep->sum()
                   << std::endl;
         # ifdef RPC_PROTOCOLS
-        p348::events::PMTStatistics* gpbPMTStatistics = _lastEvent->add_pmt_stats();
+        sV::events::PMTStatistics* gpbPMTStatistics = _lastEvent->add_pmt_stats();
         gpbPMTStatistics->set_resp( it->second->_response->sum() );
         gpbPMTStatistics->set_detector_id( compose_cell_identifier(
                     (DetectorMajor) DetectorID(it->first).byFields.det_No,
@@ -339,7 +340,7 @@ ECAL_cell::EndOfEvent(G4HCofThisEvent *) {
     //cStats._edepVStime->Write(); //
 
     fill_event();
-    p348g4_log3( "ECAL_cell hits processing invoked %lu times on event #%lu.\n", _nCalls, _nEvents );
+    sV_log3( "ECAL_cell hits processing invoked %lu times on event #%lu.\n", _nCalls, _nEvents );
     ++_nEvents;
     clear();
 }
@@ -372,7 +373,7 @@ ECAL_cell::_allocate_data_tree_for_segmentated_version() {
     //        _tree->Branch( "edep", _lastEvent.edep, "edep[72]/D" ) : nullptr;
     //_respBranch = _features & treeStoresResponse ?
     //        _tree->Branch( "resp", _lastEvent.resp, "resp[72]/D" ) : nullptr;
-    //p348g4_logw( "Branch addresses set.\n" );
+    //sV_logw( "Branch addresses set.\n" );
     // ...
 }
 
@@ -404,9 +405,9 @@ ECAL_cell::fill_event() {
 // REGISTER SENSITIVE DETECTOR
 //
 
-P348_G4_REGISTER_SD( ECAL_cell )
+extGDML_G4_REGISTER_SD( ECAL_cell )
 
-}  // namespace p348
+}  // namespace sV
 
-# endif  // H_P348_G4_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
+# endif  // H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
 

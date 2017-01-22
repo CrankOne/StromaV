@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -20,12 +21,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef p348_srdet_SD_h
-# define p348_srdet_SD_h
+# ifndef H_SVMC_SRDET_SD_H
+# define H_SVMC_SRDET_SD_H
 
-# include "p348g4_config.h"
+# include "config.h"
 # include "nsp_scorer.tcc"
-# include "g4extras/SensDetDict.hpp"
+# include "ext.gdml/SensDetDict.hpp"
 
 // # pragma GCC diagnostic push
 // # pragma GCC diagnostic ignored "-Wdeprecated-register"  // "register" is depr-d
@@ -39,12 +40,12 @@
 
 # if 0
 # ifdef RPC_PROTOCOLS
-# include "p348g4_uevent.hpp"
+# include "uevent.hpp"
 # endif  // RPC_PROTOCOLS
 # endif
 
 
-namespace p348 {
+namespace sV {
 
 class test01_SD : public G4VSensitiveDetector {
 
@@ -166,8 +167,8 @@ void test01_SD::clear() {
 }
 
 // Register SD
-P348_G4_REGISTER_SD( test01_SD )
+extGDML_G4_REGISTER_SD( test01_SD )
 
-}        // namespace p348
-# endif  // p348_srdet_SD_h
+}        // namespace sV
+# endif  // sV_srdet_SD_h
 
