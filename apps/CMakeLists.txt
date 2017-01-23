@@ -31,10 +31,6 @@ push_option( build_mdlv
             "Build TGDML browsing library and executable."
             OFF )
 #\option
-push_option( build_svmc
-            "Build Monte-Carlo simulation library and executable."
-            OFF )
-#\option
 push_option( build_unit_tests
             "Build unit tests for StromaV library."
             ON )
@@ -53,10 +49,6 @@ endif( build_pipeline )
 if( build_mdlv )
     add_subdirectory( mdlv )
 endif( build_mdlv )
-
-if( build_svmc )
-    add_subdirectory( svmc )
-endif( build_svmc )
 
 if( build_unit_tests )
     add_subdirectory( ut )

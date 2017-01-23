@@ -83,8 +83,14 @@ protected:
 
     virtual void _initialize_geometry();
     virtual void _initialize_physics();
+    // Doubtfull. Follow the Geant4 manual there are three manatory user
+    // classes:
+    // 1) G4VUserDetectorConstruction -> _initialize_geometry
+    // 2) G4VUserPhysicsList          -> _initialize_physics
+    // 3) G4VUserActionInitialization which should include atleast
+    // G4VUserPrimaryGeneratorAction
     virtual void _initialize_primary_generator_action();
-    
+
     /// Note: do not be misleaded by name --- may run terminal-interactive mode
     /// also.
     virtual int _gui_run( const std::string & macroFilePath );  // can be empty
