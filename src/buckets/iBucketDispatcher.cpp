@@ -57,16 +57,16 @@ void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
     events::Event* event = _currentBucket.add_events();
     event->CopyFrom(reentrantEvent);
 
-    //std::cout << std::dec << "BucketCached size: " << currentBucket.ByteSize();
-    //std::cout << " | events size: " << currentBucket.events_size() << std::endl;
+    std::cout << std::dec << "BucketCached size: " << n_KB();
+    std::cout << " | events size: " << _currentBucket.events_size() << std::endl;
     if ( is_bucket_full() ) {
-        //std::cout << "---Drop bucket---" << std::endl;
-        //std::cout << " BucketCached size: " << currentBucket.GetCachedSize();
-        //std::cout << " max size KB: " << 1024*maxBucketSizeKB << std::endl;
-        //std::cout << " events size: " << currentBucket.events_size();
-        //std::cout << " max event size: "<< maxBucketSizeEvents << std::endl;
+        std::cout << "---Drop bucket---" << std::endl;
+        std::cout << " BucketCached size: " << n_KB();
+        std::cout << " max size KB: " << _nMaxKB << std::endl;
+        std::cout << " events size: " << _currentBucket.events_size();
+        std::cout << " max event size: "<< _nMaxEvents << std::endl;
         _V_drop_bucket();
-        // currentBucket.Clear();  // move this call to _V_drop_bucket() ?
+        // _currentBucket.Clear();  // move this call to _V_drop_bucket() ?
     }
 }
 
@@ -74,7 +74,7 @@ po::options_description iBucketDispatcher::_dispatcher_options() {
     po::options_description dispatcherCfg("BucketDispatcher options");
     dispatcherCfg.add_options()
         ("b-dispatcher.maxBucketSize.KB",
-         po::value<int>()->default_value(0),
+         po::value<int>()->default_value(500),
          "Maximum size (in kbytes) of the bucket storing without \
          serialization")
         ("b-dispatcher.maxBucketSize.events",
@@ -85,7 +85,7 @@ po::options_description iBucketDispatcher::_dispatcher_options() {
          po::value<std::string>()->default_value("bz2"),
          "Compression algorithm for bucket compression")
         ("b-dispatcher.outFile",
-         po::value<std::string>()->default_value("/tmp/testout"),
+         po::value<std::string>()->default_value("/tmp/testout.buckets"),
          "Output file for serialized data")
         ;
     return dispatcherCfg;

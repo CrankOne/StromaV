@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_COMPR_BUCKET_DISPATCHER_H
 # define H_STROMA_V_COMPR_BUCKET_DISPATCHER_H
 
-# include "config.h"
+# include "../config.h"
 
 # ifdef RPC_PROTOCOLS
 

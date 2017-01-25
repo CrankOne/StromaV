@@ -20,29 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# ifndef H_STROMA_V_DUMMYCOMPRESSOR_H
-# define H_STROMA_V_DUMMYCOMPRESSOR_H
+# ifndef H_STROMA_V_IDECOMPRESSOR_H
+
 # include "../config.h"
-
 # ifdef RPC_PROTOCOLS
+# include <cstdlib>
+# include <stdint.h>
 
-# include "iCompressor.hpp"
 # include "event.pb.h"
 
 namespace sV {
 
-class DummyCompressor : public iCompressor {
+namespace events {
+    typedef DeflatedBucketMetaInfo_CompressionMethod CompressionMethod;
+}
+
+class iDecompressor {
     public:
-        DummyCompressor();
-        virtual ~DummyCompressor() {};
+        events::CompressionMethod compr_method() const {return _comprMethod;}
+        size_t decompress_series( uint8_t * uncomprBuf, size_t lenUncomprBuf,
+                                  uint8_t * comprBuf, size_t lenComprBuf )
+                                  const;
     protected:
-        virtual size_t _V_compress_series( uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const override;
+        virtual size_t _V_decompress_series( uint8_t *, size_t,
+                                             uint8_t *, size_t) const = 0;
+        iDecompressor( events::CompressionMethod comprMethod);
+        virtual ~iDecompressor();
     private:
-};  // class DummyCompressor
+        const events::CompressionMethod _comprMethod;
+};  // class iDecompressor
 
 }        // namespace sV
 # endif  // RPC_PROTOCOLS
-# endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
+# endif  // H_STROMA_V_IDECOMPRESSOR_H
 

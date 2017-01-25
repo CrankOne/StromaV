@@ -20,29 +20,31 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# ifndef H_STROMA_V_DUMMYCOMPRESSOR_H
-# define H_STROMA_V_DUMMYCOMPRESSOR_H
+# ifndef H_STROMA_V_DUMMYDECOMPRESSOR_H
+# define H_STROMA_V_DUMMYDECOMPRESSOR_H
+
 # include "../config.h"
 
 # ifdef RPC_PROTOCOLS
 
-# include "iCompressor.hpp"
+# include "iDecompressor.hpp"
 # include "event.pb.h"
 
 namespace sV {
 
-class DummyCompressor : public iCompressor {
+class DummyDecompressor : public iDecompressor {
     public:
-        DummyCompressor();
-        virtual ~DummyCompressor() {};
+        DummyDecompressor();
+        virtual ~DummyDecompressor() {};
     protected:
-        virtual size_t _V_compress_series( uint8_t * uncomprBuf,
+        virtual size_t _V_decompress_series( uint8_t * uncomprBuf,
             size_t lenUncomprBuf, uint8_t * comprBuf,
             size_t ) const override;
     private:
-};  // class DummyCompressor
+
+};  // class DummyDecompressor
 
 }        // namespace sV
 # endif  // RPC_PROTOCOLS
-# endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
+# endif  // H_STROMA_V_DUMMYDECOMPRESSOR_H
 

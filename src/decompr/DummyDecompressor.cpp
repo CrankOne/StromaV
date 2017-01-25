@@ -20,29 +20,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# ifndef H_STROMA_V_DUMMYCOMPRESSOR_H
-# define H_STROMA_V_DUMMYCOMPRESSOR_H
-# include "../config.h"
-
+# include "decompr/DummyDecompressor.hpp"
 # ifdef RPC_PROTOCOLS
-
-# include "iCompressor.hpp"
-# include "event.pb.h"
 
 namespace sV {
 
-class DummyCompressor : public iCompressor {
-    public:
-        DummyCompressor();
-        virtual ~DummyCompressor() {};
-    protected:
-        virtual size_t _V_compress_series( uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const override;
-    private:
-};  // class DummyCompressor
+DummyDecompressor::DummyDecompressor() :
+    iDecompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED)
+    {
+}
 
-}        // namespace sV
+size_t DummyDecompressor::_V_decompress_series(uint8_t * uncomprBuf,
+            size_t /*lenUncomprBuf*/, uint8_t * comprBuf,
+            size_t lenComprBuf) const {
+    memcpy( uncomprBuf, comprBuf, lenComprBuf);
+    // _V_decompress_series() should return real length of decompressed series
+    // (not lenUncomprBuf, because lenUncomprBuf is a allocated memory for
+    // decompressed data and real size of this decompressed data could be
+    // different).
+    // Here it returns lenComprBuf, cause in fact DummyDecompressor doesn't
+    // decompress series and in this case real length equal to lenComprBuf.
+    return lenComprBuf;
+}
+
+}  // namespace sV
 # endif  // RPC_PROTOCOLS
-# endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
 

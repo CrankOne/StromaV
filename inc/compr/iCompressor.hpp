@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_ICOMPRESSOR_H
 # define H_STROMA_V_ICOMPRESSOR_H
 
-# include "config.h"
+# include "../config.h"
 # ifdef RPC_PROTOCOLS
 # include <cstdlib>
 # include <stdint.h>
@@ -43,7 +43,7 @@ class iCompressor {
                                 const;
     protected :
         virtual size_t _V_compress_series( uint8_t *, size_t,
-                uint8_t *, size_t ) const = 0;
+                                           uint8_t *, size_t ) const = 0;
         iCompressor( events::CompressionMethod comprMethod );
         virtual ~iCompressor();
     private :

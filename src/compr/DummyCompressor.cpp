@@ -37,6 +37,12 @@ size_t DummyCompressor::_V_compress_series( uint8_t * uncomprBuf,
             size_t lenUncomprBuf, uint8_t * comprBuf,
             size_t ) const {
     memcpy( comprBuf, uncomprBuf, lenUncomprBuf);
+    // _V_compress_series() should return real length of compressed series
+    // (not lenComprBuf, because lenComprBuf is a allocated memory for
+    // compressed data and real size of this compressed data could be
+    // different).
+    // Here it returns lenUncomprBuf, cause in fact DummyCompressor doesn't
+    // compress series and in this case real length equal to lenUncomprBuf.
     return lenUncomprBuf;
 }
 
