@@ -47,14 +47,15 @@ class iBucketDispatcher {
         size_t n_max_KB() const {return _nMaxKB;};
         size_t n_max_Events() const {return _nMaxEvents;};
 
-        size_t n_KB() const {
-            return (size_t)(1024*_currentBucket.ByteSize());
+        size_t n_Bytes() const {
+            return (size_t)(_currentBucket.ByteSize());
         };
         size_t n_Events() const {
             return (size_t)(_currentBucket.events_size());
         };
 
         virtual bool is_bucket_full();
+        virtual bool is_bucket_empty();
         size_t drop_bucket();
         virtual void clear_bucket();
         static po::options_description _dispatcher_options();

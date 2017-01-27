@@ -45,7 +45,7 @@
 # include "g4extras/eHandler.hpp"
 
 # include <ext.gdml/SensDetDict.hpp>
-# include <ext.gdml/auxInfoProcessor.hpp>
+# include <ext.gdml/auxInfoSet.hpp>
 # include <ext.gdml/DetectorConstruction.hpp>
 # include <ext.gdml/extras.hpp>
 # include <ext.gdml/gdml_aux_visStyles.hpp>
@@ -194,6 +194,10 @@ Geant4Application::_geant4_gdml_options() const {
         ("gdml.enableXMLSchemaValidation",
             po::value<bool>()->default_value(true),
             "Enable GDML's XML schema validation (useful for initial speed-up and offline work).")
+        ("gdml.aux.tag",
+            po::value<std::vector< std::string> >(),
+            "GDML aux tags to be enabled for processing")
+
         ;
     return gdmlCfg;
 }
@@ -341,7 +345,7 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
     snprintf( bf, sizeof(bf),
               "/control/execute %s", macroFilePath.c_str() );
     sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
-    G4UImanager::GetUIpointer()->ApplyCommand( bf ); 
+    G4UImanager::GetUIpointer()->ApplyCommand( bf );
     sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
     return EXIT_SUCCESS;
 }
@@ -352,11 +356,13 @@ Geant4Application::_run_session( bool isBatch, const std::string & macroFilePath
 
     // Allocate Geant4 run manager.
     G4RunManager * runManager = new G4RunManager();
-
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
     sV_log2("Processing aux info.\n");
-    extGDML::GDMLAuxInfoProcessor::self().apply( *gdml_parser_ptr() );
+    extGDML::AuxInfoSet * auxInfoSet =
+        new extGDML::AuxInfoSet(cfg_option<std::vector<std::string> >
+                                    ("gdml.aux.tag"));
+    auxInfoSet->apply( *gdml_parser_ptr() );
     extGDML::extras::apply_styles_selector( _setupName );
 
     if( isBatch ) {

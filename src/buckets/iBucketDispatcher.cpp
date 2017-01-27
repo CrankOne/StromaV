@@ -38,6 +38,9 @@ iBucketDispatcher::iBucketDispatcher(
 };
 
 iBucketDispatcher::~iBucketDispatcher() {
+    if ( !is_bucket_empty() ) {
+        drop_bucket();
+    }
 }
 
 size_t iBucketDispatcher::drop_bucket() {
@@ -49,24 +52,36 @@ void iBucketDispatcher::clear_bucket() {
 }
 
 bool iBucketDispatcher::is_bucket_full() {
-    return ( (n_KB() >= _nMaxKB && _nMaxKB != 0) ||
+    return ( (n_Bytes() >= _nMaxKB*1024 && _nMaxKB != 0) ||
          (n_Events() >= _nMaxEvents && _nMaxEvents != 0) );
+}
+
+bool iBucketDispatcher::is_bucket_empty() {
+    return ( n_Bytes() ?  false : true );
 }
 
 void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
     events::Event* event = _currentBucket.add_events();
     event->CopyFrom(reentrantEvent);
 
-    std::cout << std::dec << "BucketCached size: " << n_KB();
+    //  XXX
+    # if 0
+    std::cout << std::dec << "Bucket size: " << n_Bytes();
     std::cout << " | events size: " << _currentBucket.events_size() << std::endl;
+    std::cout << " max size KB: " << _nMaxKB << std::endl;
+    # endif
     if ( is_bucket_full() ) {
+        //  XXX
+        # if 0
         std::cout << "---Drop bucket---" << std::endl;
-        std::cout << " BucketCached size: " << n_KB();
+        std::cout << " Bucket size: " << n_Bytes();
         std::cout << " max size KB: " << _nMaxKB << std::endl;
         std::cout << " events size: " << _currentBucket.events_size();
         std::cout << " max event size: "<< _nMaxEvents << std::endl;
+        # endif
         _V_drop_bucket();
         // _currentBucket.Clear();  // move this call to _V_drop_bucket() ?
+        //                          // is it already moved?
     }
 }
 

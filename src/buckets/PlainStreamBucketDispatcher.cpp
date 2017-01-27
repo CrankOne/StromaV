@@ -43,7 +43,7 @@ PlainStreamBucketDispatcher::~PlainStreamBucketDispatcher() {
 
 size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
 
-    size_t bucketSize = n_KB();
+    size_t bucketSize = n_Bytes()*1024;
     if ( _streamRef.good() ) {
         if (!_currentBucket.SerializeToOstream(&_streamRef)) {
             std::cerr << "Failed to serialize into stream." << std::endl;
