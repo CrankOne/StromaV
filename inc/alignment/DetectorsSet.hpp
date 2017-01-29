@@ -91,7 +91,7 @@ public:
     virtual void draw_detectors( TEveManager * );
     /// Should be called inside of application instance --- draws hits. Returns true,
     /// if setup accepted the hits to draw.
-    bool dispatch_hits( const ::sV::events::EventDisplayMessage & );
+    bool dispatch_hits( const ::sV::events::Displayable & );
     /// Reset hits. Returns true when at least one detector needs to be redrawn.
     bool reset_hits();
 

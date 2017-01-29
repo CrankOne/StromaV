@@ -255,11 +255,11 @@ DetectorsSet::reset_hits() {
  * returns true for at least one detector instance, the DetectorsSet::dispatch_hits()
  * will also return true at the end of the loop.
  */ bool
-DetectorsSet::dispatch_hits( const ::sV::events::EventDisplayMessage & msg ) {
+DetectorsSet::dispatch_hits( const ::sV::events::Displayable & msg ) {
     bool doUpdate = false;
     AFR_UniqueDetectorID cDetID{0};
     size_t nDrawn = 0;
-    for( uint32_t i = 0; i < (uint32_t) msg.summary_size(); ++i ) {
+    for( uint32_t i = 0; i < (uint32_t) msg.displayableinfo_size(); ++i ) {
         const ::sV::events::DetectorSummary & cDetSummary = msg.summary( i );
         cDetID.wholenum = cDetSummary.detectorid();
         auto it = _byUniqueID.find( cDetID.wholenum );

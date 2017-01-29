@@ -64,8 +64,9 @@ public:
     bool reset_hits() { return _V_reset_hits(); }
 };  // class ReceptiveDetector
 
-
-
+/**@brief Aux receptive detector instance performing unpacking routines for
+ * certain summary payload.
+ */
 template<typename ConcreteHitT>
 class CachedPayloadReceptiveDetector : public ReceptiveDetector {
 protected:
@@ -80,18 +81,19 @@ public:
     const ConcreteHitT & hit() const { return _reentrantHit; }
 };  // class CachedPayloadReceptiveDetector
 
-
-
+/**@brief Aux receptive detector assembly instance performing unpacking
+ * routines for certain summary payloads.
+ */
 template<typename ConcreteHitT>
-class ReceptiveDetectorGroup : public virtual \
-                        CachedPayloadReceptiveDetector<::sV::events::DetectorSummaryGroup> {
+class ReceptiveAssembly : public virtual
+            CachedPayloadReceptiveDetector<::sV::events::AssemblySummary> {
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit_ ) final {
+    virtual bool _V_treat_new_hit( const Hit & hit_ ) override {
         _TODO_  // TODO
     }
 public:
-    ReceptiveDetectorGroup( const std::string & fn,
-                            const std::string & dn );
+    ReceptiveAssembly( const std::string & fn,
+                       const std::string & dn );
     const ConcreteHitT & hit() const { return _reentrantHit; }
 };  // class CachedPayloadReceptiveDetector
 
