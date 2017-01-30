@@ -70,7 +70,7 @@ public:
 protected:
     std::unordered_multimap<std::string, DetectorPlacement *>   _byFamily;
     std::unordered_map<std::string, DetectorPlacement *>        _byName;
-    std::unordered_map<AFR_DetSignature, DetectorPlacement *>  _byUniqueID;
+    std::unordered_map<AFR_DetSignature, DetectorPlacement *>   _byUniqueID;
 
     std::list<CompoundDetector *>                               _compoundDetectors;
     std::list<DetectorPlacement>                                _detectors;

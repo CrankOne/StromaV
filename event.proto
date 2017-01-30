@@ -36,9 +36,8 @@ message ExperimentalEvent {
 }
 
 message AssemblySummary {
-    uint32 detectorID = 1;
-    repeated google.protobuf.Any partialSummaries = 3;
-    google.protobuf.Any assemblySummaryData = 5;
+    repeated DetectorSummary partialSummaries = 1;
+    google.protobuf.Any assemblySummaryData = 3;
 }
 
 message DetectorSummary {

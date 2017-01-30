@@ -236,7 +236,7 @@ DetectorsSet::reset_hits() {
     for( auto it = _detectors.begin(); _detectors.end() != it; ++it ) {
         // consider only receptive detectors:
         if( it->is_detector_constructed() && it->detector()->is_receptive() ) {
-            bool detectorUpdated = it->detector()->receptive().reset_hits();
+            bool detectorUpdated = it->detector()->receptive().reset_summary();
             // only change doUpdate if detector is also drawable:
             if( it->detector()->is_drawable() ) {
                 doUpdate |= detectorUpdated;
@@ -259,30 +259,32 @@ DetectorsSet::dispatch_hits( const ::sV::events::Displayable & msg ) {
     bool doUpdate = false;
     AFR_UniqueDetectorID cDetID{0};
     size_t nDrawn = 0;
-    for( uint32_t i = 0; i < (uint32_t) msg.displayableinfo_size(); ++i ) {
-        const ::sV::events::DetectorSummary & cDetSummary = msg.summary( i );
+    for( uint32_t i = 0; i < (uint32_t) msg.summaries_size(); ++i ) {
+        const ::sV::events::DetectorSummary & cDetSummary = msg.summaries( i );
         cDetID.wholenum = cDetSummary.detectorid();
         auto it = _byUniqueID.find( cDetID.wholenum );
         if( _byUniqueID.end() == it ) {
             sV_loge( "Event display couldn't find detector instance "
-                         "with unique ID 0x%x (%s). Summary won't be displayed.\n",
-                         (int) cDetID.wholenum,
-                         iDetectorIndex::self().name( cDetID.byNumber.major )
-                         );
+                     "with unique ID 0x%x (%s). Summary won't be displayed.\n",
+                     (int) cDetID.wholenum,
+                     iDetectorIndex::self().name( cDetID.byNumber.major )
+                );
             continue;
         }
         DetectorPlacement & placement_ = *(it->second);
         iDetector & detector = *placement_.detector();
         if( !detector.is_receptive() ) {
-            sV_loge( "Detector with unique ID %d (%s:%s) is not receptive. Skipping it.\n",
-                         (int) cDetID.wholenum,
-                         detector.family_name().c_str(),
-                         detector.detector_name().c_str()
-                    );
+            sV_loge( "Detector with unique ID %d (%s:%s) is not receptive. "
+                     "Skipping it.\n",
+                     (int) cDetID.wholenum,
+                     detector.family_name().c_str(),
+                     detector.detector_name().c_str()
+                );
             continue;
         }
         // Set new hit and mark it for re-drawing, if need.
-        if( detector.receptive().hit( cDetSummary ) && detector.is_drawable() ) {
+        if( detector.receptive().common_summary( cDetSummary ) 
+         && detector.is_drawable() ) {
             if( detector.drawable().draw_hit() ) {
                 ++nDrawn;
                 doUpdate = true;
@@ -293,7 +295,8 @@ DetectorsSet::dispatch_hits( const ::sV::events::Displayable & msg ) {
     for( auto compDetPtr : _compoundDetectors ) {
         compDetPtr->hit_setting_finale();
     }
-    sV_log3( "%zu hits drawn of %zu summaries provided by event.\n", nDrawn, msg.summary_size() );
+    sV_log3( "%zu hits drawn of %zu summaries provided by event.\n",
+             nDrawn, msg.summaries_size() );
     return doUpdate;
 }
 
