@@ -30,7 +30,7 @@ set( StromaV_VERSION_MINOR 1  )
 set( StromaV_VERSION_PATCH dev )
 set( StromaV_VERSION ${StromaV_VERSION_MAJOR}.${StromaV_VERSION_MINOR}.${StromaV_VERSION_PATCH} )
 
-list( APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+list( APPEND CMAKE_MODULE_PATH #${CMAKE_MODULE_PATH}
     "/etc/root/cmake" )  # <- This one is a new ROOT convention.
 
 #
@@ -523,5 +523,5 @@ install( FILES
 
 install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
-         DESTINATION share/StromaV )
+         DESTINATION usr/share/StromaV )
 
