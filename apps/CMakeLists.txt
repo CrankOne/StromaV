@@ -1,6 +1,7 @@
 # Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
 # Author: Renat R. Dusaev <crank@qcrypt.org>
-# 
+# Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
@@ -38,6 +39,8 @@ push_option( build_unit_tests
 option_depend( build_pipeline   ANALYSIS_ROUTINES RPC_PROTOCOLS )
 #\opt-dep:
 option_depend( build_mdlv       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
+#\opt-dep:
+option_depend( build_svmc       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
 
 if( build_pipeline )
     add_subdirectory( pipeline )
