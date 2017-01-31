@@ -73,16 +73,21 @@ size_t ComprBucketDispatcher::_V_drop_bucket() {
     // check either current bucketSize larger than expected
     if (bucketSize > 1024*_bufSizeKB ) {
         emraise(badState, "Buffer Size is insufficient (is lesser than \
-            current bucket size): %zu < %zu.", _bufSizeKB, bucketSize);
+            current bucket size): %zu KB < %zu B.", _bufSizeKB, bucketSize);
     }
     _currentBucket.SerializeToArray( _uncomprBuf, bucketSize );
 
-    uint8_t comprBufSize = compress_bucket();
+    size_t comprBufSize = compress_bucket();
 
     _deflatedBucket.set_deflatedcontent(_comprBuf, comprBufSize);
+    // XXX std::cout << "Compressor buf size: " << comprBufSize << std::endl;
     set_metainfo();
     // TODO temporary string compr method for check
     if ( _streamRef.good() ) {
+        // Write size of the bucket to be dropped into output file
+        size_t deflatedBucketSize = _deflatedBucket.ByteSize();
+        _streamRef.write((char*)(&deflatedBucketSize), sizeof(size_t));
+        // Then write the bucket
         if (!_deflatedBucket.SerializeToOstream(&_streamRef)) {
             std::cerr << "Failed to serialize into stream." << std::endl;
             return EXIT_FAILURE;

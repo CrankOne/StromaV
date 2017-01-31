@@ -96,6 +96,9 @@ po::options_description iBucketDispatcher::_dispatcher_options() {
          po::value<int>()->default_value(0),
          "Maximum size (nof enents) of the bucket storing without \
          serialization")
+        ("b-dispatcher.BufSize.KB",
+         po::value<int>()->default_value(600),
+         "Size of the buffer for bucket compression")
         ("b-dispatcher.comressionAlgorithm",
          po::value<std::string>()->default_value("bz2"),
          "Compression algorithm for bucket compression")

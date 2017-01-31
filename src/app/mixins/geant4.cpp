@@ -324,9 +324,9 @@ Geant4Application::_gui_run( const std::string & macroFilePath ) {
     # ifdef G4_MDL_VIS
     G4UIExecutive * uiExec = new G4UIExecutive(_argc, const_cast<char **>(_argv));
     # endif
-    if( !macroFilePath.empty() ) {
-        rc = _batch_run( macroFilePath );
-    }
+    //if( !macroFilePath.empty() ) {
+    //    rc = _batch_run( macroFilePath );
+    //}
     # ifdef G4_MDL_VIS
     uiExec->SessionStart();
     delete uiExec;
@@ -347,6 +347,10 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
     sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
     G4UImanager::GetUIpointer()->ApplyCommand( bf );
     sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
+    // XXX
+    std::cout << "Vis manager now executing "
+              << macroFilePath.c_str() << std::endl;
+    // XXX
     return EXIT_SUCCESS;
 }
 
