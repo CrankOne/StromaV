@@ -70,7 +70,7 @@ public:
 protected:
     std::unordered_multimap<std::string, DetectorPlacement *>   _byFamily;
     std::unordered_map<std::string, DetectorPlacement *>        _byName;
-    std::unordered_map<AFR_DetSignature, DetectorPlacement *>  _byUniqueID;
+    std::unordered_map<AFR_DetSignature, DetectorPlacement *>   _byUniqueID;
 
     std::list<CompoundDetector *>                               _compoundDetectors;
     std::list<DetectorPlacement>                                _detectors;
@@ -91,7 +91,7 @@ public:
     virtual void draw_detectors( TEveManager * );
     /// Should be called inside of application instance --- draws hits. Returns true,
     /// if setup accepted the hits to draw.
-    bool dispatch_hits( const ::sV::events::EventDisplayMessage & );
+    bool dispatch_hits( const ::sV::events::Displayable & );
     /// Reset hits. Returns true when at least one detector needs to be redrawn.
     bool reset_hits();
 

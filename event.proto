@@ -35,19 +35,19 @@ message ExperimentalEvent {
     google.protobuf.Any payload = 1;
 }
 
+message AssemblySummary {
+    repeated DetectorSummary partialSummaries = 1;
+    google.protobuf.Any assemblySummaryData = 3;
+}
+
 message DetectorSummary {
     // The type must match the AFR_DetSignature type:
     uint32 detectorID = 1;
-    repeated google.protobuf.Any summary = 2;
+    google.protobuf.Any summaryData = 2;
 }
 
-message DetectorSummaryGroup {
-    repeated DetectorSummary summaries = 3;
-    double maxDep = 5;
-}
-
-message EventDisplayMessage {
-    repeated DetectorSummary summary = 1;
+message Displayable {
+    repeated DetectorSummary summaries = 1;
 }
 
 // The event message can bear the simulated experimental data:
@@ -57,7 +57,7 @@ message Event {
         ExperimentalEvent experimental = 5;
         bytes blob = 7;
     }
-    EventDisplayMessage eventDisplayMessage = 8;
+    Displayable displayableInfo = 8;
 }
 
 // Multicast message can either contain the steering/status message, or

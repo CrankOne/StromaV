@@ -31,8 +31,8 @@ namespace alignment {
 
 ReceptiveDetector::ReceptiveDetector( const std::string & fn,
                                       const std::string & dn ) :
-    iDetector(fn, dn, false, true, false ),
-    _lastHitPtr( nullptr ) {}
+        iDetector(fn, dn, false, true, false ),
+        _summary( nullptr ) {}
 
 }  // namespace alignment
 }  // namespace sV

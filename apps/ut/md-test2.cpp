@@ -455,7 +455,7 @@ public:
     virtual bool source_id_for( const EventID & eid,
                                       SourceID & sid) const override {
         MetadataEntry mde = {{0, 0, 0}, 0, 0};
-        SourceID foundSID;
+        SourceID foundSID = sid;
         for( const auto & p : _mdatCache ) {
             Test2Metadata & md = *(p.second);
             // See note at the Test2Metadata::query_word_loc() implem.
