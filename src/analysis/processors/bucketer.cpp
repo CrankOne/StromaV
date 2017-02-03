@@ -27,7 +27,10 @@
 namespace sV {
 namespace dprocessors {
 
-
+Bucketer::Bucketer( const std::string &,
+                    sV::iBucketDispatcher * bucketDispatcher ) {
+    _bucketDispatcher = bucketDispatcher;
+}
 
 bool
 Bucketer::_V_process_event( Event * uEvent ){
@@ -36,26 +39,12 @@ Bucketer::_V_process_event( Event * uEvent ){
         drop_bucket();
     }
     return false;
+    _bucketDispatcher->push_event( uEvent );
+
 }
 
 StromaV_DEFINE_CONFIG_ARGUMENTS {
-    po::options_description bucketerP( "Packing buckets (bucketer processor)" );
-    { bucketerP.add_options()
-        ("buckets.events-per-bucket",
-            po::value<std::string>()->default_value(0),
-            "How much events has to be stored per one bucket. If 0, then size"
-            "criterion will be used." )
-        ("buckets.kbytes-per-bucket",
-            po::value<int>()->default_value(1e2),
-            "Approximate size of uncompressed bucket. If 0, then "
-            "events number criterion will be used.")
-        ("buckets.compression",
-            po::value<std::string>()->default_value("none"),
-            "Which compression algorithm to apply to buckets." )
-        ("buckets.compression-list-algorithms",
-            "Prints out available compression options.")
-        ;
-    }
+    po::options_description bucketerP = sV::iBucketDispatcher::_dispatcher_options();
     return bucketerP;
 }
 StromaV_DEFINE_DATA_PROCESSOR( TestingProcessor ) {

@@ -29,6 +29,7 @@
 
 # include "app/analysis.hpp"
 # include "uevent.hpp"
+# include "buckets/iBucketDispatcher.hpp"
 
 namespace sV {
 namespace dprocessors {
@@ -58,27 +59,28 @@ class Bucketer : public AnalysisPipeline::iEventProcessor {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef AnalysisApplication::Event Event;
-
+    /*
     struct CompressionParameters {
         // ...
     };
+    */
 private:
-    sV::events::Bucket _reentrantBucket;
+    //sV::events::Bucket _reentrantBucket;
+    //
 protected:
+    sV::iBucketDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
 public:
     Bucketer( const std::string & pn,
-              size_t nEventsPerBucket,
-              size_t kBytesPerBucket,
-              CompressionParameters * ) :
+              sV::iBucketDispatcher * bucketDispatcher ) :
               AnalysisPipeline::iEventProcessor( pn ) {}
 
     /// Returns true if "full" criterion(-ia) triggered.
-    bool is_bucket_full() const;
+    //  bool is_bucket_full() const;
 
     /// Causes current bucket to be compressed (and optionally forwarded) and,
     /// further, cleared.
-    void drop_bucket();
+    //  void drop_bucket();
 };  // class Bucketer
 
 }  // namespace dprocessors
