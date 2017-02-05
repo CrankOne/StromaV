@@ -525,3 +525,8 @@ install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
          DESTINATION usr/share/StromaV )
 
+install(
+    CODE "file( GLOB _GeneratedROOTDicts \"${CMAKE_CURRENT_BINARY_DIR}/*.pcm\" )"
+    CODE "file( INSTALL \${_GeneratedROOTDicts} DESTINATION \"${CMAKE_INSTALL_PREFIX}/lib/StromaV\" )"
+)
+
