@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwith@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -271,6 +272,7 @@ protected:
                 return false;
             }
             if( !_reentrantPayloadPtr ) {
+                assert(unpack_payload);
                 unpack_payload( uEventPtr );
             }
             return _V_process_event_payload( _reentrantPayloadPtr );
@@ -279,6 +281,7 @@ protected:
     }
 
     virtual void register_hooks( AnalysisPipeline * ppl ) final {
+        assert( pack_payload );
         ppl->register_packing_functions( nullate_cache,
                                          pack_payload );
     }
@@ -316,6 +319,7 @@ public:
 private:
     /// Will be called if current event has payload of required type.
     static void _unpack_payload( Event * uEventPtr ) {
+        Parent::_reentrantPayloadPtr = new PayloadT();
         uEventPtr->mutable_experimental()
                  ->mutable_payload()
                  ->UnpackTo(Parent::_reentrantPayloadPtr);
@@ -325,14 +329,16 @@ private:
         uEventPtr->mutable_experimental()
                  ->mutable_payload()
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
+        delete Parent::_reentrantPayloadPtr;
+        Parent::_reentrantPayloadPtr = nullptr;
     }
 protected:
     iTExperimentalEventPayloadProcessor( const std::string & pn ) :
                             Parent(pn) {
-        if( Parent::unpack_payload ) {
+        if( !Parent::unpack_payload ) {
             Parent::unpack_payload = _unpack_payload;
         }
-        if( Parent::pack_payload ) {
+        if( !Parent::pack_payload ) {
             Parent::pack_payload = _pack_payload;
         }
     }
