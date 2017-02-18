@@ -180,8 +180,15 @@ public:
 class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
+    enum ProcessorFeatures : uint8_t {
+        desiresMetadata = 0x1,  ///< Set for proc-s which may work without mdat.
+        requiresMetadata  = 0x3,  ///< Set for processors which do require mdat.
+        supportsExperimental = 0x4,
+        supportsSimulated = 0x8,
+    };
 private:
     const std::string _pName;
+    const uint8_t _pFeatures;
 protected:
     /// Should return 'false' if processing in chain should be aborted.
     virtual bool _V_process_event( Event * ) = 0;
@@ -191,8 +198,18 @@ protected:
     virtual void _V_finalize() const {}
     /// Called after all events read and all processors finalized.
     virtual void _V_print_brief_summary( std::ostream & ) const {}
+
+    // This ctr is introduced only to avoid many of the repeatative
+    // initializations and should be never called directly. If you've got
+    // the linkage error referring to this ctr, check the foremost descentant
+    // of the inheritance chain started from iEventProcessor. This descentant
+    // must call the public ctr with all its arguments explicitly in its ctr.
+    // This is how virtual inheritance works in C++.
+    /// Shortcut ctr for virtual inheritance.
+    iEventProcessor();  // Must not be implemented.
 public:
-    iEventProcessor( const std::string & pn ) : _pName(pn) {}
+    iEventProcessor( const std::string & pn, uint8_t pFts ) :
+                    _pName(pn), _pFeatures(pFts) {}
     virtual ~iEventProcessor(){}
     virtual bool process_event( Event * e ) { return _V_process_event( e ); }
     virtual void finalize_event( Event * e )
@@ -207,7 +224,7 @@ public:
     friend class ::sV::AnalysisPipeline;
 };
 
-class iEventPayloadProcessorBase : public iEventProcessor {
+class iEventPayloadProcessorBase : public virtual iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
     iEventPayloadProcessorBase( const std::string & pn ) :
@@ -218,6 +235,30 @@ protected:
 
     friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
+
+/**@class iEventMetadataNeedProcessor
+ * @brief Aux interfacing processor class requiring knowledge of the metadata
+ *        associated to the current event source. */
+template<typename MetadataT>
+class iEventMetadataNeedProcessor : public virtual iEventProcessor {
+protected:
+    const MetadataT * _mdatPtr;
+public:
+    iEventMetadataNeedProcessor( const std::string & pn ) :
+                                            _mdatPtr(nullptr) {}
+    virtual ~iEventMetadataNeedProcessor(){}
+
+    bool is_metadata_set() const { return _mdatPtr; }
+    void metadata( const MetadataT & mdatRef ) { _mdatPtr = &mdatRef; }
+    void reset_metadata() { _mdatPtr = nullptr; }
+    const MetadataT & metadata() const {
+        if( !is_metadata_set() ) {
+            emraise( badState, "Metadata not set for event processor "
+                "instance %p when it was required.", this );
+        }
+        return *_mdatPtr;
+    }
+};
 
 /**@class AnalysisApplication::iTEventPayloadProcessor
  *
@@ -241,43 +282,19 @@ public:
 protected:
     /// Will be called if current event has payload of required type.
     static void (*unpack_payload)( Event * );
-    //static void unpack_payload( Event * uEventPtr ) {
-    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-    //             ->mutable_payload()
-    //             ->UnpackTo(_reentrantPayloadPtr);
-    //}
     /// Will be called at the end of event processing pipeline.
     static void (*pack_payload)( Event * );
-    //static void pack_payload( Event * uEventPtr ) {
-    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-    //             ->mutable_payload()
-    //             ->PackFrom(*_reentrantPayloadPtr);
-    //}
 protected:
     iTEventPayloadProcessor( const std::string & pn ) :
                             iEventPayloadProcessorBase(pn) {}
 
     /// Should return 'false' if processing in chain has to be aborted.
     virtual bool _V_process_event( Event * uEventPtr ) override {
-        if( uEventPtr->has_experimental() ) {
-            if( ! uEventPtr->mutable_experimental()
-                           ->mutable_payload()
-                           ->Is<PayloadT>() ) {
-                sV_logw( "Malformed experimental event message payload "
-                             "\"%s\" for processor "
-                             "\"%s\". Payload ignored.",
-                             uEventPtr->experimental()
-                                      .payload().GetTypeName().c_str(),
-                             this->processor_name().c_str() );
-                return false;
-            }
-            if( !_reentrantPayloadPtr ) {
-                assert(unpack_payload);
-                unpack_payload( uEventPtr );
-            }
-            return _V_process_event_payload( _reentrantPayloadPtr );
+        if( !_reentrantPayloadPtr ) {
+            assert(unpack_payload);
+            unpack_payload( uEventPtr );
         }
-        return false;
+        return _V_process_event_payload( _reentrantPayloadPtr );
     }
 
     virtual void register_hooks( AnalysisPipeline * ppl ) final {
