@@ -86,7 +86,7 @@ size_t ComprBucketDispatcher::_V_drop_bucket() {
     if ( _streamRef.good() ) {
         // Write size of the bucket to be dropped into output file
         size_t deflatedBucketSize = _deflatedBucket.ByteSize();
-        _streamRef.write((char*)(&deflatedBucketSize), sizeof(size_t));
+        _streamRef.write((char*)(&deflatedBucketSize), sizeof(uint32_t));
         // Then write the bucket
         if (!_deflatedBucket.SerializeToOstream(&_streamRef)) {
             std::cerr << "Failed to serialize into stream." << std::endl;

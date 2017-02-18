@@ -46,7 +46,7 @@ size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
     size_t bucketSize = n_Bytes();
     if ( _streamRef.good() ) {
         // Write size of the bucket to be dropped into output file
-        _streamRef.write((char*)(&bucketSize), sizeof(size_t));
+        _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
         // Then write the bucket
         //std::cout << "Drop size before bucket bytes: " << bucketSize << std::endl;
         if (!_currentBucket.SerializeToOstream(&_streamRef)) {
