@@ -313,7 +313,7 @@ Geant4Application::_build_up_run() {
 
 # ifdef G4_MDL_GUI
 int
-Geant4Application::_gui_run( const std::string & macroFilePath ) {
+Geant4Application::_gui_run( const std::string & /*macroFilePath*/ ) {
     int rc = EXIT_SUCCESS;
     # ifdef G4_MDL_VIS
     _visManagerPtr = new G4VisExecutive();

@@ -27,7 +27,7 @@
 static std::unordered_set<sV_MetadataTypeIndex> * _static_mdTypeIds = nullptr;
 
 sV_MetadataTypeIndex
-sV_generate_metadata_type_id( void * _this ) {
+sV_generate_metadata_type_id( void * /*_this*/ ) {
     typedef std::remove_pointer<decltype(_static_mdTypeIds)>::type
             IDsContainer;
     if( !_static_mdTypeIds ) {

@@ -300,8 +300,8 @@ protected:
                                         new test::ExtractedWords( words ));
     }
     virtual std::unique_ptr<aux::iEventSequence> _V_md_event_read_list(
-                            const Test2Metadata & md,
-                            const std::list<EventID> & eidsList ) override {
+                            const Test2Metadata & /*md*/,
+                            const std::list<EventID> & /*eidsList*/ ) override {
         # if 1
         _TODO_  // TODO
         # else
@@ -341,7 +341,7 @@ public:
                         _words = test::extract_words_positions( _content );
                         _it = _words.begin();
                     }
-    const char * const content() const { return _content; }
+    const char * content() const { return _content; }
 };  // DataSource
 
 // - metadata type implementation describing necessary routines of how
@@ -362,7 +362,7 @@ protected:
                             const SourceID * sidPtr,
                             MetadataTraits::iEventSource & ds,
                             Test2Metadata *& mdPtrRef,
-                            std::list<iMetadataStore *> stores) const override {
+                            std::list<iMetadataStore *> /*stores*/) const override {
         if( !sidPtr || !*sidPtr ) {
             emraise( badState, "Fragment number is not set when metadata "
                 "acquisition routine invoked." );
@@ -392,8 +392,8 @@ protected:
         _TODO_  // TODO
     }
     
-    virtual bool _V_append_metadata( MetadataTraits::iEventSource & s,
-                                     Test2Metadata & md ) const override {
+    virtual bool _V_append_metadata( MetadataTraits::iEventSource & /*s*/,
+                                     Test2Metadata & /*md*/ ) const override {
         // Since our testing metadata instances are always complete, there
         // is no possibility to get here.
         _FORBIDDEN_CALL_;
@@ -407,9 +407,9 @@ protected:
     }
 
     virtual void _V_get_subrange(
-                    const EventID & low, const EventID & up,
-                    const SourceID & sid,
-                    typename Traits::SubrangeMarkup & muRef ) const override {
+                    const EventID & /*low*/, const EventID & /*up*/,
+                    const SourceID & /*sid*/,
+                    typename Traits::SubrangeMarkup & /*muRef*/ ) const override {
         _TODO_  // TODO
     }
 public:
@@ -476,7 +476,7 @@ public:
         sid = foundSID;
         return true;
     }
-    void erase_metadata_for( const SourceID & sid ) override {
+    void erase_metadata_for( const SourceID & /*sid*/ ) override {
         _TODO_  // TODO
     }
 

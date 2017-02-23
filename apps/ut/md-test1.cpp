@@ -178,7 +178,7 @@ public:
                     _words = test::extract_words_positions( _content );
                         _it = _words.begin();
                     }
-    const char * const content() const { return _content; }
+    const char * content() const { return _content; }
 };  // DataSource
 
 // - metadata type implementation describing necessary routines of how

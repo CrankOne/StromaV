@@ -111,7 +111,7 @@ protected:
             }
         }
 
-        ProxyRangeSequence( Event & evRef,
+        ProxyRangeSequence( Event & /*evRef*/,
                             Managers & mngrs,
                             ReadingMarkup * markupPtr ) :
                     aux::iEventSequence( 0x0 ),
@@ -246,7 +246,7 @@ public:
     }
 
     virtual std::unique_ptr<aux::iEventSequence> event_read_list(
-                                const std::list<EventID> & list ) override { 
+                                const std::list<EventID> & /*list*/ ) override { 
         _TODO_  // TODO
     }
     

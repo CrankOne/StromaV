@@ -44,7 +44,7 @@ if ( StromaV_PYMODULES )
 
     # Note: workarounds for recent C++ compiler warnings
     set_source_files_properties( ${WRAPPER_SRCS}
-            PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign" )
+            PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign -Wno-shadow" )
 
     if( RPC_PROTOCOLS )
         protobuf_generate_python( PY_MSG_MODULES ../event.proto )

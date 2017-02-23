@@ -52,6 +52,18 @@ namespace sV{
 }
 # endif
 
+# if G4VERSION_NUMBER > 999
+# if defined( __clang__ ) && ! defined( G4MULTITHREADED )
+// When using aParticleIterator without multithreading support, an in-template
+// static field is used for .offset attr. This causes Clang to complain about
+// actual attribute instantiation. The problem is, besides of this reasonable
+// notion, Clang may generate multiple instances for such attributes when
+// they're operating in different threads. To suppress this annoying warning we
+// define it here in hope it won't lead to dangerous consequencies.
+template<> G4VPCData * G4VUPLSplitter<G4VPCData>::offset;
+# endif  // G4_TLS
+# endif
+
 // 1) `G4SynchrotronRadiation` -- stable process, which included in
 //      G4EmExtraPhysics builder as an option. Was validated and published by
 //      Geant4 team.
@@ -124,7 +136,17 @@ void SynchrotronRadiationPhysics::ConstructParticle() {
 void SynchrotronRadiationPhysics::ConstructProcess() {
     G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
     # if G4VERSION_NUMBER > 999
+    // This line causes clang to doubt about unavailable definition. To supress
+    // his warnings, we use another form of the same thing:
+    # if 1
     for( aParticleIterator->reset(); (*aParticleIterator)() ; )
+    # else
+    auto localParticleIterator =
+            (G4VPhysicsConstructor::GetSubInstanceManager()
+                        .offset[g4vpcInstanceID])._aParticleIterator;
+    for( localParticleIterator->reset();
+         (*localParticleIterator)() ; )
+    # endif
     # else
     for( theParticleIterator->reset(); (*theParticleIterator)() ; )
     # endif
