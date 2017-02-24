@@ -372,9 +372,8 @@ endif( GEANT4_MC_MODEL )
 
 # Remove this dirty things outta my compiler options!
 string(REPLACE "-pedantic"              "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-long-long"         "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-non-virtual-dtor"  "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-c99-extensions"    "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+string(REGEX REPLACE "-Wno-[^\ ]*"      "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+
 
 # Add ROOT dictionaries
 if( ANALYSIS_ROUTINES )
@@ -507,6 +506,7 @@ configure_file (
 add_subdirectory( apps )
 
 options_list()
+
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/StromaVConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake"
