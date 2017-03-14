@@ -53,15 +53,15 @@ namespace sV{
 # endif
 
 # if G4VERSION_NUMBER > 999
-# if defined( __clang__ ) && ! defined( G4MULTITHREADED )
-// When using aParticleIterator without multithreading support, an in-template
-// static field is used for .offset attr. This causes Clang to complain about
-// actual attribute instantiation. The problem is, besides of this reasonable
-// notion, Clang may generate multiple instances for such attributes when
-// they're operating in different threads. To suppress this annoying warning we
-// define it here in hope it won't lead to dangerous consequencies.
-template<> G4VPCData * G4VUPLSplitter<G4VPCData>::offset;
-# endif  // G4_TLS
+    # if defined( __clang__ ) && ! defined( G4MULTITHREADED )
+    // When using aParticleIterator without multithreading support, an in-template
+    // static field is used for .offset attr. This causes Clang to complain about
+    // actual attribute instantiation. The problem is, besides of this reasonable
+    // notion, Clang may generate multiple instances for such attributes when
+    // they're operating in different threads. To suppress this annoying warning we
+    // define it here in hope it won't lead to dangerous consequencies.
+    template<> G4VPCData * G4VUPLSplitter<G4VPCData>::offset;
+    # endif  // G4_TLS
 # endif
 
 // 1) `G4SynchrotronRadiation` -- stable process, which included in
@@ -138,8 +138,8 @@ void SynchrotronRadiationPhysics::ConstructProcess() {
     # if G4VERSION_NUMBER > 999
     // This line causes clang to doubt about unavailable definition. To supress
     // his warnings, we use another form of the same thing:
-    # if 1
-    for( aParticleIterator->reset(); (*aParticleIterator)() ; )
+    # if 0
+    for( theParticleIterator->reset(); (*aParticleIterator)() ; )
     # else
     auto localParticleIterator =
             (G4VPhysicsConstructor::GetSubInstanceManager()
@@ -153,10 +153,14 @@ void SynchrotronRadiationPhysics::ConstructProcess() {
     {
         G4ParticleDefinition* particle =
         # if G4VERSION_NUMBER > 999
+        # if 0
         aParticleIterator->value();
         # else
-        theParticleIterator->value();
+        localParticleIterator->value();
         # endif
+        # else  // > 999
+        theParticleIterator->value();
+        # endif  // > 999
         G4String particleName = particle->GetParticleName();
 
         G4VDiscreteProcess * SRProcPtr = ( _inMaterials ?

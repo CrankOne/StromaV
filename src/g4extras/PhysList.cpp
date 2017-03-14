@@ -186,7 +186,7 @@ _free_allocated_phlists() {
 
 # ifdef GEANT4_DYNAMIC_PHYSICS
 DynamicPhysicsList::DynamicPhysicsList() : G4VUserPhysicsList() {
-    defaultCutValue = 1.*km; 
+    defaultCutValue = 1.*CLHEP::km;
     //fSRType = true; 
     //fMess = new PhysicsListMessenger(this);
 }
