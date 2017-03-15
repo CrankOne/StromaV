@@ -126,6 +126,10 @@ Geant4Application::_geant4_options() const {
             po::value<int>()->default_value(2 /* warnings */),
             "Geant4 core system verbosity (set before any .mac processing starts "
             "and further can be overriden by them).")
+        ("g4.randomSeed",
+            po::value<unsigned int>()->default_value(0),
+            "Random generator seed to be used with CLHEP::HepRandom. "
+            "Note, that null seed means no manual setting.")
         ("g4.visMacroFile",
             po::value<std::string>()->default_value("vis.mac"),
             "'vis' run-time script")
@@ -238,6 +242,11 @@ Geant4Application::_clear_geant4_options( const po::variables_map & vm ) {
     if( vm["g4.customExceptionHandler"].as<bool>() ) {
         sV::aux::ExceptionHandler::disable();
     }
+    if( vm["g4.randomSeed"].as<unsigned int>() ) {
+        CLHEP::HepRandom::setTheSeed(vm["g4.randomSeed"].as<unsigned int>());
+        std::cout << " *** *** *** SEED SET TO: " <<
+            vm["g4.randomSeed"].as<unsigned int>() << std::endl;  // XXX
+    }
 }
 
 void
@@ -313,7 +322,7 @@ Geant4Application::_build_up_run() {
 
 # ifdef G4_MDL_GUI
 int
-Geant4Application::_gui_run( const std::string & /*macroFilePath*/ ) {
+Geant4Application::_gui_run( const std::string & macroFilePath ) {
     int rc = EXIT_SUCCESS;
     # ifdef G4_MDL_VIS
     _visManagerPtr = new G4VisExecutive();
@@ -324,9 +333,17 @@ Geant4Application::_gui_run( const std::string & /*macroFilePath*/ ) {
     # ifdef G4_MDL_VIS
     G4UIExecutive * uiExec = new G4UIExecutive(_argc, const_cast<char **>(_argv));
     # endif
-    //if( !macroFilePath.empty() ) {
-    //    rc = _batch_run( macroFilePath );
-    //}
+    if( !macroFilePath.empty() ) {
+        char bf[128];
+        snprintf( bf, sizeof(bf),
+                  "/vis/verbose %d", cfg_option<int>("g4.verbosity"));
+        G4UImanager::GetUIpointer()->ApplyCommand( bf );
+        snprintf( bf, sizeof(bf),
+                  "/control/execute %s", macroFilePath.c_str() );
+        sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
+        G4UImanager::GetUIpointer()->ApplyCommand( bf );
+        sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
+    }
     # ifdef G4_MDL_VIS
     uiExec->SessionStart();
     delete uiExec;
@@ -347,15 +364,12 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
     sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
     G4UImanager::GetUIpointer()->ApplyCommand( bf );
     sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
-    // XXX
-    std::cout << "Vis manager now executing "
-              << macroFilePath.c_str() << std::endl;
-    // XXX
     return EXIT_SUCCESS;
 }
 
 int
-Geant4Application::_run_session( bool isBatch, const std::string & macroFilePath ) {
+Geant4Application::_run_session( bool isBatch,
+                                const std::string & macroFilePath ) {
     int rc = EXIT_FAILURE;
 
     // Allocate Geant4 run manager.

@@ -237,7 +237,7 @@ ParticleBornKinematics::ParticleBornKinematics() : _aprimeInfo(nullptr) {
     _aprimeInfo->Branch( "bornVertex", &_vertex,
         "posX/D:posY/D:posZ/D:momentumX/D"
         ":momentumY/D:momentumZ/D"
-        ":totalEnergy/D:kineticEnergy" );
+        ":totalEnergy/D:kineticEnergy/D" );
 }
 
 static sV::ParticleStatisticsDictionary::iTrackingStatistics *
