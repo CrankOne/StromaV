@@ -235,18 +235,19 @@ Geant4Application::_treat_geant4_gdml_options( const po::variables_map & vm ) {
     _parser->Read(vm["geometry"].as<std::string>(),
         vm["gdml.enableXMLSchemaValidation"].as<bool>() );
     //sV_log2("Parsing GDML geometry succeed.\n");
+    if( vm["g4.randomSeed"].as<unsigned int>() ) {
+        CLHEP::HepRandom::setTheSeed(vm["g4.randomSeed"].as<unsigned int>());
+    }
 }
 
 void
 Geant4Application::_clear_geant4_options( const po::variables_map & vm ) {
+    // FIXME: sometimes causes strange segfaults...
+    # if 0
     if( vm["g4.customExceptionHandler"].as<bool>() ) {
         sV::aux::ExceptionHandler::disable();
     }
-    if( vm["g4.randomSeed"].as<unsigned int>() ) {
-        CLHEP::HepRandom::setTheSeed(vm["g4.randomSeed"].as<unsigned int>());
-        std::cout << " *** *** *** SEED SET TO: " <<
-            vm["g4.randomSeed"].as<unsigned int>() << std::endl;  // XXX
-    }
+    # endif
 }
 
 void

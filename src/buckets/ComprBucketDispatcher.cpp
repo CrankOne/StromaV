@@ -111,13 +111,13 @@ uint8_t * ComprBucketDispatcher::alloc_buffer(uint8_t * buf,
 
 uint8_t * ComprBucketDispatcher::realloc_buffer(uint8_t * buf,
         const size_t & size) {
-    delete buf;
+    delete [] buf;
     buf = new uint8_t[size];
     return buf;
 }
 
 void ComprBucketDispatcher::clear_buffer(uint8_t * buf) {
-    delete buf;
+    delete [] buf;
 }
 
 }  // namespace sV

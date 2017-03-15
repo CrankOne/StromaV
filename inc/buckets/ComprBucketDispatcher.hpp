@@ -34,30 +34,27 @@
 namespace sV {
 
 class ComprBucketDispatcher : public iBucketDispatcher {
+private:
+    iCompressor * _compressor;
+    events::DeflatedBucket _deflatedBucket;
+    uint8_t * _uncomprBuf;
+    uint8_t * _comprBuf;
+    size_t _bufSizeKB;
+protected:
+    virtual size_t _V_drop_bucket() override;
+    virtual size_t compress_bucket();
 
-    public:
-        ComprBucketDispatcher( iCompressor * compressor,
-                std::ostream & streamRef,
-                size_t nMaxKB, size_t nMaxEvents, size_t maxBufSizeKB );
+    virtual uint8_t * alloc_buffer( uint8_t * buf, const size_t & size );
+    virtual uint8_t * realloc_buffer( uint8_t * buf, const size_t & size );
+    virtual void clear_buffer( uint8_t * buf );
+    virtual void set_metainfo();
+    std::ostream & _streamRef;
+public:
+    ComprBucketDispatcher( iCompressor * compressor,
+            std::ostream & streamRef,
+            size_t nMaxKB, size_t nMaxEvents, size_t maxBufSizeKB );
 
-        virtual ~ComprBucketDispatcher();
-
-    protected:
-        virtual size_t _V_drop_bucket() override;
-        virtual size_t compress_bucket();
-
-        virtual uint8_t * alloc_buffer( uint8_t * buf, const size_t & size );
-        virtual uint8_t * realloc_buffer( uint8_t * buf, const size_t & size );
-        virtual void clear_buffer( uint8_t * buf );
-        virtual void set_metainfo();
-        std::ostream & _streamRef;
-    private:
-        iCompressor * _compressor;
-        events::DeflatedBucket _deflatedBucket;
-        uint8_t * _uncomprBuf;
-        uint8_t * _comprBuf;
-        size_t _bufSizeKB;
-
+    virtual ~ComprBucketDispatcher();
 };  // class ComprBucketDispatcher
 
 }  //  namespace sV
