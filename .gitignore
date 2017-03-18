@@ -33,3 +33,4 @@ assets/contrib/cmake/FindROOT.cmake
 StromaVConfig.cmake
 inc/config.h
 nbproject/
+src/*_generated.*

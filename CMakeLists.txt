@@ -89,6 +89,10 @@ push_option( ALIGNMENT_ROUTINES
 push_option( PYTHON_BINDINGS
         "Enable python bindings (requires SWIG)."
         OFF )
+#\option
+push_option( DSuL
+        "Enable detector selection micro-language (requires YACC/LEXX)"
+        ON )
 push_option( DOC_HTML
     "Whether to produce HTML documentation with doxygen."
         OFF )
@@ -182,6 +186,18 @@ if( DOC_HTML )
     find_package( Doxygen REQUIRED )
 endif( DOC_HTML )
 
+if( DSuL )
+    find_package(BISON REQUIRED)
+    find_package(FLEX REQUIRED)
+    BISON_TARGET(DSuL_Parser assets/grammar/dsul.y
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_parser_generated.c
+        VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
+        COMPILE_FLAGS "--graph=${CMAKE_CURRENT_BINARY_DIR}/dsul.dot" )
+    FLEX_TARGET(DSuL_Lexer   assets/grammar/dsul.l
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_lexer_generated.c)
+    ADD_FLEX_BISON_DEPENDENCY(DSuL_Lexer DSuL_Parser)
+    message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
+endif( DSuL )
 
 #
 # SET-UP BUILD-TIME PARAMETERS
@@ -423,6 +439,8 @@ add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
         $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
         $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
+        $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>
+        $<$<BOOL:${DSuL}>:${FLEX_DSuL_Lexer_OUTPUTS}>
     )
 
 #add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX

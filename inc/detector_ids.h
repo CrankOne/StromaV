@@ -51,6 +51,9 @@ typedef UShort  AFR_DetMjNo;
 /**\brief Detector minor section identifier type. Indexes particular detector,
  * instance or cell inside the detector class. */
 typedef UShort  AFR_DetMnNo;
+/**\brief Detector instance index for major identifier. Usually a plain number,
+ * but it is possible to use multivariate encoded index.*/
+typedef UShort AFR_DetMjIndex;
 /**\brief Detector entire number containing hashable type. Have to provide
  * enough space to contain concatenated both the minor and the major numbers. */
 typedef UInt    AFR_DetSignature;
@@ -85,6 +88,14 @@ union AFR_UniqueDetectorID {
 extern "C" {
 # endif
 
+struct sV_DSuL_MVarIndex;
+
+AFR_DetSignature AFR_detector_by_name( const char * );
+AFR_DetFamID AFR_family_id_by_name( const char * );
+AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * );
+void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * );
+/* ^^^ Has to support second parameter to be NULL --- then returns major with
+ * only family number encoded.*/
 /* TODO ... */
 
 # ifdef __cplusplus
