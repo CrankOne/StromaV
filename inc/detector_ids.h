@@ -88,19 +88,73 @@ union AFR_UniqueDetectorID {
 extern "C" {
 # endif
 
-struct sV_DSuL_MVarIndex;
+enum DSuL_BinCompOperatorCode {
+    DSuL_Operators_none = 0,
+    /* --- */
+    DSuL_Operators_lt   = 1,
+    DSuL_Operators_lte  = 2,
+    DSuL_Operators_gt   = 3,
+    DSuL_Operators_gte  = 4,
+    /* --- */
+    DSuL_Operators_and      = 11,
+    DSuL_Operators_andNot   = 12,
+};
 
-AFR_DetSignature AFR_detector_by_name( const char * );
-AFR_DetFamID AFR_family_id_by_name( const char * );
-AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * );
-void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * );
-/* ^^^ Has to support second parameter to be NULL --- then returns major with
- * only family number encoded.*/
-/* TODO ... */
+struct sV_DSuL_MVarIndex {
+    uint32_t nDim;
+    union {
+        uint32_t x[7];  /* <- TODO: make configurable? */
+        char * strID;
+    } components;
+};
+
+struct sV_DSuL_MVarIdxRange {
+    struct sV_DSuL_MVarIndex first;
+    union {
+        struct sV_DSuL_MVarIndex border;
+        enum DSuL_BinCompOperatorCode binop;
+    } second;
+};
+
+struct sV_DSuL_MVarIdxRangeLst {
+    struct sV_DSuL_MVarIdxRange self;
+    enum DSuL_BinCompOperatorCode binop;
+    struct sV_DSuL_MVarIdxRangeLst * next;
+};
+
+struct sV_DSuL_MjSelector {
+    /* Setting this to major number means exact match. Otherwise has to be
+     * set to family number. Apply family bitmask to get whether this is a
+     * exact match or a family specifier: */
+    AFR_DetMjNo majorNumber;
+    struct sV_DSuL_MVarIdxRangeLst * range;
+};
+
+struct sV_DSuL_Selector {
+    struct sV_DSuL_MjSelector mjSelector;
+    struct sV_DSuL_MVarIdxRangeLst * range;
+};
+
+struct Expression {
+    struct sV_DSuL_Selector left;
+    enum DSuL_BinCompOperatorCode binop;
+    struct Expression * next;
+};
 
 # ifdef __cplusplus
 }  /* extern "C" */
 # endif
+
+/** Returns detector major number referenced with given string expression. */
+AFR_DetMjNo AFR_detector_major_by_name( const char * ) __attribute__((weak));
+/** Returns family identifier referenced with given string expression. */
+AFR_DetFamID AFR_family_id_by_name( const char * ) __attribute__((weak));
+/** Returns encoded major detector descriptor referenced with given family
+ * number and multivariate indexes instance. Supports second parameter to be
+ * NULL --- then returns major with only family number encoded. */
+AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * ) __attribute__((weak));
+/** Writes minor multivariate indexes decoded from given minor descriptor. */
+void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * ) __attribute__((weak));
 
 # endif  /* H_STROMA_V_INTERNAL_DETECTOR_IDENTIFIER_H */
 

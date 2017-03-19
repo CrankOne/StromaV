@@ -196,7 +196,7 @@ if( DSuL )
     FLEX_TARGET(DSuL_Lexer   assets/grammar/dsul.l
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_lexer_generated.c)
     ADD_FLEX_BISON_DEPENDENCY(DSuL_Lexer DSuL_Parser)
-    message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
+    #message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
 endif( DSuL )
 
 #

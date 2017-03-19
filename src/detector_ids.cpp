@@ -65,6 +65,25 @@ iDetectorIndex::name( AFR_DetMjNo n ) const {
 }  // namespace aux
 }  // namespace sV
 
+AFR_DetMjNo
+AFR_detector_major_by_name( const char * name ) {
+    return sV::aux::iDetectorIndex::self().mj_code( name );
+}
+
+AFR_DetFamID
+AFR_family_id_by_name( const char * ) {
+    _TODO_
+}
+
+AFR_DetMjNo
+AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * ) {
+    _TODO_
+}
+
+void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * ) {
+    _TODO_
+}
+
 //
 // Detector encoding tests
 /////////////////////////

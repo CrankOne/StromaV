@@ -17,65 +17,21 @@ void yyerror(const char* s);
 }
 
 %union {
-    AFR_DetSignature exactDetID;
+    AFR_DetSignature exactMjID;
     AFR_DetFamID familyID;
 	uint32_t ival;
     const char * strID;
 
-    enum DSuL_BinCompOperatorCode {
-        DSuL_Operators_none = 0,
-        /* --- */
-        DSuL_Operators_lt   = 1,
-        DSuL_Operators_lte  = 2,
-        DSuL_Operators_gt   = 3,
-        DSuL_Operators_gte  = 4,
-        /* --- */
-        DSuL_Operators_and      = 11,
-        DSuL_Operators_andNot   = 12,
-    } cmpBinOp;
-
-    struct sV_DSuL_MVarIndex {
-        uint32_t nDim;
-        union {
-            uint32_t x[7];  /* <- TODO: make configurable? */
-            char * strID;
-        } components;
-    } mVarIndex;
-
-    struct MVarIndexRange {
-        struct sV_DSuL_MVarIndex first;
-        union {
-            struct sV_DSuL_MVarIndex border;
-            enum DSuL_BinCompOperatorCode binop;
-        } second;
-    } mVarIndexRange;
-    struct MVarIndexRangeList {
-        struct MVarIndexRange self;
-        enum DSuL_BinCompOperatorCode binop;
-        struct MVarIndexRangeList * next;
-    } mVarIdxRangeExpr;
-
-    struct MajorSelector {
-        /* Setting this to major number means exact match. Otherwise has to be
-         * set to family number. Apply family bitmask to get whether this is a
-         * exact match or a family specifier: */
-        AFR_DetMjNo majorNumber;
-        struct MVarIndexRangeList * range;
-    } majorSelector;
-
-    struct Selector {
-        struct MajorSelector mjSelector;
-        struct MVarIndexRangeList * range;
-    } selector;
-
-    struct Expression {
-        struct Selector left;
-        enum DSuL_BinCompOperatorCode binop;
-        struct Expression * next;
-    } expressions;
+    enum DSuL_BinCompOperatorCode cmpBinOp;
+    struct sV_DSuL_MVarIndex mVarIndex;
+    struct sV_DSuL_MVarIdxRange mVarIndexRange;
+    struct sV_DSuL_MVarIdxRangeLst mVarIdxRangeExpr;
+    struct sV_DSuL_MjSelector majorSelector;
+    struct sV_DSuL_Selector selector;
+    struct Expression expressions;
 }
 
-%token<exactDetID> T_DETECTOR_CODE;
+%token<exactMjID> T_DETECTOR_CODE;
 %token<familyID> T_FAMILY_CODE;
 %token<ival> T_INT
 %token<strID> L_STR
@@ -125,8 +81,8 @@ void yyerror(const char* s);
                     uid.wholenum = $1;
                     $$.mjSelector.majorNumber = uid.byNumber.major;
                     $$.mjSelector.range = NULL;
-                    $$.range = malloc( sizeof(struct MVarIndexRangeList) );
-                    bzero( $$.range, sizeof(struct MVarIndexRangeList) );
+                    $$.range = malloc( sizeof(struct sV_DSuL_MVarIdxRangeLst) );
+                    bzero( $$.range, sizeof(struct sV_DSuL_MVarIdxRangeLst) );
                     AFR_decode_minor_to_indexes( uid.byNumber.minor,
                                                  &($$.range->self.first) );
                 }
@@ -141,15 +97,15 @@ void yyerror(const char* s);
 
  mnSelector : mjSelector T_LBRCT_SQR mvarIdx T_RBRCT_SQR {
                     $$.mjSelector = $1;
-                    const size_t ssz = sizeof(struct MVarIndexRangeList);
+                    const size_t ssz = sizeof(struct sV_DSuL_MVarIdxRangeLst);
                     $$.range = malloc(ssz);
                     bzero( $$.range, ssz );
-                    memcpy( &($$.range->self), &($3), sizeof(struct MVarIndexRange) );
+                    memcpy( &($$.range->self), &($3), sizeof(struct sV_DSuL_MVarIdxRange) );
                 }
             | mjSelector T_LBRCT_SQR mvarIdxExpr T_RBRCT_SQR {
                     $$.mjSelector = $1;
-                    $$.range = malloc(sizeof(struct MVarIndexRangeList));
-                    memcpy( $$.range, &($3), sizeof(struct MVarIndexRangeList) );
+                    $$.range = malloc(sizeof(struct sV_DSuL_MVarIdxRangeLst));
+                    memcpy( $$.range, &($3), sizeof(struct sV_DSuL_MVarIdxRangeLst) );
                 }
             ;
 
@@ -163,8 +119,8 @@ void yyerror(const char* s);
                 }
             | T_FAMILY_CODE T_LBRCT_CRL mvarIdxExpr T_RBRCT_CRL {
                     $$.majorNumber = AFR_compose_detector_major( $1, NULL );
-                    $$.range = malloc(sizeof(struct MVarIndexRangeList));
-                    memcpy( $$.range, &($3), sizeof(struct MVarIndexRangeList) );
+                    $$.range = malloc(sizeof(struct sV_DSuL_MVarIdxRangeLst));
+                    memcpy( $$.range, &($3), sizeof(struct sV_DSuL_MVarIdxRangeLst) );
                 }
             ;
 
@@ -176,13 +132,13 @@ mvarIdxExpr : mvarIdxRng {
             | mvarIdxRng T_AMP mvarIdxExpr {
                     $$.binop = DSuL_Operators_and;
                     $$.self = $1;
-                    $$.next = malloc(sizeof(struct MVarIndexRangeList));
+                    $$.next = malloc(sizeof(struct sV_DSuL_MVarIdxRangeLst));
                     *($$.next) = $3;
                 }
             | mvarIdxRng T_EXCLMM mvarIdxExpr  {
                     $$.binop = DSuL_Operators_andNot;
                     $$.self = $1;
-                    $$.next = malloc(sizeof(struct MVarIndexRangeList));
+                    $$.next = malloc(sizeof(struct sV_DSuL_MVarIdxRangeLst));
                     *($$.next) = $3;
                 }
             ;

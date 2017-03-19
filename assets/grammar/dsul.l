@@ -34,17 +34,18 @@ DTNAME      {UL}
 "&"             {return T_AMP;}
 "+"             {return T_PLUS;}
 \"{L}*\"        {return L_STR;}
-{L}({L}|{D})    {
-                    yylval.exactDetID = AFR_detector_by_name(yytext);
-                    if( yylval.exactDetID ) {  /* This is an exact detector name */
+{L}({L}|{D})*   {
+                    yylval.exactMjID = AFR_detector_major_by_name(yytext);
+                    if( yylval.exactMjID ) {  /* This is an exact detector name */
                         return T_DETECTOR_CODE;
                     }
                     yylval.familyID = AFR_family_id_by_name(yytext);
                     if( yylval.familyID ) {
                         return T_FAMILY_CODE;
                     }
-                    /* TODO: error */
-                    ECHO;
+                    yyerror( "Unknown alphanumeric identifier provided: \"%s\": "
+                        "unable to interpret it as family or detector name.",
+                        yytext );
                 }
 
 %%
