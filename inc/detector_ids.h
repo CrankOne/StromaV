@@ -135,10 +135,10 @@ struct sV_DSuL_Selector {
     struct sV_DSuL_MVarIdxRangeLst * range;
 };
 
-struct Expression {
+struct sV_DSuL_Expression {
     struct sV_DSuL_Selector left;
     enum DSuL_BinCompOperatorCode binop;
-    struct Expression * next;
+    struct sV_DSuL_Expression * next;
 };
 
 # ifdef __cplusplus
@@ -147,14 +147,26 @@ struct Expression {
 
 /** Returns detector major number referenced with given string expression. */
 AFR_DetMjNo AFR_detector_major_by_name( const char * ) __attribute__((weak));
+
 /** Returns family identifier referenced with given string expression. */
 AFR_DetFamID AFR_family_id_by_name( const char * ) __attribute__((weak));
+
 /** Returns encoded major detector descriptor referenced with given family
  * number and multivariate indexes instance. Supports second parameter to be
  * NULL --- then returns major with only family number encoded. */
 AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * ) __attribute__((weak));
+
 /** Writes minor multivariate indexes decoded from given minor descriptor. */
 void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * ) __attribute__((weak));
+
+# ifdef DSuL
+/** Produces new selector instance from given string performing lexical
+ * analysis and parsing using YACC/LEXX grammar.
+ *
+ * Implemented inside */
+sV_DSuL_Expression * DSuL_compile_selector_expression( const char * );
+# endif
+
 
 # endif  /* H_STROMA_V_INTERNAL_DETECTOR_IDENTIFIER_H */
 

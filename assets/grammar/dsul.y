@@ -28,7 +28,7 @@ void yyerror(const char* s);
     struct sV_DSuL_MVarIdxRangeLst mVarIdxRangeExpr;
     struct sV_DSuL_MjSelector majorSelector;
     struct sV_DSuL_Selector selector;
-    struct Expression expressions;
+    struct sV_DSuL_Expression expressions;
 }
 
 %token<exactMjID> T_DETECTOR_CODE;
@@ -60,14 +60,14 @@ void yyerror(const char* s);
             | selector T_PLUS expr {
                     $$.left = $1;
                     $$.binop = DSuL_Operators_and;
-                    $$.next = malloc( sizeof(struct Expression) );
-                    memcpy( $$.next, &($3), sizeof(struct Expression) );
+                    $$.next = malloc( sizeof(struct sV_DSuL_Expression) );
+                    memcpy( $$.next, &($3), sizeof(struct sV_DSuL_Expression) );
                 }
             | selector T_EXCLMM expr {
                     $$.left = $1;
                     $$.binop = DSuL_Operators_andNot;
-                    $$.next = malloc( sizeof(struct Expression) );
-                    memcpy( $$.next, &($3), sizeof(struct Expression) );
+                    $$.next = malloc( sizeof(struct sV_DSuL_Expression) );
+                    memcpy( $$.next, &($3), sizeof(struct sV_DSuL_Expression) );
                 }
             ;
 
