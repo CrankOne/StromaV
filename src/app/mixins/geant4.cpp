@@ -241,7 +241,7 @@ Geant4Application::_treat_geant4_gdml_options( const po::variables_map & vm ) {
 }
 
 void
-Geant4Application::_clear_geant4_options( const po::variables_map & vm ) {
+Geant4Application::_clear_geant4_options( const po::variables_map & /*vm*/ ) {
     // FIXME: sometimes causes strange segfaults...
     # if 0
     if( vm["g4.customExceptionHandler"].as<bool>() ) {

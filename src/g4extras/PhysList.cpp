@@ -74,9 +74,24 @@ G4VUserPhysicsList *
 obtain_physics_list_instance(
         const std::string & name
     ) {
+    // FIXME: up to now the code below permits configurations that apparently
+    // has to be forbidden from Geant4 API point of view. Due to quite unclear
+    // distinctions between modular/factory/pre-defined physics list we still
+    // did not implement a self-consistent configuration mechanics.
+
     G4VUserPhysicsList * rs = nullptr;
     if( !_static_phlPtrsStorage ) {
         _static_phlPtrsStorage = new std::list< G4VUserPhysicsList * >();
+    }
+
+    std::vector<std::string> modulesList;
+    if( goo::app<sV::AbstractApplication>()
+        .co()
+        .count("extraPhysics.physlist.module") ) {
+        modulesList =
+                goo::app<sV::AbstractApplication>()
+                .co()["extraPhysics.physlist.module"]
+                .as<std::vector<std::string>>();
     }
 
     // Note: `none' option is handled by level above as this function should
@@ -91,10 +106,6 @@ obtain_physics_list_instance(
     } else
     # ifdef GEANT4_DYNAMIC_PHYSICS
     if( "modular" == name ) {
-        const std::vector<std::string> & modulesList =
-                goo::app<sV::AbstractApplication>()
-                .co()["extraPhysics.physlist.module"]
-                .as<std::vector<std::string>>();
         rs = new ModularPhysicsList( modulesList );
     } else
     # endif
@@ -115,6 +126,21 @@ obtain_physics_list_instance(
             "Unknown PhysList name provided: '%s'.\n",
             name.c_str() );
     }
+
+    if( modulesList.size()
+        && "modular" != name  ) {
+        G4VModularPhysicsList * modularPtr =
+                                    dynamic_cast<G4VModularPhysicsList *>(rs);
+        if( modularPtr ) {
+            ModularPhysicsList::register_modules_at( modulesList,
+                                                     modularPtr );
+        } else {
+            sV_logw( "Unable to add physics modules to \"%s\" Geant4 phys.list "
+                "referred by %p since it does not support modular physics.\n",
+                name.c_str(), rs );
+        }
+    }
+
     if( rs ) {
         _static_phlPtrsStorage->push_front( rs );
     }
@@ -342,19 +368,31 @@ void __static_fill_physics_modules_dictionary() {
     # undef add_construction_callback
 }
 
-ModularPhysicsList::ModularPhysicsList( const ModularPhysicsList::NamesList & names ) {
+void
+ModularPhysicsList::register_modules_at( const NamesList & names,
+                                         G4VModularPhysicsList * self ) {
     if( names.empty() ) {
-        emraise( badState, "ModularPhysicsList ctr invoked without any physics provided." );
+        emraise( badState, "register_modules_at() invoked without any "
+                "names provided." );
+    }
+    if( !self ) {
+        emraise( badState,
+                 "register_modules_at() invoked against nullptr arg." );
     }
     for( auto it = names.cbegin(); names.cend() != it; ++it ) {
         auto pIt = _phListCtrsDict->find( *it );
         if( _phListCtrsDict->end() == pIt ) {
-            emraise( noSuchKey, "Has no physics named \"%s\" in current build.", (*it).c_str() )
+            emraise( noSuchKey, "Has no physics named \"%s\" in current "
+                     "build.", (*it).c_str() )
         }
-        sV_log3( "Registering physics module \"" ESC_CLRGREEN "%s" ESC_CLRCLEAR "\".\n",
-                     pIt->first.c_str() );
-        RegisterPhysics( pIt->second() );
+        sV_log3( "Registering physics module \""
+                 ESC_CLRGREEN "%s" ESC_CLRCLEAR "\".\n", pIt->first.c_str() );
+        self->RegisterPhysics( pIt->second() );
     }
+}
+
+ModularPhysicsList::ModularPhysicsList( const ModularPhysicsList::NamesList & names ) {
+    register_modules_at( names, this );
 }
 
 std::vector<std::string>
