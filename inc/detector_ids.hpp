@@ -43,6 +43,8 @@ protected:
     virtual AFR_DetMjNo _V_mj_code( const char * ) const = 0;
     /// Returns detector name string for given major code.
     virtual const char * _V_name( AFR_DetMjNo ) const = 0;
+
+    iDetectorIndex( iDetectorIndex * self_ );
 public:
     static iDetectorIndex & mutable_self();
     static const iDetectorIndex & self();

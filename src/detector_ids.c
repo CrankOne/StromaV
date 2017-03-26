@@ -22,13 +22,3 @@
 
 # include "detector_ids.h"
 
-# ifdef DSuL
-
-sV_DSuL_Expression *
-DSuL_compile_selector_expression( const char * exprStr ) {
-    yy_scan_buffer( exprStr );
-    yylex();
-}
-
-# endif
-

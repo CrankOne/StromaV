@@ -35,6 +35,9 @@ DTNAME      {UL}
 "+"             {return T_PLUS;}
 \"{L}*\"        {return L_STR;}
 {L}({L}|{D})*   {
+                    if( !AFR_detector_major_by_name ) {  /* XXX */
+                        yyerror( "AFR_detector_major_by_name == NULL" );
+                    }
                     yylval.exactMjID = AFR_detector_major_by_name(yytext);
                     if( yylval.exactMjID ) {  /* This is an exact detector name */
                         return T_DETECTOR_CODE;

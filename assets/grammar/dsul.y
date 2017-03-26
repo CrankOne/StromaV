@@ -10,6 +10,8 @@ extern FILE* yyin;
 
 void yyerror(const char* s);
 
+static struct sV_DSuL_Expression * _static_ParsedExpression = NULL;
+
 %}
 
 %code requires {
@@ -40,7 +42,7 @@ void yyerror(const char* s);
 %token T_EXCLMM T_AMP T_CROSS
 %token T_LBRCT_SQR T_RBRCT_SQR T_LBRCT_CRL T_RBRCT_CRL
 
-%type<expressions> expr;
+%type<expressions> expr toplev;
 %type<cmpBinOp> cmpOp;
 %type<mVarIndex> mvarIdx;
 %type<mVarIdxRangeExpr> mvarIdxExpr;
@@ -48,9 +50,16 @@ void yyerror(const char* s);
 %type<majorSelector> mjSelector;
 %type<selector> mnSelector selector;
 
-%start expr
+%start toplev
 
 %%
+     toplev :  expr {
+                    _static_ParsedExpression = malloc( sizeof(struct sV_DSuL_Expression) );
+                    memcpy( _static_ParsedExpression, &($1),
+                            sizeof(struct sV_DSuL_Expression));
+                    $$ = $1;
+                }
+            ;
 
        expr : selector {
                     $$.left = $1;
@@ -192,7 +201,32 @@ int main() {
 }
 # endif
 
-void yyerror(const char* s) {
+typedef struct yy_buffer_state * YY_BUFFER_STATE;
+extern int yyparse();
+extern YY_BUFFER_STATE yy_scan_string(char * str);
+extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
+
+struct sV_DSuL_Expression *
+DSuL_compile_selector_expression( const char * exprStrPtr ) {
+    YY_BUFFER_STATE buffer = yy_scan_string( exprStrPtr );
+    /* - The value returned by yyparse is 0 if parsing was successful (return
+     * is due to end-of-input).
+     * - The value is 1 if parsing failed because of invalid input, i.e.,
+     * input that contains a syntax error or that causes YYABORT to be
+     * invoked.
+     * - The value is 2 if parsing failed due to memory exhaustion. */
+    int rc = yyparse();
+    yy_delete_buffer( buffer );
+    if( rc ) {
+        /* TODO: raise a parsing error:*/
+        return NULL;
+    }
+    /* TODO: acquire compiled expression */
+    return NULL;
+}
+
+void
+yyerror(const char* s) {
 	fprintf(stderr, "Parse error: %s\n", s);
 	exit(1);
 }
