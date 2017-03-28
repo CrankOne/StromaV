@@ -33,7 +33,7 @@ DTNAME      {UL}
 "x"             {return T_CROSS;}
 "&"             {return T_AMP;}
 "+"             {return T_PLUS;}
-\"{L}*\"        {return L_STR;}
+\"{L}*\"        {yylval.strID = yytext; return L_STR;}
 {L}({L}|{D})*   {
                     if( !AFR_detector_major_by_name ) {  /* XXX */
                         yyerror( "AFR_detector_major_by_name == NULL" );
@@ -46,9 +46,12 @@ DTNAME      {UL}
                     if( yylval.familyID ) {
                         return T_FAMILY_CODE;
                     }
-                    yyerror( "Unknown alphanumeric identifier provided: \"%s\": "
+                    char errbf[128];
+                    snprintf(errbf, 128,
+                        "Unknown alphanumeric identifier provided: \"%s\": "
                         "unable to interpret it as family or detector name.",
                         yytext );
+                    yyerror( errbf );
                 }
 
 %%

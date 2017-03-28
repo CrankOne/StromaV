@@ -102,9 +102,9 @@ enum DSuL_BinCompOperatorCode {
 };
 
 struct sV_DSuL_MVarIndex {
-    uint32_t nDim;
+    uint16_t nDim;
     union {
-        uint32_t x[7];  /* <- TODO: make configurable? */
+        uint16_t x[7];  /* <- TODO: make configurable? */
         char * strID;
     } components;
 };
@@ -166,8 +166,10 @@ AFR_DetFamID AFR_family_id_by_name( const char * )
 AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * )
     __attribute__(( weak ));
 
-/** Writes minor multivariate indexes decoded from given minor descriptor. */
-void AFR_decode_minor_to_indexes( AFR_DetMnNo, struct sV_DSuL_MVarIndex * )
+/** Writes minor multivariate indexes decoded from given detector descriptor.
+ * Note, that full signature is required since index encoding may vary
+ * depending of particular detector family. */
+void AFR_decode_minor_to_indexes( AFR_DetSignature, struct sV_DSuL_MVarIndex * )
     __attribute__(( weak ));
 
 # ifdef DSuL

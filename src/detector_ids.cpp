@@ -37,7 +37,7 @@ iDetectorIndex * iDetectorIndex::_self = nullptr;
 iDetectorIndex::iDetectorIndex( iDetectorIndex * self_ ) {
     assert( !_self );
     assert( self_ );
-    fprintf( stderr, "XXX %p %p\n", _self, self_ );  // XXX
+    //fprintf( stderr, "XXX %p %p\n", _self, self_ );  // XXX
     _self = self_;
 }
 

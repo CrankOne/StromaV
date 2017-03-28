@@ -92,7 +92,7 @@ static struct sV_DSuL_Expression * _static_ParsedExpression = NULL;
                     $$.mjSelector.range = NULL;
                     $$.range = malloc( sizeof(struct sV_DSuL_MVarIdxRangeLst) );
                     bzero( $$.range, sizeof(struct sV_DSuL_MVarIdxRangeLst) );
-                    AFR_decode_minor_to_indexes( uid.byNumber.minor,
+                    AFR_decode_minor_to_indexes( uid.wholenum,
                                                  &($$.range->self.first) );
                 }
             | mjSelector {
@@ -208,6 +208,9 @@ extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 
 struct sV_DSuL_Expression *
 DSuL_compile_selector_expression( const char * exprStrPtr ) {
+    if( !exprStrPtr ) {
+        return NULL;
+    }
     YY_BUFFER_STATE buffer = yy_scan_string( exprStrPtr );
     /* - The value returned by yyparse is 0 if parsing was successful (return
      * is due to end-of-input).
@@ -221,8 +224,7 @@ DSuL_compile_selector_expression( const char * exprStrPtr ) {
         /* TODO: raise a parsing error:*/
         return NULL;
     }
-    /* TODO: acquire compiled expression */
-    return NULL;
+    return _static_ParsedExpression;
 }
 
 void
