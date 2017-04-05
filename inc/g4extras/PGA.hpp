@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_GEANT4_PRIMARY_GENERATOR_REGISTRY_H
 # define H_STROMA_V_GEANT4_PRIMARY_GENERATOR_REGISTRY_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
 # include <list>

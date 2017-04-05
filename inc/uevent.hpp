@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_UNIV_EVENT_STRUCTS_H
 # define H_STROMA_V_UNIV_EVENT_STRUCTS_H
 
-# include "config.h"
+# include "sV_config.h"
 
 # ifndef RPC_PROTOCOLS
 # warning This header requires RPC_PROTOCOLS option to be enabled \

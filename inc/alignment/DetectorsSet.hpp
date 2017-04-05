@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_EVENT_DISPLAY_DETECTORS_SET_H
 # define H_STROMA_V_EVENT_DISPLAY_DETECTORS_SET_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef ALIGNMENT_ROUTINES
 

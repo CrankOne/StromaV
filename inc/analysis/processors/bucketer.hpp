@@ -24,7 +24,7 @@
 # ifndef H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 # define H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 
-# include "config.h"
+# include "sV_config.h"
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

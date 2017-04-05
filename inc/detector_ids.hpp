@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_DETECTOR_IDENTIFIERS_MAPPER_CLASS_H
 # define H_STROMA_V_DETECTOR_IDENTIFIERS_MAPPER_CLASS_H
 
-# include "config.h"
+# include "sV_config.h"
 
 # include "app/analysis.hpp"
 # include "app/app.h"

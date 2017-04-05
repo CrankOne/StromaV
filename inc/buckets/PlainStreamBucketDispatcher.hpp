@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_PLAIN_STREAM_BUCKET_DISPATCHER_H
 # define H_STROMA_V_PLAIN_STREAM_BUCKET_DISPATCHER_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef RPC_PROTOCOLS
 

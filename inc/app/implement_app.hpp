@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_DEFAULT_APPLICATION_IMPL_H
 # define H_STROMA_V_DEFAULT_APPLICATION_IMPL_H
 
-# include "../config.h"
+# include "sV_config.h"
 # include <cstdlib>
 # include <boost/exception/diagnostic_information.hpp>
 

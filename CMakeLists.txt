@@ -255,6 +255,7 @@ include_directories( "inc"
                      ${GSL_INCLUDE_DIRS}
                      ${Boost_INCLUDE_DIRS}
                      ${ROOT_INCLUDE_DIRS}
+                     ${CMAKE_CURRENT_BINARY_DIR}/inc
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
@@ -280,7 +281,7 @@ endif( genfit_LIBRARY_DIR )
 # generic StromaV lib configuration
 configure_file (
     "${StromaV_LIB_INCLUDE_DIR}/config.h.in"
-    "${StromaV_LIB_INCLUDE_DIR}/config.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h"
 )
 
 # Physics list aux config
@@ -306,7 +307,7 @@ if( GEANT4_MC_MODEL )
             # it as now each `$ make' invokation causes rebuild.
             configure_file (
                 "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/PhysList.ihpp.in"
-                "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/PhysList.ihpp"
+                "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/PhysList.ihpp"
             )
         endforeach( phLst )
     else( G4PHYSLISTS )
@@ -333,7 +334,7 @@ if( GEANT4_MC_MODEL )
                 # it as now each `$ make' invokation causes rebuild.
                 configure_file (
                     "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Particles.ihpp.in"
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/Particles.ihpp"
+                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Particles.ihpp"
                 )
             endforeach( particle )
         else( G4PARTICLES )
@@ -359,7 +360,7 @@ if( GEANT4_MC_MODEL )
                 # it as now each `$ make' invokation causes rebuild.
                 configure_file (
                     "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Physics.ihpp.in"
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/Physics.ihpp"
+                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Physics.ihpp"
                 )
             endforeach( physics )
         else( G4PHYSICS )
@@ -433,6 +434,8 @@ set_target_properties( ${StromaV_LIB} PROPERTIES VERSION ${StromaV_VERSION}
 install( TARGETS ${StromaV_LIB} LIBRARY DESTINATION lib/StromaV )
 install( DIRECTORY inc/ DESTINATION include/StromaV FILES_MATCHING PATTERN
     "*.h" PATTERN "*.hpp" PATTERN "*.tcc" PATTERN "*.itcc" )
+install( FILES ${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h
+         DESTINATION include/StromaV )
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
          DESTINATION include/StromaV )
 

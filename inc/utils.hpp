@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_AUX_UTILITY_H
 # define H_STROMA_V_AUX_UTILITY_H
 
-# include "config.h"
+# include "sV_config.h"
 
 # include <regex>
 # include <list>

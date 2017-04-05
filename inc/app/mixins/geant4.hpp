@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_CERN_GEANT4_FRAMEWORK_BASED_APPLICATION_MIXIN_H
 # define H_STROMA_V_CERN_GEANT4_FRAMEWORK_BASED_APPLICATION_MIXIN_H
 
-# include "../../config.h"
+# include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
 
