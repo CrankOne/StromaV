@@ -31,7 +31,7 @@
 # include <cstdarg>
 
 # ifdef GEANT4_MC_MODEL
-# include <Geant4/G4ThreeVector.hh>
+# include <G4ThreeVector.hh>
 # endif
 
 namespace sV {

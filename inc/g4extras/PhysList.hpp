@@ -34,8 +34,8 @@
 # include <string>
 # include <unordered_map>
 
-# include <Geant4/G4VUserPhysicsList.hh>
-# include <Geant4/G4VModularPhysicsList.hh>
+# include <G4VUserPhysicsList.hh>
+# include <G4VModularPhysicsList.hh>
 
 class G4VUserPhysicsList;
 class PhysicsListMessenger;

@@ -29,20 +29,20 @@
 
 # include "g4extras/physics/SynchrotronRadiation.hpp"
 
-# include <Geant4/G4Electron.hh>
-# include <Geant4/G4Positron.hh>
-# include <Geant4/G4MuonPlus.hh>
-# include <Geant4/G4MuonMinus.hh>
-# include <Geant4/G4Proton.hh>
-# include <Geant4/G4SynchrotronRadiationInMat.hh>
-# include <Geant4/G4SynchrotronRadiation.hh>
-# include <Geant4/G4StepLimiter.hh>
-# include <Geant4/G4Version.hh>
+# include <G4Electron.hh>
+# include <G4Positron.hh>
+# include <G4MuonPlus.hh>
+# include <G4MuonMinus.hh>
+# include <G4Proton.hh>
+# include <G4SynchrotronRadiationInMat.hh>
+# include <G4SynchrotronRadiation.hh>
+# include <G4StepLimiter.hh>
+# include <G4Version.hh>
 # if G4VERSION_NUMBER > 999
-    # include <Geant4/G4AutoDelete.hh>  // introduced since Geant 4.10
+    # include <G4AutoDelete.hh>  // introduced since Geant 4.10
 # endif
-# include <Geant4/G4PhysicsListHelper.hh>
-# include <Geant4/G4ProcessType.hh>
+# include <G4PhysicsListHelper.hh>
+# include <G4ProcessType.hh>
 
 # if 1
 // factory

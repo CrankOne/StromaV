@@ -28,7 +28,7 @@
 # ifdef GEANT4_MC_MODEL
 # ifdef GEANT4_DYNAMIC_PHYSICS
 
-# include <Geant4/G4VPhysicsConstructor.hh>
+# include <G4VPhysicsConstructor.hh>
 # include "g4extras/PhysList.hpp"
 
 /**@file SynchrotronRadiationPhysics.hpp

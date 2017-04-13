@@ -37,8 +37,8 @@
 # include "g4extras/auto.out/Physics.ihpp"
 # endif
 
-# include <Geant4/G4PhysListFactory.hh>
-# include <Geant4/G4VModularPhysicsList.hh>
+# include <G4PhysListFactory.hh>
+# include <G4VModularPhysicsList.hh>
 # include <boost/lexical_cast.hpp>
 
 namespace sV {

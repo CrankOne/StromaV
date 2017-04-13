@@ -30,8 +30,8 @@ set( StromaV_VERSION_MINOR 1  )
 set( StromaV_VERSION_PATCH dev )
 set( StromaV_VERSION ${StromaV_VERSION_MAJOR}.${StromaV_VERSION_MINOR}.${StromaV_VERSION_PATCH} )
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-    "/etc/root/cmake" )  # <- This one is a new ROOT convention.
+list(APPEND CMAKE_MODULE_PATH "${ROOT_DIR}/etc/root/cmake"
+                              "${ROOT_DIR}/etc/cmake" )  # <- New ROOT convention.
 
 #
 # CMake customization
@@ -115,6 +115,9 @@ option_depend( ALIGNMENT_ROUTINES       RPC_PROTOCOLS )
 # inside of StromaV
 find_package( ROOT
               COMPONENTS Eve Gui Ged Geom RGL EG REQUIRED )
+if( ROOT_FOUND )
+    message( STATUS "ROOT Core library found: ${ROOT_Core_LIBRARY}" )
+endif()
 
 # Boost library is common for most modern Linux distros. Implements a lot
 # of extended functionality: containers, threading, I/O, etc.
