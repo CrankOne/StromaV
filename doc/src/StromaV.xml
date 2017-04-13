@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<book id="stromav_guide" last-revision="$Date: 2017/01/11 09:08:26 $" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>StromaV guide</title>
+  <section id="stromav_guide.introduction">
+    <title><link linkend="stromav_guide.introduction">Introduction</link></title>
+    <para>
+      Need to put some info here.
+    </para>
+  </section>
+</book>

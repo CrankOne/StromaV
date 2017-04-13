@@ -36,6 +36,9 @@
  *
  * It is possible to disabe end-point exception handler by providing NOCATCH
  * environment variable set to '1', 'yes' or 'true'.
+ *
+ * FIXME: if variables_map is not allocated in heap, some application
+ *        implementation causes it te be deleted twice...
  * */
 # define StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( appClass )                   \
 int main( int argc, char * argv[] ) {                                           \
@@ -44,14 +47,14 @@ int main( int argc, char * argv[] ) {                                           
         "Whether to catch exceptions at the outermost context."                 \
     );                                                                          \
     if( ::goo::aux::iApp::envvar_as_logical( NOCATCH_ENVVAR ) ) {               \
-        sV::po::variables_map vm;                                           \
-        sV::AbstractApplication::init(argc, argv, new appClass(&vm) );      \
-        return sV::AbstractApplication::run();                              \
+        sV::po::variables_map * vmPtr = new sV::po::variables_map();            \
+        sV::AbstractApplication::init(argc, argv, new appClass(vmPtr) );        \
+        return sV::AbstractApplication::run();                                  \
     } else {                                                                    \
         try {                                                                   \
-            sV::po::variables_map vm;                                       \
-            sV::AbstractApplication::init(argc, argv, new appClass(&vm) );  \
-            return sV::AbstractApplication::run();                          \
+            sV::po::variables_map * vmPtr = new sV::po::variables_map();        \
+            sV::AbstractApplication::init(argc, argv, new appClass(vmPtr) );    \
+            return sV::AbstractApplication::run();                              \
         } catch( goo::Exception & e ) {                                         \
             std::cerr << "Caught an instance of goo::Exception:" << std::endl;  \
             e.dump(std::cerr);                                                  \

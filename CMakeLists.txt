@@ -41,7 +41,7 @@ list(APPEND CMAKE_MODULE_PATH "${ROOT_DIR}/etc/root/cmake"
 # logic: logging, config files, exception handling, etc. We need to find Goo
 # right here because of a subset of its useful CMake-modules.
 find_package( Goo REQUIRED )
-
+find_package( extGDML REQUIRED )
 # This will define a dependant-options check function upon build:
 include(${Goo_CMAKE_MODULES_DIR}/OptionDepend.cmake)
 # This will check for out-of-source build:
@@ -122,7 +122,12 @@ endif()
 # Boost library is common for most modern Linux distros. Implements a lot
 # of extended functionality: containers, threading, I/O, etc.
 find_package( Boost ${Boost_FORCE_VERSION}
-              COMPONENTS program_options system thread unit_test_framework REQUIRED )
+              COMPONENTS program_options
+                         system
+                         thread
+                         unit_test_framework
+                         iostreams
+              REQUIRED )
 
 # StromaV uses Google Protocol Buffers as a base layer for event structure
 # representation. This dependency is optional and needed only if event
@@ -249,13 +254,13 @@ include_directories( SYSTEM ${dirs} )
 include_directories( "inc"
                      "rootPlugins"
                      SYSTEM ${Goo_INCLUDE_DIRS}
+                     ${extGDML_INCLUDE_DIRS}/..
                      ${GSL_INCLUDE_DIRS}
                      ${Boost_INCLUDE_DIRS}
                      ${ROOT_INCLUDE_DIRS}
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
-
 if( genfit_INCLUDE_DIRS )
     include_directories( ${genfit_INCLUDE_DIRS} )
 endif( genfit_INCLUDE_DIRS )
@@ -266,7 +271,7 @@ endif( genfit_INCLUDE_DIRS )
 #################
 
 link_directories( ${Goo_LIBRARY_DIR} )
-
+link_directories( ${extGDML_LIBRARY_DIR} )
 if( genfit_LIBRARY_DIR )
     link_directories( ${genfit_LIBRARY_DIR} )
 endif( genfit_LIBRARY_DIR )
@@ -370,9 +375,8 @@ endif( GEANT4_MC_MODEL )
 
 # Remove this dirty things outta my compiler options!
 string(REPLACE "-pedantic"              "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-long-long"         "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-non-virtual-dtor"  "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REPLACE "-Wno-c99-extensions"    "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+string(REGEX REPLACE "-Wno-[^\ ]*"      "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+
 
 # Add ROOT dictionaries
 if( ANALYSIS_ROUTINES )
@@ -438,6 +442,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
 target_link_libraries( ${StromaV_LIB} ${Goo_LIBRARIES}   )
 target_link_libraries( ${StromaV_LIB} ${Boost_LIBRARIES} )
 target_link_libraries( ${StromaV_LIB} ${ROOT_LIBRARIES}  )
+target_link_libraries( ${StromaV_LIB} ${extGDML_LIBRARIES} )
 if( GEANT4_MC_MODEL )
     target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )
@@ -504,6 +509,7 @@ configure_file (
 add_subdirectory( apps )
 
 options_list()
+
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/StromaVConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake"
@@ -520,5 +526,10 @@ install( FILES
 
 install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
-         DESTINATION share/StromaV )
+         DESTINATION usr/share/StromaV )
+
+install(
+    CODE "file( GLOB _GeneratedROOTDicts \"${CMAKE_CURRENT_BINARY_DIR}/*.pcm\" )"
+    CODE "file( INSTALL \${_GeneratedROOTDicts} DESTINATION \"${CMAKE_INSTALL_PREFIX}/lib/StromaV\" )"
+)
 

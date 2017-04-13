@@ -33,66 +33,131 @@
 
 # include "alignment/TrackingVolume.tcc"
 
+# include <unordered_map>
+# include <unordered_set>
+
 namespace sV {
 namespace alignment {
 
 /**@class ReceptiveDetector
- * @brief Detector representation instance reacting on hits.
+ * @brief Detector representation instance reacting on hits provided as
+ *        summary instances.
  *
  * Provides basics for keeping information about particular hits
- * in event.
+ * in event. Incapsulates caching logic for particular type of generalized
  *
  * @ingroup alignment
  */
 class ReceptiveDetector : public virtual iDetector {
 public:
-    typedef ::sV::events::DetectorSummary Hit;
+    typedef ::sV::events::DetectorSummary PackedSummary;
 protected:
-    const Hit * _lastHitPtr;
-    virtual bool _V_treat_new_hit( const Hit & hit ) = 0;
-    virtual bool _V_reset_hits() = 0;
+    /// Ptr to current (packed) summary data.
+    const PackedSummary * _summary;
+    /// Has to unpack particular summary.
+    virtual bool _V_recache_summary( const PackedSummary & ) = 0;
+    /// Causes resetting of current cached instance.
+    virtual bool _V_reset_summary() {
+        bool had = _summary;
+        _summary = nullptr;
+        return had; }
 public:
     ReceptiveDetector( const std::string & fn,
                        const std::string & dn );
 
     /// Returns true when re-drawing need.
-    bool hit( const Hit & hit_ ) { return _V_treat_new_hit( *(_lastHitPtr = &hit_) ); }
-    const Hit & common_hit_data() { return *_lastHitPtr; }
-
-    bool has_hit() const { return _lastHitPtr; }
-
-    bool reset_hits() { return _V_reset_hits(); }
+    bool common_summary( const PackedSummary & summary_ ) {
+            return _V_recache_summary( *(_summary = &summary_) ); }
+    /// Returns (packed) summary data.
+    const PackedSummary & common_summary() { return *_summary; }
+    /// Returns true if current (packed) summary instance is set.
+    virtual bool has_common_summary() const { return _summary; }
+    bool reset_summary() { return _V_reset_summary(); }
 };  // class ReceptiveDetector
 
-
-
-template<typename ConcreteHitT>
-class CachedPayloadReceptiveDetector : ReceptiveDetector {
+/**@brief Aux receptive detector instance performing unpacking routines for
+ * certain summary payload.
+ */
+template<typename SummaryT>
+class CachedPayloadReceptiveDetector : public ReceptiveDetector {
 protected:
-    ConcreteHitT _reentrantHit;
+    bool _empty;
+    SummaryT _unpackedSummary;
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit ) final {
-        _TODO_  // TODO
+    virtual bool _V_recache_summary( const PackedSummary & summary_ ) override {
+        if( !summary_.has_summarydata() ) {
+            _empty = true;
+            return false;
+        }
+        if( summary_.summarydata().Is<SummaryT>() ) {
+            summary_.summarydata().UnpackTo( &_unpackedSummary );
+            _empty = false;
+        } else {
+            _empty = true;
+            emraise( badParameter, "CachedPayloadReceptiveDetector instance "
+                "%p got wrong summary type to unpack.", this );
+        }
+        return !_empty;
+    }
+    virtual bool _V_reset_summary() override {
+        if( ReceptiveDetector::_V_reset_summary() ) {
+            _unpackedSummary.Clear();
+            return true;
+        }
+        return false;
     }
 public:
     CachedPayloadReceptiveDetector( const std::string & fn,
-                                    const std::string & dn );
-    const ConcreteHitT & hit() const { return _reentrantHit; }
+                                    const std::string & dn ) :
+            iDetector( fn, dn, false, true, false ),
+            ReceptiveDetector(fn, dn), _empty(false) {}
+    const SummaryT & summary() const { return _unpackedSummary; }
+    virtual bool has_summary() const { return !_empty; }
 };  // class CachedPayloadReceptiveDetector
 
-
-
+/**@brief Aux receptive detector assembly instance performing unpacking
+ *        routines for certain summary payloads.
+ *
+ * The assemblies of detectors are usually present within set of multiple
+ * similar parts with one particular summary.
+ */
 template<typename ConcreteHitT>
-class ReceptiveDetectorGroup : public virtual \
-                        CachedPayloadReceptiveDetector<::sV::events::DetectorSummaryGroup> {
+class ReceptiveAssembly : public
+            CachedPayloadReceptiveDetector<::sV::events::AssemblySummary> {
+public:
+    typedef CachedPayloadReceptiveDetector<::sV::events::AssemblySummary> Parent;
+    typedef CachedPayloadReceptiveDetector<ConcreteHitT> ReceptivePart;
+    typedef std::unordered_map<AFR_DetSignature, ReceptivePart *> PartsMap;
 protected:
-    virtual bool _V_treat_new_hit( const Hit & hit ) final {
-        _TODO_  // TODO
+    /// Child class has to fill this map by its own.
+    PartsMap _parts;
+protected:
+    virtual bool _V_recache_summary( const PackedSummary & ps ) final {
+        if(!Parent::_V_recache_summary(ps)){
+            return false;
+        }
+        std::unordered_set<AFR_DetSignature> met;
+        bool set = false;
+        for( const auto & pSummary
+                : summary()
+                .partialsummaries() ) {
+            met.insert( pSummary.detectorid() );
+            set |= _parts[pSummary.detectorid()]->common_summary(pSummary);
+        }
+        for( const auto & pEntryPair : _parts ) {
+            if( met.end() == met.find( pEntryPair.first ) ) {
+                pEntryPair.second->reset_summary();
+            }
+        }
+        return set;
     }
 public:
-    ReceptiveDetectorGroup( const std::string & fn,
-                            const std::string & dn );
-    const ConcreteHitT & hit() const { return _reentrantHit; }
+    ReceptiveAssembly( const std::string & fn,
+                       const std::string & dn ) :
+                iDetector(fn, dn, false, true, false),
+                Parent( fn, dn ) {}
+    const PartsMap & parts() const { return _parts; }
+    PartsMap & mutable_parts() { return _parts; }
 };  // class CachedPayloadReceptiveDetector
 
 }  // namespace alignment

@@ -20,72 +20,40 @@
 
 include(${Goo_CMAKE_MODULES_DIR}/PyExtensions.cmake)
 
+set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
+
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
-    list( APPEND StromaV_PYMODULES analysis.i )
+    list( APPEND StromaV_PYMODULES pipeline.i )
+    install( FILES
+             pipeline.i
+             std_unique_ptr.i
+             std_stream.i
+             DESTINATION ${SWIG_IFACES_DIR}/sV )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
-Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
-                   LINK_LIBS ${StromaV_LIB} )
+if ( StromaV_PYMODULES )
+    set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
+    Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
+                       LINK_LIBS ${StromaV_LIB}
+                       WRAPPER_SOUCES WRAPPER_SRCS
+                       SETUP_TEMPLATE setup.py.in )
+    # Create symlink to make python's eggs mechanics happy:
+    add_custom_target( py_link_target ALL
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/py ${CMAKE_BINARY_DIR}/StromaV)
+    
 
-if( RPC_PROTOCOLS )
-    protobuf_generate_python( PY_MSG_MODULES ../event.proto )
-    add_custom_target( sVPyEvent ALL DEPENDS ${PY_MSG_MODULES} )
-    install( FILES ${PY_MSG_MODULES} DESTINATION ${PY_MODULES_INSTALL_DIR}/${PYPKGNM} )
-endif( RPC_PROTOCOLS )
+    # Note: workarounds for recent C++ compiler warnings
+    set_source_files_properties( ${WRAPPER_SRCS}
+            PROPERTIES COMPILE_FLAGS "-Dregister= -Wno-self-assign -Wno-shadow" )
 
-#cmake_minimum_required( VERSION 3.4 )
-#project( pyStromaV )
-#
-##
-## Pre-set python versioning variables for proper look-up
-## Note, that Python_ADDITIONAL_VERSIONS variable will be used for both py libs
-## and interp. This way one can override default system's python version.
-#set( Python_ADDITIONAL_VERSIONS 2.7 2.6 2.5 2.4 )
-#
-#find_package( SWIG REQUIRED )
-#find_package( PythonInterp REQUIRED )
-#find_package( PythonLibs REQUIRED )
-#
-#include( ${SWIG_USE_FILE} )
-#set( CMAKE_SWIG_FLAGS "-Wall" )
-#include_directories( ${PYTHON_INCLUDE_DIRS} )
-#
-#set_source_files_properties( analysis.i PROPERTIES CPLUSPLUS ON )
-##set_property( SOURCE analysis.i PROPERTY SWIG_MODULE_NAME analysis )
-##set_source_files_properties(analysis.i PROPERTIES SWIG_FLAGS "-includeall")
-#swig_add_module( analysis python analysis.i )
-#swig_link_libraries( analysis ${PYTHON_LIBRARIES})
-#
-#execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()"
-#                OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-#
-#if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
-#    set( PY_MODULES_INSTALL_DIR ${PYTHON_SITE_PACKAGES} )
-#else( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
-#    # Don't know if it is legal:
-#    string(REPLACE "." ";" VERSION_LIST ${PYTHONLIBS_VERSION_STRING})
-#    list(GET VERSION_LIST 0 PYTHON_VERSION_MAJOR)
-#    list(GET VERSION_LIST 1 PYTHON_VERSION_MINOR)
-#    set(PY_VER "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-#
-#    set( PY_MODULES_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PY_VER}/site-packages )
-#    message( STATUS "Python site-packages dir is set to
-#    \"${PY_MODULES_INSTALL_DIR}\"." )
-#endif( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
-#
-#target_link_libraries( _analysis ${StromaV_LIB} )
-#
-#if( RPC_PROTOCOLS )
-#    protobuf_generate_python( PY_MSG_MODULES ../event.proto )
-#    add_custom_target( pyEvent ALL DEPENDS ${PY_MSG_MODULES} )
-#    install( FILES ${PY_MSG_MODULES} DESTINATION ${PY_MODULES_INSTALL_DIR}/sV )
-#    #add_dependencies( _analysis ${PY_MSG_MODULES} )
-#endif( RPC_PROTOCOLS )
-#
-#install(TARGETS _analysis
-#        DESTINATION ${PY_MODULES_INSTALL_DIR}/sV )
-#install(FILES ${CMAKE_BINARY_DIR}/py/analysis.py
-#        DESTINATION ${PY_MODULES_INSTALL_DIR}/sV )
-## ... other generated wrappers
-#install( DIRECTORY . DESTINATION ${PY_MODULES_INSTALL_DIR}/sV FILES_MATCHING PATTERN
-#    "*.py" )
+    if( RPC_PROTOCOLS )
+        protobuf_generate_python( PY_MSG_MODULES ../event.proto )
+        add_custom_target( sVPyEvent ALL DEPENDS ${PY_MSG_MODULES} )
+        #install( FILES ${PY_MSG_MODULES} DESTINATION ${PY_MODULES_INSTALL_DIR}/${PYPKGNM} )
+    endif( RPC_PROTOCOLS )
+
+    set( StromaV_SWIG_IFACES_DIR ${SWIG_IFACES_DIR} PARENT_SCOPE )
+else( StromaV_PYMODULES )
+    message( STATUS "No py-bindings to be generated" )
+endif( StromaV_PYMODULES )
+

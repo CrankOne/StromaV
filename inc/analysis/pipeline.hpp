@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwith@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -29,19 +30,24 @@
 
 # include "app/mixins/protobuf.hpp"
 # include "uevent.hpp"
-# include "metadata.hpp"
 
 # include <unordered_map>
 # include <unordered_set>
 
-/* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
- * keywords, so we get rid of them using these macro defs: */
-# ifdef SWIG
-# define override
-# define final
-# endif  // SWIG
-
 namespace sV {
+
+// FWD
+namespace aux {
+/// Data format reader object representation.
+class iEventSequence;
+/// Event processor reader object representation.
+class iEventProcessor;
+/// Processor stub helper for concrete event processors.
+template<typename EventClassT, typename PayloadT>
+            class iTEventPayloadProcessor;
+/// Aux interfacing class implementing pushing hooks.
+class iEventPayloadProcessorBase;
+}  // namespace aux
 
 /**@class AnalysisPipeline
  * @brief Representation for data analysis pipeline.
@@ -61,17 +67,10 @@ namespace sV {
 class AnalysisPipeline {
 public:
     typedef typename mixins::PBEventApp::UniEvent Event;
-    /// Data format reader object representation.
-    class iEventSequence;
-    /// Event processor reader object representation.
-    class iEventProcessor;
-    /// Processor stub helper for concrete event processors.
-    template<typename PayloadT> class iEventPayloadProcessor;
+    typedef aux::iEventSequence iEventSequence;
+    typedef aux::iEventProcessor iEventProcessor;
+    typedef aux::iEventPayloadProcessorBase iEventPayloadProcessorBase;
 protected:
-    # ifndef SWIG
-    /// Aux interfacing class implementing pushing hooks.
-    class iEventPayloadProcessorBase;
-    # endif
     /// Pointer to data source.
     iEventSequence * _evSeq;
     /// List of handlers.
@@ -85,18 +84,21 @@ protected:
                                      void(*packer)(Event*) );
     virtual int _process_chain( Event * );
     virtual void _finalize_event( Event * );
-    virtual void _finalize_sequence( AnalysisPipeline::iEventSequence * );
+    virtual void _finalize_sequence( iEventSequence * );
 public:
     AnalysisPipeline();
     virtual ~AnalysisPipeline() {}  // todo?
 
     /// Adds processor to processor chain.
     void push_back_processor( iEventProcessor * );
-    /// Returns a processor chain list.
-    std::list<iEventProcessor *> & get_processors_chain() { return _processorsChain; }
-    /// Returns current event sequence ptr. Not that it will return 
-    template<typename TagetTypeT> TagetTypeT get_evseq() {
-            return safe_cast<TagetTypeT>( *_evSeq ); }
+
+    /// Processor chain getter.
+    std::list<iEventProcessor *> & processors()
+        { return _processorsChain; }
+
+    /// Current event sequence getter.
+    iEventSequence * event_sequence()
+        { return _evSeq; }
 
     /// Evaluates pipeline on the single event. If event was denied,
     /// returns the ordering number of processor which did the discrimination
@@ -105,16 +107,30 @@ public:
 
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
     virtual int process( iEventSequence * );
+
+    template<typename EventClassT, typename PayloadT>
+    friend class aux::iTEventPayloadProcessor;
 };  // class AnalysisPipeline
 
-
+namespace aux {
 /**@class AnalysisApplication::iEventSequence
  *
  * Data format reader object representation.
  * */
-class AnalysisPipeline::iEventSequence {
+class iEventSequence {
 public:
     typedef AnalysisPipeline::Event Event;
+    typedef uint8_t Features_t;
+    enum Features
+    # ifndef SWIG
+        : Features_t
+    # endif
+    {
+        randomAccess = 0x1,
+        identifiable = 0x2,
+    };
+private:
+    uint8_t _features;
 protected:
     virtual bool _V_is_good() = 0;
     virtual void _V_next_event( Event *& ) = 0;
@@ -123,23 +139,45 @@ protected:
     virtual Event * _V_initialize_reading() = 0;
     virtual void _V_finalize_reading() = 0;
     virtual void _V_print_brief_summary( std::ostream & ) const {}
+    iEventSequence( Features_t fts );
 public:
     virtual ~iEventSequence(){}
+
+    /// Returns true if source initialized and next event can be read.
     virtual bool is_good() {     return _V_is_good(); }
+
+    /// Set-ups reading procedure.
     virtual Event * initialize_reading() { return _V_initialize_reading(); }
+
+    /// Performs reading next event into provided reentrant instance.
     virtual void next_event( Event *& e ) {         _V_next_event( e ); }
+
+    /// Invoked after event reading done (e.g. to clean-up file descriptor).
     virtual void finalize_reading( ) {   _V_finalize_reading(); }
+
+    /// Prints out brief statistics of current state.
     virtual void print_brief_summary( std::ostream & os ) const
                                     { _V_print_brief_summary( os ); }
-};
 
-# include "ra_event_source.itcc"
+    /// Returns features mask.
+    Features_t features() const { return _features; }
+
+    /// Returns true if descendant implements iRandomAccessEventSource.
+    bool does_provide_random_access() const
+                { return _features & randomAccess; }
+
+    /// Returns true if descendant implements iIdentifiableEventSource.
+    bool is_identifiable() const
+                { return _features & identifiable; }
+
+    friend class ::sV::AnalysisPipeline;
+};
 
 /**@class AnalysisApplication::iEventProcessor
  *
  * Event processing handler class interface. This class claims the basic logic.
  * */
-class AnalysisPipeline::iEventProcessor {
+class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
 private:
@@ -156,17 +194,20 @@ protected:
 public:
     iEventProcessor( const std::string & pn ) : _pName(pn) {}
     virtual ~iEventProcessor(){}
-    virtual bool operator()( Event * e ) { return _V_process_event( e ); }
+    virtual bool process_event( Event * e ) { return _V_process_event( e ); }
     virtual void finalize_event( Event * e )
                                     { _V_finalize_event_processing( e ); }
     virtual void print_brief_summary( std::ostream & os ) const
                                     { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
+
+    virtual bool operator()( Event * e ) { return process_event( e ); }
+
+    friend class ::sV::AnalysisPipeline;
 };
 
-# ifndef SWIG
-class AnalysisPipeline::iEventPayloadProcessorBase : public iEventProcessor {
+class iEventPayloadProcessorBase : public iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
     iEventPayloadProcessorBase( const std::string & pn ) :
@@ -175,43 +216,45 @@ protected:
     /// Must be overriden by payload processor.
     virtual void register_hooks( AnalysisPipeline * ) = 0;
 
-    friend class AnalysisPipeline;
+    friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
-# endif
 
-/**@class AnalysisApplication::iEventPayloadProcessor
+/**@class AnalysisApplication::iTEventPayloadProcessor
  *
  * This template base for processors incapsulates (re)caching logic for
  * concrete data payload instances inside event messages. Since gprotobuf3
  * does not provide any extension/inheritance mechanics, we have to implement
- * some helper code.
+ * some helper code here.
  * */
-template<typename PayloadT>
-class AnalysisPipeline::iEventPayloadProcessor : public iEventPayloadProcessorBase {
+template<typename EventClassT,
+         typename PayloadT>
+class iTEventPayloadProcessor : public iEventPayloadProcessorBase {
 public:
     typedef AnalysisPipeline::Event Event;
-private:
+protected:
     /// Reentrant static field. Should be initialized to NULL by analysis
     /// application at the beginning of each new event.
-    static PayloadT * _reentrantExpEventPtr;
+    static PayloadT * _reentrantPayloadPtr;
 public:
     /// Must be called at the beginning of each new event by management class.
-    static void nullate_cache() { _reentrantExpEventPtr = nullptr; }
-private:
-    /// Will be called if current event has payload of required type.
-    static void unpack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
-                 ->mutable_payload()
-                 ->UnpackTo(_reentrantExpEventPtr);
-    }
-    /// Will be called at the end of event processing pipeline.
-    static void pack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
-                 ->mutable_payload()
-                 ->PackFrom(*_reentrantExpEventPtr);
-    }
+    static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
 protected:
-    iEventPayloadProcessor( const std::string & pn ) :
+    /// Will be called if current event has payload of required type.
+    static void (*unpack_payload)( Event * );
+    //static void unpack_payload( Event * uEventPtr ) {
+    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
+    //             ->mutable_payload()
+    //             ->UnpackTo(_reentrantPayloadPtr);
+    //}
+    /// Will be called at the end of event processing pipeline.
+    static void (*pack_payload)( Event * );
+    //static void pack_payload( Event * uEventPtr ) {
+    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
+    //             ->mutable_payload()
+    //             ->PackFrom(*_reentrantPayloadPtr);
+    //}
+protected:
+    iTEventPayloadProcessor( const std::string & pn ) :
                             iEventPayloadProcessorBase(pn) {}
 
     /// Should return 'false' if processing in chain has to be aborted.
@@ -228,15 +271,17 @@ protected:
                              this->processor_name().c_str() );
                 return false;
             }
-            if( !_reentrantExpEventPtr ) {
+            if( !_reentrantPayloadPtr ) {
+                assert(unpack_payload);
                 unpack_payload( uEventPtr );
             }
-            return _V_process_event_payload( _reentrantExpEventPtr );
+            return _V_process_event_payload( _reentrantPayloadPtr );
         }
         return false;
     }
 
     virtual void register_hooks( AnalysisPipeline * ppl ) final {
+        assert( pack_payload );
         ppl->register_packing_functions( nullate_cache,
                                          pack_payload );
     }
@@ -246,7 +291,60 @@ protected:
 public:
     /// Helper method registering pack/unpack caching functions. Invoked by
     /// pipeline
-};
+    friend class ::sV::AnalysisPipeline;
+};  // class iTEventPayloadProcessor
+
+template<typename EventClassT,
+         typename PayloadT>
+PayloadT * iTEventPayloadProcessor<EventClassT, PayloadT>
+                                            ::_reentrantPayloadPtr = nullptr;
+
+template<typename EventClassT,
+         typename PayloadT>
+void (*iTEventPayloadProcessor<EventClassT, PayloadT>::unpack_payload)
+                                    ( AnalysisPipeline::Event * ) = nullptr;
+
+template<typename EventClassT,
+         typename PayloadT>
+void (*iTEventPayloadProcessor<EventClassT, PayloadT>::pack_payload)
+                                    ( AnalysisPipeline::Event * ) = nullptr;
+
+
+template<typename PayloadT>
+class iTExperimentalEventPayloadProcessor :
+        public iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> {
+public:
+    typedef AnalysisPipeline::Event Event;
+    typedef iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> Parent;
+private:
+    /// Will be called if current event has payload of required type.
+    static void _unpack_payload( Event * uEventPtr ) {
+        Parent::_reentrantPayloadPtr = new PayloadT();
+        uEventPtr->mutable_experimental()
+                 ->mutable_payload()
+                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+    }
+    /// Will be called at the end of event processing pipeline.
+    static void _pack_payload( Event * uEventPtr ) {
+        uEventPtr->mutable_experimental()
+                 ->mutable_payload()
+                 ->PackFrom(*Parent::_reentrantPayloadPtr);
+        delete Parent::_reentrantPayloadPtr;
+        Parent::_reentrantPayloadPtr = nullptr;
+    }
+protected:
+    iTExperimentalEventPayloadProcessor( const std::string & pn ) :
+                            Parent(pn) {
+        if( !Parent::unpack_payload ) {
+            Parent::unpack_payload = _unpack_payload;
+        }
+        if( !Parent::pack_payload ) {
+            Parent::pack_payload = _pack_payload;
+        }
+    }
+};  // class iExperimentalEventPayloadProcessor
+
+}  // namespace aux
 
 }  // namespace sV
 

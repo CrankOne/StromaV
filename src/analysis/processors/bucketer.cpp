@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -24,49 +25,52 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# include "buckets/ComprBucketDispatcher.hpp"
+# include "compr/DummyCompressor.hpp"
+
 namespace sV {
 namespace dprocessors {
 
+Bucketer::Bucketer( const std::string & pn,
+                    sV::iBucketDispatcher * bucketDispatcher,
+                    std::fstream * fileRef ) :
+                        AnalysisPipeline::iEventProcessor( pn ) {
+    _bucketDispatcher = bucketDispatcher;
+    _fileRef = fileRef;
+}
 
+Bucketer::~Bucketer() {
+    _fileRef->close();
+}
 
 bool
 Bucketer::_V_process_event( Event * uEvent ){
-    _TODO_  // TODO
-    if( is_bucket_full() ) {
-        drop_bucket();
-    }
-    return false;
+    _bucketDispatcher->push_event( *(uEvent) );
+    return true;
 }
 
 StromaV_DEFINE_CONFIG_ARGUMENTS {
-    po::options_description bucketerP( "Packing buckets (bucketer processor)" );
-    { bucketerP.add_options()
-        ("buckets.events-per-bucket",
-            po::value<std::string>()->default_value(0),
-            "How much events has to be stored per one bucket. If 0, then size"
-            "criterion will be used." )
-        ("buckets.kbytes-per-bucket",
-            po::value<int>()->default_value(1e2),
-            "Approximate size of uncompressed bucket. If 0, then "
-            "events number criterion will be used.")
-        ("buckets.compression",
-            po::value<std::string>()->default_value("none"),
-            "Which compression algorithm to apply to buckets." )
-        ("buckets.compression-list-algorithms",
-            "Prints out available compression options.")
-        ;
-    }
+    po::options_description bucketerP = sV::iBucketDispatcher::_dispatcher_options();
     return bucketerP;
 }
-StromaV_DEFINE_DATA_PROCESSOR( TestingProcessor ) {
-    _TODO_  // TODO
-    # if 0
-    return new Bucketer(
-            "bucketer",
-            goo::app<sV::AbstractApplication>().cfg_option<size_t>("multicast.storage-capacity"),
-        );
-    # endif
-} StromaV_REGISTER_DATA_PROCESSOR( TestingProcessor,
+StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
+    std::fstream * fileRef = new std::fstream();
+    fileRef->open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
+        ("b-dispatcher.outFile"), std::ios::out | std::ios::binary |
+                                  std::ios::app );
+    sV::DummyCompressor * compressor = new sV::DummyCompressor;
+    sV::ComprBucketDispatcher * dispatcher = new sV::ComprBucketDispatcher(
+                compressor,
+                *(fileRef),
+                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
+                ("b-dispatcher.maxBucketSize.KB"),
+                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
+                ("b-dispatcher.maxBucketSize.events"),
+                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
+                ("b-dispatcher.BufSize.KB")
+            );
+    return new Bucketer("bucketer", dispatcher, fileRef);
+} StromaV_REGISTER_DATA_PROCESSOR( BucketerProcessor,
     "bucketer",
     "Processor performing accumulation of events into buckets. TODO: more doc" )
 

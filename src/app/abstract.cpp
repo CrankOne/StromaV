@@ -27,6 +27,7 @@
 
 # include <fstream>
 # include <goo_versioning.h>
+#include <dlfcn.h>
 
 /**@defgroup app Appplications
  * @brief General infrastructure of applications.
@@ -137,6 +138,10 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         ("errfile",
             po::value<std::string>()->default_value("stderr"),
             "Stream for error logging. Use \"stderr\" for stderr.")
+        ("dynload",
+            po::value<std::vector<std::string> >(),
+            "Shared objects to be loaded with dlopen(). Useful for enabling"
+            "plug-ins and back-ends built as a shared libraries.")
         ("ascii-display,A",
             po::value<bool>()->default_value(false),
             "When enabled, can print to terminal some info updated in real-time. "
@@ -168,6 +173,19 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         std::cout << "Invalid verbosity level specified: " << (int) _verbosity;
         _verbosity = 3;
         std::cerr << ". Set to " << (int) _verbosity << "." << std::endl;
+    }
+
+    if( vm.count("dynload") ) {
+        for( const std::string & dlPath :
+                        vm["dynload"].as<std::vector<std::string>>() ) {
+            void * handle = dlopen( dlPath.c_str(), RTLD_NOW );
+            if( !handle ) {
+                std::cerr << "Failed to load \"" << dlPath << "\"" << std::endl;
+            } else {
+                std::cout << "Shared object file \"" << dlPath 
+                          << "\" loaded." << std::endl;
+            }
+        }
     }
 
     if( vm.count("config") ) {

@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -44,8 +45,10 @@
 # include "g4extras/eHandler.hpp"
 
 # include <ext.gdml/SensDetDict.hpp>
-# include <ext.gdml/auxInfoProcessor.hpp>
+# include <ext.gdml/auxInfoSet.hpp>
 # include <ext.gdml/DetectorConstruction.hpp>
+# include <ext.gdml/extras.hpp>
+# include <ext.gdml/gdml_aux_visStyles.hpp>
 
 # include <TFile.h>
 
@@ -123,6 +126,10 @@ Geant4Application::_geant4_options() const {
             po::value<int>()->default_value(2 /* warnings */),
             "Geant4 core system verbosity (set before any .mac processing starts "
             "and further can be overriden by them).")
+        ("g4.randomSeed",
+            po::value<unsigned int>()->default_value(0),
+            "Random generator seed to be used with CLHEP::HepRandom. "
+            "Note, that null seed means no manual setting.")
         ("g4.visMacroFile",
             po::value<std::string>()->default_value("vis.mac"),
             "'vis' run-time script")
@@ -191,6 +198,10 @@ Geant4Application::_geant4_gdml_options() const {
         ("gdml.enableXMLSchemaValidation",
             po::value<bool>()->default_value(true),
             "Enable GDML's XML schema validation (useful for initial speed-up and offline work).")
+        ("gdml.aux.tag",
+            po::value<std::vector< std::string> >(),
+            "GDML aux tags to be enabled for processing")
+
         ;
     return gdmlCfg;
 }
@@ -224,13 +235,19 @@ Geant4Application::_treat_geant4_gdml_options( const po::variables_map & vm ) {
     _parser->Read(vm["geometry"].as<std::string>(),
         vm["gdml.enableXMLSchemaValidation"].as<bool>() );
     //sV_log2("Parsing GDML geometry succeed.\n");
+    if( vm["g4.randomSeed"].as<unsigned int>() ) {
+        CLHEP::HepRandom::setTheSeed(vm["g4.randomSeed"].as<unsigned int>());
+    }
 }
 
 void
-Geant4Application::_clear_geant4_options( const po::variables_map & vm ) {
+Geant4Application::_clear_geant4_options( const po::variables_map & /*vm*/ ) {
+    // FIXME: sometimes causes strange segfaults...
+    # if 0
     if( vm["g4.customExceptionHandler"].as<bool>() ) {
         sV::aux::ExceptionHandler::disable();
     }
+    # endif
 }
 
 void
@@ -260,7 +277,8 @@ Geant4Application::_initialize_geometry() {
     sV_log2("Setting up GEANT4 run manager on default volume \"%s\".\n",
                 _setupName.c_str());
     G4RunManager::GetRunManager()->SetUserInitialization(
-                new sV::g4sim::DetectorConstruction( gdml_parser_ptr()->GetWorldVolume( _setupName ) ));
+                new extGDML::DetectorConstruction
+                        (gdml_parser_ptr()->GetWorldVolume(_setupName)) );
 }
 
 void
@@ -317,7 +335,15 @@ Geant4Application::_gui_run( const std::string & macroFilePath ) {
     G4UIExecutive * uiExec = new G4UIExecutive(_argc, const_cast<char **>(_argv));
     # endif
     if( !macroFilePath.empty() ) {
-        rc = _batch_run( macroFilePath );
+        char bf[128];
+        snprintf( bf, sizeof(bf),
+                  "/vis/verbose %d", cfg_option<int>("g4.verbosity"));
+        G4UImanager::GetUIpointer()->ApplyCommand( bf );
+        snprintf( bf, sizeof(bf),
+                  "/control/execute %s", macroFilePath.c_str() );
+        sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
+        G4UImanager::GetUIpointer()->ApplyCommand( bf );
+        sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
     }
     # ifdef G4_MDL_VIS
     uiExec->SessionStart();
@@ -337,23 +363,26 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
     snprintf( bf, sizeof(bf),
               "/control/execute %s", macroFilePath.c_str() );
     sV_log2("Vis manager now executing \"%s\"...\n", macroFilePath.c_str() );
-    G4UImanager::GetUIpointer()->ApplyCommand( bf ); 
+    G4UImanager::GetUIpointer()->ApplyCommand( bf );
     sV_log2("... end of \"%s\" execution.\n", macroFilePath.c_str() );
     return EXIT_SUCCESS;
 }
 
 int
-Geant4Application::_run_session( bool isBatch, const std::string & macroFilePath ) {
+Geant4Application::_run_session( bool isBatch,
+                                const std::string & macroFilePath ) {
     int rc = EXIT_FAILURE;
 
     // Allocate Geant4 run manager.
     G4RunManager * runManager = new G4RunManager();
-
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
     sV_log2("Processing aux info.\n");
-    sV::GDMLAuxInfoProcessor::self().apply( *gdml_parser_ptr() );
-    sV::extras::apply_styles_selector( _setupName );
+    extGDML::AuxInfoSet * auxInfoSet =
+        new extGDML::AuxInfoSet(cfg_option<std::vector<std::string> >
+                                    ("gdml.aux.tag"));
+    auxInfoSet->apply( *gdml_parser_ptr() );
+    extGDML::extras::apply_styles_selector( _setupName );
 
     if( isBatch ) {
         rc = _batch_run( macroFilePath );

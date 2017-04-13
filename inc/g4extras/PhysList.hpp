@@ -121,6 +121,9 @@ public:
                      ptr->GetPhysicsType() );
         return ptr;
     }
+
+    static void register_modules_at( const NamesList &,
+                                     G4VModularPhysicsList * );
 private:
     static std::unordered_map<std::string, G4VPhysicsConstructor * (*)()> * _phListCtrsDict;
 

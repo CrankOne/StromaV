@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -20,8 +21,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_APP_ECAL_MDL_H
-# define H_APP_ECAL_MDL_H
+# ifndef H_APP_MDLV_H
+# define H_APP_MDLV_H
 
 # include "app/mixins/geant4.hpp"
 
@@ -50,6 +51,6 @@ public:
 
 }  // namespace ecal
 
-# endif  // H_APP_ECAL_MDL_H
+# endif  // H_APP_MDLV_H
 
 

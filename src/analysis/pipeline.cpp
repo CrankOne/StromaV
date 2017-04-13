@@ -120,6 +120,15 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence * evSeqPtr ) {
     return 0;
 }
 
+namespace aux {
+
+//
+// iEventSequence impl
+
+iEventSequence::iEventSequence( Features_t fts ) : _features(fts) {}
+
+}  // namespace aux
+
 }  // namespace sV
 
 # endif  // RPC_PROTOCOLS

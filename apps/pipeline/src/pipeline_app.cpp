@@ -31,12 +31,12 @@ App::_V_run() {
     if( _processorsChain.empty() ) {
         sV_logw( "No processors specified --- has nothing to do.\n" );
     }
-    AnalysisPipeline::iEventSequence & evseq
-                            = get_evseq<AnalysisPipeline::iEventSequence&>();
+    AnalysisPipeline::iEventSequence * evseq
+        = dynamic_cast<AnalysisPipeline::iEventSequence*>(event_sequence());
 
-    int rc = this->AnalysisPipeline::process( &evseq );
+    int rc = this->AnalysisPipeline::process( evseq );
 
-    evseq.print_brief_summary( goo::app<App>().ls() );
+    evseq->print_brief_summary( goo::app<App>().ls() );
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
         (**it).print_brief_summary( goo::app<App>().ls() );

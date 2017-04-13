@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -29,6 +30,9 @@
 
 # include "app/analysis.hpp"
 # include "uevent.hpp"
+# include "buckets/iBucketDispatcher.hpp"
+
+# include <fstream>
 
 namespace sV {
 namespace dprocessors {
@@ -44,9 +48,11 @@ namespace dprocessors {
  * We need such a thing because it leads for much more efficient compression
  * and transmission comparing to ordinary per-event basis.
  *
- * This class is designed as a pipeline handler. It will acquire event-by-event
+ * This class is designed as a pipeline handler utilizing iBucketDispatcher
+ * fasilicities. It will acquire event-by-event
  * until its bucket will not be "full" and then will perform compression
- * (and forwarding) "full" bucket (we call it "drop").
+ * (and forwarding) "full" bucket (we call it "drop"). All the mentioned
+ * methods are realized into iBucketDispatcher class.
  *
  * One can choose which bucket this processor has to consider as "full": either
  * by event number or by uncompressed size. If both criteria will be non-bull,
@@ -57,28 +63,31 @@ namespace dprocessors {
 class Bucketer : public AnalysisPipeline::iEventProcessor {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
-    typedef AnalysisApplication::Event Event;
-
+    typedef sV::events::Event Event;
+    /*
     struct CompressionParameters {
         // ...
     };
+    */
 private:
-    sV::events::Bucket _reentrantBucket;
+    //sV::events::Bucket _reentrantBucket;
+    //
 protected:
+    sV::iBucketDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
+    std::fstream * _fileRef;
 public:
     Bucketer( const std::string & pn,
-              size_t nEventsPerBucket,
-              size_t kBytesPerBucket,
-              CompressionParameters * ) :
-              AnalysisPipeline::iEventProcessor( pn ) {}
+              sV::iBucketDispatcher * bucketDispatcher,
+              std::fstream * fileRef );
+    virtual ~Bucketer();
 
     /// Returns true if "full" criterion(-ia) triggered.
-    bool is_bucket_full() const;
+    //  bool is_bucket_full() const;
 
     /// Causes current bucket to be compressed (and optionally forwarded) and,
     /// further, cleared.
-    void drop_bucket();
+    //  void drop_bucket();
 };  // class Bucketer
 
 }  // namespace dprocessors

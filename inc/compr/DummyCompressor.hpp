@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -19,29 +20,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+# ifndef H_STROMA_V_DUMMYCOMPRESSOR_H
+# define H_STROMA_V_DUMMYCOMPRESSOR_H
+# include "../config.h"
 
-# ifndef H_STROMA_V_METADATA_BASE_STRUCTURES_H
-# define H_STROMA_V_METADATA_BASE_STRUCTURES_H
+# ifdef RPC_PROTOCOLS
 
-# include <stdint.h>
+# include "iCompressor.hpp"
+# include "event.pb.h"
 
-typedef void * sV_MetadataTypeIndex;
+namespace sV {
 
-/**@struct NA64_ChunksMetadata
- * @brief Metadata C representation.
- *
- * This structure is rather a wrapper for certain metadata type. It keeps the
- * numerical index and arbitrary payload that has to be accessed by routines
- * matching certain type.
- * */
-typedef struct sV_Metadata {
-    /** Type indexes is dynamic. Do not store them in files! */
-    sV_MetadataTypeIndex typeIndex;
-    void * payload;
-} sV_Metadata;
+class DummyCompressor : public iCompressor {
+    public:
+        DummyCompressor();
+        virtual ~DummyCompressor() {};
+    protected:
+        virtual size_t _V_compress_series( uint8_t * uncomprBuf,
+            size_t lenUncomprBuf, uint8_t * comprBuf,
+            size_t ) const override;
+    private:
+};  // class DummyCompressor
 
-/** For metadata type provided by ptr, generates its unique ID. */
-sV_MetadataTypeIndex sV_generate_metadata_type_id( void * );
-
-# endif  /* H_STROMA_V_METADATA_BASE_STRUCTURES_H */
+}        // namespace sV
+# endif  // RPC_PROTOCOLS
+# endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
 

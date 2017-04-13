@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -19,7 +20,6 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 # include "config.h"
 
 # ifdef GEANT4_MC_MODEL
@@ -50,6 +50,18 @@
 namespace sV{
     G4_DECLARE_PHYSCONSTR_FACTORY(SynchrotronRadiationPhysics);
 }
+# endif
+
+# if G4VERSION_NUMBER > 999
+    # if defined( __clang__ ) && ! defined( G4MULTITHREADED )
+    // When using aParticleIterator without multithreading support, an in-template
+    // static field is used for .offset attr. This causes Clang to complain about
+    // actual attribute instantiation. The problem is, besides of this reasonable
+    // notion, Clang may generate multiple instances for such attributes when
+    // they're operating in different threads. To suppress this annoying warning we
+    // define it here in hope it won't lead to dangerous consequencies.
+    template<> G4VPCData * G4VUPLSplitter<G4VPCData>::offset;
+    # endif  // G4_TLS
 # endif
 
 // 1) `G4SynchrotronRadiation` -- stable process, which included in
@@ -124,17 +136,31 @@ void SynchrotronRadiationPhysics::ConstructParticle() {
 void SynchrotronRadiationPhysics::ConstructProcess() {
     G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
     # if G4VERSION_NUMBER > 999
-    for( aParticleIterator->reset(); (*aParticleIterator)() ; )
+    // This line causes clang to doubt about unavailable definition. To supress
+    // his warnings, we use another form of the same thing:
+    # if 0
+    for( theParticleIterator->reset(); (*aParticleIterator)() ; )
+    # else
+    auto localParticleIterator =
+            (G4VPhysicsConstructor::GetSubInstanceManager()
+                        .offset[g4vpcInstanceID])._aParticleIterator;
+    for( localParticleIterator->reset();
+         (*localParticleIterator)() ; )
+    # endif
     # else
     for( theParticleIterator->reset(); (*theParticleIterator)() ; )
     # endif
     {
         G4ParticleDefinition* particle =
         # if G4VERSION_NUMBER > 999
+        # if 0
         aParticleIterator->value();
         # else
-        theParticleIterator->value();
+        localParticleIterator->value();
         # endif
+        # else  // > 999
+        theParticleIterator->value();
+        # endif  // > 999
         G4String particleName = particle->GetParticleName();
 
         G4VDiscreteProcess * SRProcPtr = ( _inMaterials ?
