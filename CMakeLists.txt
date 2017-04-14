@@ -31,7 +31,7 @@ set( StromaV_VERSION_PATCH dev )
 set( StromaV_VERSION ${StromaV_VERSION_MAJOR}.${StromaV_VERSION_MINOR}.${StromaV_VERSION_PATCH} )
 
 list(APPEND CMAKE_MODULE_PATH "${ROOT_DIR}/etc/root/cmake"
-                              "${ROOT_DIR}/etc/cmake" )  # <- New ROOT convention.
+                              "${ROOT_DIR}/etc/cmake" )
 
 #
 # CMake customization
