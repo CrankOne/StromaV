@@ -73,16 +73,16 @@ iDetectorIndex::name( AFR_DetMjNo n ) const {
 }  // namespace sV
 
 # if 1
-AFR_DetMjNo detector_major_by_name( const char * mjName )
+AFR_DetMjNo detector_major_by_name( const char * /*mjName*/ )
     { _FORBIDDEN_CALL_; }
-AFR_DetFamID family_id_by_name_dft( const char * famName )
+AFR_DetFamID family_id_by_name_dft( const char * /*famName*/ )
     { _FORBIDDEN_CALL_; }
 AFR_DetMjNo compose_detector_major(
-                            AFR_DetFamID fmID,
-                            const struct sV_DSuL_MVarIndex * mvIdx )
+                            AFR_DetFamID /*fmID*/,
+                            const struct sV_DSuL_MVarIndex * /*mvIdx*/ )
     { _FORBIDDEN_CALL_; }
 void decode_minor_to_indexes( AFR_DetMnNo minorNo,
-                                        struct sV_DSuL_MVarIndex * mvIdx )
+                                        struct sV_DSuL_MVarIndex * /*mvIdx*/ )
     { _FORBIDDEN_CALL_; }
 # endif
 
