@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_EVENT_MULTICAST_SERVER_H
 # define H_STROMA_V_EVENT_MULTICAST_SERVER_H
 
-# include "config.h"
+# include "sV_config.h"
 
 # if defined(RPC_PROTOCOLS)
 

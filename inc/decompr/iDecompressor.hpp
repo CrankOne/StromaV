@@ -22,7 +22,8 @@
  */
 # ifndef H_STROMA_V_IDECOMPRESSOR_H
 
-# include "../config.h"
+# include "sV_config.h"
+
 # ifdef RPC_PROTOCOLS
 # include <cstdlib>
 # include <stdint.h>

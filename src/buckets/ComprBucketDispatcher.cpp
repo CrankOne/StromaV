@@ -36,9 +36,9 @@ ComprBucketDispatcher::ComprBucketDispatcher( iCompressor * compressor,
         size_t bufSizeKB) :
     iBucketDispatcher( nMaxKB,
                        nMaxEvents ),
-    _streamRef(streamRef),
     _compressor(compressor),   // possible SEGFAULT?
-    _bufSizeKB(bufSizeKB) {
+    _bufSizeKB(bufSizeKB),
+    _streamRef(streamRef) {
 
     if ( nMaxKB > bufSizeKB) {
         emraise(badState, "Buffer Size is insufficient (is lesser than \

@@ -89,6 +89,10 @@ push_option( ALIGNMENT_ROUTINES
 push_option( PYTHON_BINDINGS
         "Enable python bindings (requires SWIG)."
         OFF )
+#\option
+push_option( DSuL
+        "Enable detector selection micro-language (requires YACC/LEXX)"
+        ON )
 push_option( DOC_HTML
     "Whether to produce HTML documentation with doxygen."
         OFF )
@@ -185,6 +189,18 @@ if( DOC_HTML )
     find_package( Doxygen REQUIRED )
 endif( DOC_HTML )
 
+if( DSuL )
+    find_package(BISON REQUIRED)
+    find_package(FLEX REQUIRED)
+    BISON_TARGET(DSuL_Parser assets/grammar/dsul.y
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_parser_generated.c
+        VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
+        COMPILE_FLAGS "--graph=${CMAKE_CURRENT_BINARY_DIR}/dsul.dot" )
+    FLEX_TARGET(DSuL_Lexer   assets/grammar/dsul.l
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_lexer_generated.c)
+    ADD_FLEX_BISON_DEPENDENCY(DSuL_Lexer DSuL_Parser)
+    #message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
+endif( DSuL )
 
 #
 # SET-UP BUILD-TIME PARAMETERS
@@ -258,6 +274,7 @@ include_directories( "inc"
                      ${GSL_INCLUDE_DIRS}
                      ${Boost_INCLUDE_DIRS}
                      ${ROOT_INCLUDE_DIRS}
+                     ${CMAKE_CURRENT_BINARY_DIR}/inc
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
@@ -283,7 +300,7 @@ endif( genfit_LIBRARY_DIR )
 # generic StromaV lib configuration
 configure_file (
     "${StromaV_LIB_INCLUDE_DIR}/config.h.in"
-    "${StromaV_LIB_INCLUDE_DIR}/config.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h"
 )
 
 # Physics list aux config
@@ -309,7 +326,7 @@ if( GEANT4_MC_MODEL )
             # it as now each `$ make' invokation causes rebuild.
             configure_file (
                 "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/PhysList.ihpp.in"
-                "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/PhysList.ihpp"
+                "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/PhysList.ihpp"
             )
         endforeach( phLst )
     else( G4PHYSLISTS )
@@ -336,7 +353,7 @@ if( GEANT4_MC_MODEL )
                 # it as now each `$ make' invokation causes rebuild.
                 configure_file (
                     "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Particles.ihpp.in"
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/Particles.ihpp"
+                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Particles.ihpp"
                 )
             endforeach( particle )
         else( G4PARTICLES )
@@ -362,7 +379,7 @@ if( GEANT4_MC_MODEL )
                 # it as now each `$ make' invokation causes rebuild.
                 configure_file (
                     "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Physics.ihpp.in"
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.out/Physics.ihpp"
+                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Physics.ihpp"
                 )
             endforeach( physics )
         else( G4PHYSICS )
@@ -426,6 +443,8 @@ add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
         $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
         $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
+        $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>
+        $<$<BOOL:${DSuL}>:${FLEX_DSuL_Lexer_OUTPUTS}>
     )
 
 #add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX
@@ -436,6 +455,8 @@ set_target_properties( ${StromaV_LIB} PROPERTIES VERSION ${StromaV_VERSION}
 install( TARGETS ${StromaV_LIB} LIBRARY DESTINATION lib/StromaV )
 install( DIRECTORY inc/ DESTINATION include/StromaV FILES_MATCHING PATTERN
     "*.h" PATTERN "*.hpp" PATTERN "*.tcc" PATTERN "*.itcc" )
+install( FILES ${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h
+         DESTINATION include/StromaV )
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
          DESTINATION include/StromaV )
 

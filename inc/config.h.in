@@ -41,7 +41,8 @@
 #cmakedefine ANALYSIS_ROUTINES          5
 #cmakedefine GEANT4_DYNAMIC_PHYSICS     6
 #cmakedefine ALIGNMENT_ROUTINES         7
-#cmakedefine PYTHON_BINDINGS            8
+#cmakedefine DSuL                       8
+#cmakedefine PYTHON_BINDINGS            9
 
 /* Some third-party libraries require this macro to be set.
  */

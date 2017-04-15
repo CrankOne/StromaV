@@ -34,6 +34,13 @@ namespace aux {
 
 iDetectorIndex * iDetectorIndex::_self = nullptr;
 
+iDetectorIndex::iDetectorIndex( iDetectorIndex * self_ ) {
+    assert( !_self );
+    assert( self_ );
+    //fprintf( stderr, "XXX %p %p\n", _self, self_ );  // XXX
+    _self = self_;
+}
+
 iDetectorIndex &
 iDetectorIndex::mutable_self() {
     if( !_self ) {
@@ -64,6 +71,20 @@ iDetectorIndex::name( AFR_DetMjNo n ) const {
 
 }  // namespace aux
 }  // namespace sV
+
+# if 1
+AFR_DetMjNo detector_major_by_name( const char * mjName )
+    { _FORBIDDEN_CALL_; }
+AFR_DetFamID family_id_by_name_dft( const char * famName )
+    { _FORBIDDEN_CALL_; }
+AFR_DetMjNo compose_detector_major(
+                            AFR_DetFamID fmID,
+                            const struct sV_DSuL_MVarIndex * mvIdx )
+    { _FORBIDDEN_CALL_; }
+void decode_minor_to_indexes( AFR_DetMnNo minorNo,
+                                        struct sV_DSuL_MVarIndex * mvIdx )
+    { _FORBIDDEN_CALL_; }
+# endif
 
 //
 // Detector encoding tests

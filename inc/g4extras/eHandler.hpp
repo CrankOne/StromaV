@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_CUSTOM_EXCEPTION_HANDLER_H
 # define H_STROMA_V_CUSTOM_EXCEPTION_HANDLER_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
 

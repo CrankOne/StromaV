@@ -24,7 +24,7 @@
 # ifndef H_STROMA_V_SYNCHROTRON_RADIATION_IN_MAT_PHYSICS_H
 # define H_STROMA_V_SYNCHROTRON_RADIATION_IN_MAT_PHYSICS_H
 
-# include "../../config.h"
+# include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
 # ifdef GEANT4_DYNAMIC_PHYSICS

@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_EVENT_DISPLAY_DRAWABLE_DETECTOR_MIXIN_H
 # define H_STROMA_V_EVENT_DISPLAY_DRAWABLE_DETECTOR_MIXIN_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef ALIGNMENT_ROUTINES
 

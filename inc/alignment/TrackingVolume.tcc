@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_ALIGNMENT_TRACKING_VOLUME_AUX_H
 # define H_STROMA_V_ALIGNMENT_TRACKING_VOLUME_AUX_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef ALIGNMENT_ROUTINES
 
