@@ -11,7 +11,7 @@
 
 %{
 
-# include "config.h"
+# include "sV_config.h"
 
 #if !defined( RPC_PROTOCOLS )
 #error "RPC_PROTOCOLS is not " \
@@ -28,7 +28,7 @@
 
 %}
 
-%include "config.h"
+%include "sV_config.h"
 %include "analysis/pipeline.hpp"
 %include "analysis/dictionary.hpp"
 

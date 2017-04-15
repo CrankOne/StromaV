@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_ANALYSIS_APPLICATION_BASE_H
 # define H_STROMA_V_ANALYSIS_APPLICATION_BASE_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifdef RPC_PROTOCOLS
 

@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_APPLICATION_C_WRAPPERS_H
 # define H_STROMA_V_APPLICATION_C_WRAPPERS_H
 
-# include "../config.h"
+# include "sV_config.h"
 
 # ifndef __cplusplus
 #   include <stdint.h>

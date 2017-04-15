@@ -20,7 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "config.h"
+# include "sV_config.h"
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

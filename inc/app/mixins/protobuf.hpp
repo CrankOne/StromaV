@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_PROTOCOL_BUFFER_UNIFIED_EVENT_APPLICATION_MIXIN_H
 # define H_STROMA_V_PROTOCOL_BUFFER_UNIFIED_EVENT_APPLICATION_MIXIN_H
 
-# include "../../config.h"
+# include "sV_config.h"
 
 # ifdef RPC_PROTOCOLS
 

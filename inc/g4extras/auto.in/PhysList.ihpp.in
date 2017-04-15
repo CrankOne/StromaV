@@ -23,7 +23,7 @@
 # ifndef H_STROMA_V_SIM_PHYSICS_LIST_GENERATED_MACRO_H
 # define H_STROMA_V_SIM_PHYSICS_LIST_GENERATED_MACRO_H
 
-# include "../../config.h"
+# include "sV_config.h"
 
 /*
  * Note, that this file is CMake-generated and beware
