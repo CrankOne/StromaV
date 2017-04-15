@@ -43,6 +43,8 @@ protected:
     virtual AFR_DetMjNo _V_mj_code( const char * ) const = 0;
     /// Returns detector name string for given major code.
     virtual const char * _V_name( AFR_DetMjNo ) const = 0;
+
+    iDetectorIndex( iDetectorIndex * self_ );
 public:
     static iDetectorIndex & mutable_self();
     static const iDetectorIndex & self();
@@ -54,6 +56,26 @@ public:
 };  // class iDetectorIndex
 
 }  // namespace aux
+
+# ifdef DSuL
+
+/**@class Selector
+ * @brief A C++ wrapper around C "sV_DSuL_Expression" struct.
+ */
+class DetectorSelector : protected sV_DSuL_Selector {
+protected:
+    DetectorSelector( sV_DSuL_Selector & compiledInstance );
+public:
+    static std::shared_ptr<DetectorSelector> compile_new( const char * expression );
+
+    bool matches( const AFR_DetSignature ) const;
+
+    bool operator()( const AFR_DetSignature s ) const {
+        return matches(s); }
+};  // class DetectorSelector
+
+# endif
+
 }  // namespace sV
 
 

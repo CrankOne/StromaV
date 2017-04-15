@@ -22,5 +22,3 @@
 
 # include "detector_ids.h"
 
-/* TODO: what do we need here for StromaV? */
-
