@@ -32,6 +32,7 @@
 # include <G4TrackStatus.hh>
 # include <root/TTree.h>
 # include <unordered_map>
+# include <unordered_set>
 
 namespace sV {
 
