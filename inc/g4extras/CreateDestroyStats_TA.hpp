@@ -30,7 +30,7 @@
 # include <G4UserTrackingAction.hh>
 # include <G4Track.hh>
 # include <G4TrackStatus.hh>
-# include <root/TTree.h>
+# include <TTree.h>
 # include <unordered_map>
 # include <unordered_set>
 

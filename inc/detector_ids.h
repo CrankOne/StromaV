@@ -40,7 +40,7 @@
 # define H_STROMA_V_INTERNAL_DETECTOR_IDENTIFIER_H
 
 # include "goo_types.h"
-# include "config.h"
+# include "sV_config.h"
 
 # include <stdio.h>
 
