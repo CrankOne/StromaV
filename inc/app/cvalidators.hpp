@@ -30,6 +30,8 @@
 # include <boost/optional.hpp>
 # include <boost/program_options.hpp>
 
+# include <boost/program_options/errors.hpp>
+
 namespace sV {
 namespace aux {
 

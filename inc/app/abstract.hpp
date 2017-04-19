@@ -33,6 +33,8 @@
 # include <boost/program_options.hpp>
 # include <boost/asio/io_service.hpp>
 
+# include <iostream>
+
 # ifdef GOO_GDB_EXEC
 /// Attaches gdb if SIGSEGV received.
 # define ATTACH_GDB_ON_SEGFAULT_ENVVAR          "ATTACH_GDB_ON_SEGFAULT"

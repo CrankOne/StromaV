@@ -25,8 +25,8 @@
 # include "app/app.h"
 # include <goo_exception.hpp>
 
-# include <Geant4/G4String.hh>
-# include <Geant4/G4VProcess.hh>
+# include <G4String.hh>
+# include <G4VProcess.hh>
 # include <iostream>
 # include <TTree.h>
 
