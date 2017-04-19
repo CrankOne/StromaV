@@ -511,8 +511,8 @@ endif( PYTHON_BINDINGS )
 add_subdirectory( rootPlugins )
 # Prepare rootrc appending some environment variables:
 configure_file (
-        "${PROJECT_SOURCE_DIR}/StromaV-plugins.rootrc.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/StromaV-plugins.rootrc"
+        ${PROJECT_SOURCE_DIR}/StromaV-plugins.rootrc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/StromaV-plugins.rootrc
     )
 
 #get_cmake_property(_variableNames VARIABLES)
@@ -544,6 +544,10 @@ install( FILES
 
 install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
+         DESTINATION usr/share/StromaV )
+
+install( FILES
+         ${CMAKE_CURRENT_BINARY_DIR}/StromaV-plugins.rootrc
          DESTINATION usr/share/StromaV )
 
 install(
