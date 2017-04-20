@@ -31,16 +31,16 @@ TaskDrivenApplication::_tasks;
 std::unordered_set<TaskDrivenApplication::TaskCleaner>
 TaskDrivenApplication::_tskCleaners;
 
-std::vector<po::options_description>
+std::vector<goo::dict::Dictionary>
 TaskDrivenApplication::_V_get_options() const {
-    std::vector<po::options_description> res = Parent::_V_get_options();
-    po::options_description taskDrivenAppOptions;
-    { taskDrivenAppOptions.add_options()
-        ("task,t",
-            po::value< std::vector<std::string> >(),
+    std::vector<goo::dict::Dictionary> res = Parent::_V_get_options();
+    goo::dict::Dictionary taskDrivenAppOptions("task-driven",
+                                    "Options for task-driven application.");
+    { taskDrivenAppOptions.insertion_proxy()
+        .list<std::string>('t', "task",
             "Sets task(s).")
-        ("list-tasks",
-            "Print list of available tasks and exit.")
+        .flag( "list-tasks",
+            "Print list of available tasks and exit." )
         ;
     } res.push_back(taskDrivenAppOptions);
     return res;
@@ -48,16 +48,12 @@ TaskDrivenApplication::_V_get_options() const {
 
 void
 TaskDrivenApplication::_V_configure_concrete_app() {
-    if(co().count("build-info")) {
-        list_callbacks( std::cout );
-        _immediateExit = true;
-    }
 }
 
 int
 TaskDrivenApplication::_V_run() {
     std::vector<std::string> tasksList;
-    if( !co().count("task") ) {
+    if( co()["task"].as_list_of<std::string>().empty() ) {
         std::cerr << "Error -- no task specified. Available ones:" << std::endl;
         list_callbacks( std::cerr );
         return EXIT_FAILURE;

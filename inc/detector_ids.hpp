@@ -35,6 +35,12 @@
 namespace sV {
 namespace aux {
 
+/**@class iDetectorIndex
+ * @brief Detector IDs indexing instance.
+ *
+ * As for sV itself, the class can not be instantiated. It is expected from
+ * user's code to inherit and implement this singleton interface.
+ * */
 class iDetectorIndex {
 private:
     static iDetectorIndex * _self;

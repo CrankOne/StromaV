@@ -40,19 +40,19 @@
  * FIXME: if variables_map is not allocated in heap, some application
  *        implementation causes it te be deleted twice...
  * */
-# define StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( appClass )                   \
+# define StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( appClass, anm, adescr )      \
 int main( int argc, char * argv[] ) {                                           \
     ::goo::aux::iApp::add_environment_variable(                                 \
         NOCATCH_ENVVAR,                                                         \
         "Whether to catch exceptions at the outermost context."                 \
     );                                                                          \
     if( ::goo::aux::iApp::envvar_as_logical( NOCATCH_ENVVAR ) ) {               \
-        sV::po::variables_map * vmPtr = new sV::po::variables_map();            \
+        goo::dict::Configuration * vmPtr = new goo::dict::Configuration(anm, adescr);  \
         sV::AbstractApplication::init(argc, argv, new appClass(vmPtr) );        \
         return sV::AbstractApplication::run();                                  \
     } else {                                                                    \
         try {                                                                   \
-            sV::po::variables_map * vmPtr = new sV::po::variables_map();        \
+            goo::dict::Configuration * vmPtr = new goo::dict::Configuration(anm, adescr);  \
             sV::AbstractApplication::init(argc, argv, new appClass(vmPtr) );    \
             return sV::AbstractApplication::run();                              \
         } catch( goo::Exception & e ) {                                         \

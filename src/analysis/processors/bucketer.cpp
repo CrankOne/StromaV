@@ -50,8 +50,25 @@ Bucketer::_V_process_event( Event * uEvent ){
 }
 
 StromaV_DEFINE_CONFIG_ARGUMENTS {
-    po::options_description bucketerP = sV::iBucketDispatcher::_dispatcher_options();
-    return bucketerP;
+    goo::dict::Dictionary dispatcherCfg( "b-dispatcher",
+                                "Bucket dispatching (storaging) options");
+    dispatcherCfg.insertion_proxy()
+        .p<uint32_t>("maxBucketSize_kB",
+                        "Maximum bucket capacity (in kilobytes). 0 --- "
+                        "criterion not used.", 500)
+        .p<uint32_t>("maxBucketSize_events",
+                        "Maximum bucket capacity (number of enents). 0 --- "
+                        "criterion not used.", 0)
+        .p<uint32_t>("bufferSize_kB",
+                        "Size of the buffer for bucket compression.", 600)
+        .p<std::string>("comressionAlgo",
+                        "Algorithm name for compressing buckets.",
+                        "bz2")
+        .p<std::string>("outFile",
+                        "Default output file for serialized buckets.",
+                        "/tmp/sV_latest.svbs" )
+        ;
+    return dispatcherCfg;
 }
 StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
     std::fstream * fileRef = new std::fstream();
@@ -62,12 +79,12 @@ StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
     sV::ComprBucketDispatcher * dispatcher = new sV::ComprBucketDispatcher(
                 compressor,
                 *(fileRef),
-                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
-                ("b-dispatcher.maxBucketSize.KB"),
-                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
-                ("b-dispatcher.maxBucketSize.events"),
-                (size_t)goo::app<sV::AbstractApplication>().cfg_option<int>
-                ("b-dispatcher.BufSize.KB")
+                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
+                ("b-dispatcher.maxBucketSize_kB"),
+                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
+                ("b-dispatcher.maxBucketSize_events"),
+                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
+                ("b-dispatcher.bufferSize_kB")
             );
     return new Bucketer("bucketer", dispatcher, fileRef);
 } StromaV_REGISTER_DATA_PROCESSOR( BucketerProcessor,

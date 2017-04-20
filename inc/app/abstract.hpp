@@ -23,15 +23,15 @@
 # ifndef H_STROMA_V_ABSTRACT_APPLICATION_H
 # define H_STROMA_V_ABSTRACT_APPLICATION_H
 
+# include <boost/asio/io_service.hpp>
+
 # include "app.h"
 # include "app/ascii_display.hpp"
 # include "../logging.hpp"
 
 # include <goo_exception.hpp>
 # include <goo_app.hpp>
-
-# include <boost/program_options.hpp>
-# include <boost/asio/io_service.hpp>
+# include <goo_dict/configuration.hpp>
 
 # include <iostream>
 
@@ -47,26 +47,25 @@
 
 namespace sV {
 
-namespace po = boost::program_options;
-
 /**@class AbstractApplication
  * @brief Abstract application class constituing logging streams
  * and configuration/run entry points.
  * @ingroup Application
  */
-class AbstractApplication : public goo::App<po::variables_map, std::ostream>,
+class AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
                             public sV::aux::ASCII_Display {
 public:
-    typedef goo::App<po::variables_map, std::ostream> Parent;
-    typedef po::variables_map Config;
+    typedef goo::dict::Configuration Config;
     typedef std::ostream Stream;
+    typedef goo::App<Config, Stream> Parent;
 protected:
     std::map<std::string, std::string> _envVarsDocs;
     Stream * _eStr;
     aux::StreamBuffer _lBuffer,
                       _eBuffer
                       ;
-    Config * _variablesMap;
+    Config * _appCfg,
+           _configuration;
     mutable bool _immediateExit;
     mutable uint8_t _verbosity;
 
@@ -78,7 +77,7 @@ protected:
     virtual Stream * _V_acquire_stream() override;
     virtual Stream * _V_acquire_errstream();
     /// User application should fullfill this chain to provide its own options.
-    virtual std::vector<po::options_description> _V_get_options() const;
+    virtual std::vector<goo::dict::Dictionary> _V_get_options() const;
     /// User application should be configured here.
     virtual void _V_configure_concrete_app() {}
 private:
@@ -117,13 +116,11 @@ public:
     template<typename T>
     T cfg_option(const std::string & name) {
         if( !co_is_set() ) {
-            emraise(badState, "Couldn't get option \"%s\" value as config object is not constructed yet (pre-init stage).", name.c_str());
+            emraise(badState, "Couldn't get option \"%s\" value as config "
+                    "object is not constructed yet (pre-init stage).",
+                    name.c_str());
         }
-        try {
-            return co()[name].as<T>();
-        } catch( boost::bad_any_cast & e ) {
-            emraise(badCast, "Couldn't parse or locate option \"%s\" value.", name.c_str());
-        }
+        return co()[name.c_str()].as<T>();
     }
 
     bool do_immediate_exit() const { return _immediateExit; }

@@ -68,18 +68,13 @@ protected:
     /// Used in overriden _V_construct_config_object() in order to
     /// remember args for G4 executive.
     void _set_cmd_args( int argc, char * const argv[] ) const;
-public:
-    Geant4Application( AbstractApplication::Config * );
-    virtual ~Geant4Application();
-    G4GDMLParser * gdml_parser_ptr() { return _parser; }
-    static void g4_abort();
 protected:
-    virtual po::options_description _geant4_options() const;
-    virtual po::options_description _geant4_gdml_options() const;
-    virtual void _treat_geant4_options(         const po::variables_map & );
-    virtual void _treat_geant4_gdml_options(    const po::variables_map & );
-    void _clear_geant4_options(         const po::variables_map & );
-    void _clear_geant4_gdml_options(    const po::variables_map & );
+    virtual goo::dict::Dictionary _geant4_options() const;
+    virtual goo::dict::Dictionary _geant4_gdml_options() const;
+    virtual void _treat_geant4_options(         const goo::dict::Dictionary & );
+    virtual void _treat_geant4_gdml_options(    const goo::dict::Dictionary & );
+    void _clear_geant4_options(         const goo::dict::Dictionary & );
+    void _clear_geant4_gdml_options(    const goo::dict::Dictionary & );
 
     virtual void _initialize_geometry();
     virtual void _initialize_physics();
@@ -97,6 +92,12 @@ protected:
     virtual void _build_up_run();
     virtual int _batch_run( const std::string & macroFilePath );  // can not be empty
     virtual int _run_session( bool isBatch, const std::string & macroFilePath );
+public:
+    Geant4Application( AbstractApplication::Config * );
+    virtual ~Geant4Application();
+    G4GDMLParser * gdml_parser_ptr() { return _parser; }
+    int g4_verbosity();  // TODO: cfg_option<int>("Geant4.verbosity") : "application"
+    static void g4_abort();
 };  // class Geant4Application
 /**@}*/
 

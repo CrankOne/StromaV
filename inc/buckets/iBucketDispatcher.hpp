@@ -35,38 +35,34 @@ namespace sV {
 namespace po = boost::program_options;
 
 class iBucketDispatcher {
+private:
+    size_t _nMaxKB;
+    size_t _nMaxEvents;
+protected:
+    virtual size_t _V_drop_bucket() = 0;
+    events::Bucket _currentBucket;
+public:
+    typedef sV::events::Bucket Bucket;
 
-    public:
-        typedef sV::events::Bucket Bucket;
+    iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents );
+    virtual ~iBucketDispatcher();
 
-        iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents );
-        virtual ~iBucketDispatcher();
+    virtual void push_event(const events::Event & reentrantEvent);
 
-        virtual void push_event(const events::Event & reentrantEvent);
+    size_t n_max_KB() const {return _nMaxKB;};
+    size_t n_max_Events() const {return _nMaxEvents;};
 
-        size_t n_max_KB() const {return _nMaxKB;};
-        size_t n_max_Events() const {return _nMaxEvents;};
+    size_t n_Bytes() const {
+        return (size_t)(_currentBucket.ByteSize());
+    };
+    size_t n_Events() const {
+        return (size_t)(_currentBucket.events_size());
+    };
 
-        size_t n_Bytes() const {
-            return (size_t)(_currentBucket.ByteSize());
-        };
-        size_t n_Events() const {
-            return (size_t)(_currentBucket.events_size());
-        };
-
-        virtual bool is_bucket_full();
-        virtual bool is_bucket_empty();
-        size_t drop_bucket();
-        virtual void clear_bucket();
-        static po::options_description _dispatcher_options();
-    protected:
-        virtual size_t _V_drop_bucket() = 0;
-
-        events::Bucket _currentBucket;
-    private:
-        size_t _nMaxKB;
-        size_t _nMaxEvents;
-
+    virtual bool is_bucket_full();
+    virtual bool is_bucket_empty();
+    size_t drop_bucket();
+    virtual void clear_bucket();
 };  // class iBucketDispatcher
 
 }  //  namespace sV

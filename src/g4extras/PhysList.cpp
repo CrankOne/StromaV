@@ -84,15 +84,11 @@ obtain_physics_list_instance(
         _static_phlPtrsStorage = new std::list< G4VUserPhysicsList * >();
     }
 
-    std::vector<std::string> modulesList;
-    if( goo::app<sV::AbstractApplication>()
-        .co()
-        .count("extraPhysics.physlist.module") ) {
-        modulesList =
-                goo::app<sV::AbstractApplication>()
-                .co()["extraPhysics.physlist.module"]
-                .as<std::vector<std::string>>();
-    }
+    std::list<std::string> ml = goo::app<sV::AbstractApplication>()
+            .co()["Geant4.extraPhysics.physlist.module"]
+            .as_list_of<std::string>()
+            ;
+    std::vector<std::string> modulesList( ml.begin(), ml.end() );
 
     // Note: `none' option is handled by level above as this function should
     // never return nullptr.
@@ -100,7 +96,7 @@ obtain_physics_list_instance(
         G4PhysListFactory factory;
         rs = factory.GetReferencePhysList(
                 goo::app<sV::AbstractApplication>()
-                .co()["extraPhysics.productName"]
+                .co()["Geant4.extraPhysics.productName"]
                 .as<std::string>()
             );
     } else
@@ -147,7 +143,7 @@ obtain_physics_list_instance(
 
     {
         std::string verbosity = goo::app<sV::AbstractApplication>()
-                .co()["extraPhysics.verbosity"]
+                .co()["Geant4.extraPhysics.verbosity"]
                 .as<std::string>();
         if( "application" != verbosity ) {
             try {
@@ -163,7 +159,7 @@ obtain_physics_list_instance(
     {
         int physicsListVerbosityLevel = goo::app<sV::AbstractApplication>().verbosity();
         std::string verbosity = goo::app<sV::AbstractApplication>()
-                .co()["extraPhysics.verbosity"]
+                .co()["Geant4.extraPhysics.verbosity"]
                 .as<std::string>();
         if( "application" != verbosity ) {
             try {

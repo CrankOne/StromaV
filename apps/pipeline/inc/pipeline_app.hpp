@@ -31,7 +31,7 @@ class App : public sV::AnalysisApplication {
 protected:
     virtual int _V_run() override;
 public:
-    App( sV::po::variables_map * vmPtr ) :
+    App( goo::dict::Configuration * vmPtr ) :
          AbstractApplication(vmPtr),
          sV::AnalysisApplication(vmPtr) {}
     ~App(){}

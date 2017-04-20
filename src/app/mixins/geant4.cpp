@@ -115,143 +115,152 @@ Geant4Application::g4_err_stream() {
 }
 # endif
 
-po::options_description
+goo::dict::Dictionary
 Geant4Application::_geant4_options() const {
-    po::options_description g4cfg("Geant4 model options");
-    g4cfg.add_options()
-        ("g4.useNIST",
-            po::value<bool>()->default_value(true),
-            "use NIST materials (have prefix G4_ in GDML files).")
-        ("g4.verbosity",
-            po::value<int>()->default_value(2 /* warnings */),
-            "Geant4 core system verbosity (set before any .mac processing starts "
-            "and further can be overriden by them).")
-        ("g4.randomSeed",
-            po::value<unsigned int>()->default_value(0),
-            "Random generator seed to be used with CLHEP::HepRandom. "
-            "Note, that null seed means no manual setting.")
-        ("g4.visMacroFile",
-            po::value<std::string>()->default_value("vis.mac"),
-            "'vis' run-time script")
-        ("g4.customExceptionHandler",
-            po::value<bool>()->default_value(true),
-            "enable custom exception handler for G4 (behves just like ordinary one, but fancier)"
-            )
-        ("g4.batch",
-            "If given, runs model without a GUI.")
-        ("g4.primaryGenerator",
-            po::value<std::string>()->default_value("SimpleGun"),
-            "Primary particles generator type specification.")
-        ("g4.physicsList",
-            po::value<std::string>()->default_value("FTFP_BERT"),
-            "Set physics list defining the entire MC simulation.")
-        ("g4.list-physics",
-            "List physics lists which are available at current build.")
-        ("extraPhysics.physlist.module",
-            po::value<std::vector<std::string> >(),
-            "Physics module to be included in modular physics list.")
-        ("extraPhysics.verbosity",
-            po::value<std::string>()->default_value("application"),
-            "Verbosity for physics list. Can be set to 0..3 or to \"application\""
-            " to correspond global application verbosity.")
-        ("extraPhysics.productName",
-            po::value<std::string>()->default_value("FTFP_BERT_EMV"),
-            "Name of G4PhysListFactory product. See Geant4 manual for guide how "
-            "this name can be composed.")
-        ("extraPhysics.physicsSR.considerMaterials",
-            po::value<bool>()->default_value(false),
-            "Take into consideration material parameters while modelling synchrotron radiation physics.")
-        ("g4.sensitiveDetectorsList",
+    goo::dict::Dictionary g4cfg("Geant4", "Geant4 model options");
+    g4cfg.insertion_proxy()
+        .p<bool>( "useNIST",
+                "use NIST materials (have prefix G4_ in GDML files).",
+            true)
+        .p<int>( "verbosity",
+                "Geant4 core system verbosity (set before any .mac processing "
+                "starts and further can be overriden by them).",
+            2 )
+        .p<unsigned int>( "randomSeed",
+                "Random generator seed to be used with CLHEP::HepRandom. "
+                "Note, that null seed means no manual setting.",
+            0 )
+        .p<std::string>( "visMacroFile",
+                "'vis' run-time script",
+            "vis.mac" )
+        .p<bool>( "customExceptionHandler",
+                "enable custom exception handler for G4 (behves just like "
+                "ordinary one, but fancier)",
+            true )
+        .flag( "batch",
+                "If given, runs model without a GUI." )
+        .p<std::string>( "primaryGenerator",
+                "Primary particles generator type specification.",
+            "SimpleGun" )
+        .p<std::string>( "physicsList",
+                "Set physics list defining the entire MC simulation.",
+            "FTFP_BERT" )
+        .flag( "list-physics",
+            "List physics lists which are available at current build." )
+        .bgn_sect( "extraPhysics", "Modular physics configuration section." )
+            .list<std::string>( "module",
+                    "Physics module to be included in modular physics list." )
+            .p<std::string>("verbosity",
+                    "Verbosity for physics list. Can be set to 0..3 or to "
+                    "\"application\" to correspond global application "
+                    "verbosity.",
+                "application" )
+            .p<std::string>("productName",
+                    "Name of G4PhysListFactory product. See Geant4 manual for "
+                    "guide how this name can be composed.",
+                "FTFP_BERT_EMV" )
+            .p<bool>( "physicsSR-considerMaterials",
+                    "Take into consideration material parameters while "
+                    "modelling synchrotron radiation physics.",
+                false )
+        .end_sect("extraPhysics")
+        .flag("sensitiveDetectorsList",
             "List sensitive detectors which are available at current build.")
-        ("g4-simpleGun.particleType",
-            po::value<std::string>()->default_value("e-"),
-            "Default particle type (can be overriden in messenger).")
-        ("g4-simpleGun.position-cm",
-            po::value<std::string>()->default_value("{0.,0.,-3.}"),
-            "Gun position vector, cm (can be further overriden in messenger).")
-        ("g4-simpleGun.direction",
-            po::value<std::string>()->default_value("{0.,0.,1.}"),
-            "Gun orientation vector (can be overriden in messenger).")
-        ("g4-simpleGun.energy-MeV",
-            po::value<double>()->default_value(2e+5),
-            "Gun energy, MeV (can be further overriden in messenger).")
+        .bgn_sect("simpleGun", "Simple primary particle gun configuration.")
+            .p<std::string>("particleType",
+                    "Default particle type (can be overriden in messenger).",
+                "e-" )
+            .p<std::string>("position-cm",
+                    "Gun position vector, cm (can be further overriden in "
+                    "messenger).",
+                "{0.,0.,-3.}" )
+            .p<std::string>("direction",
+                    "Gun orientation vector (can be overriden in messenger).",
+                "{0.,0.,1.}" )
+            .p<double>("energy-MeV",
+                "Gun energy, MeV (can be further overriden in messenger).",
+                2e+5 )
+        .end_sect("simpleGun")
         ;
     return g4cfg;
 }
 
-po::options_description
-Geant4Application::_geant4_gdml_options() const {
-    po::options_description gdmlCfg("GEANT4/GDML-relevant options");
-    gdmlCfg.add_options()
-        ("geometry",
-            po::value<std::string>(),
-            "GDML file to treat." )
-        ("gdml.overlapCheck",
-            po::value<bool>()->default_value(true),
-            "Do or not overlap checking at parsing stage.")
-        ("gdml.setup",
-            po::value<std::string>()->default_value("Default"),
-            "Default setup to be used from GDML description.")
-        ("gdml.defaultStyle",
-            po::value<std::string>()->default_value("dft:#777777aa,!wireframe"),
-            "Default style for drawable items.")
-        ("gdml.enableXMLSchemaValidation",
-            po::value<bool>()->default_value(true),
-            "Enable GDML's XML schema validation (useful for initial speed-up and offline work).")
-        ("gdml.aux.tag",
-            po::value<std::vector< std::string> >(),
-            "GDML aux tags to be enabled for processing")
+int
+Geant4Application::g4_verbosity() {
+    std::string vrbTok = cfg_option<std::string>("Geant4.verbosity");
+    if( "application" == vrbTok ) {
+        return verbosity();
+    } else {
+        return atoi( vrbTok.c_str() );
+    }
+}
 
+goo::dict::Dictionary
+Geant4Application::_geant4_gdml_options() const {
+    goo::dict::Dictionary gdmlCfg("gdml", "GDML-relevant options");
+    gdmlCfg.insertion_proxy()
+        .p<std::string>( "geometry",
+                "GDML file to treat." ).required_argument()
+        .p<bool>( "overlapCheck",
+                "Do or not overlap checking at parsing stage.",
+            true )
+        .p<std::string>( "setup",
+                "Default setup to be used from GDML description.",
+            "Default" )
+        .p<std::string>( "defaultStyle",
+                "Default style for drawable items.",
+            "dft:#777777aa,!wireframe" )
+        .p<bool>( "enableXMLSchemaValidation",
+                "Enable GDML's XML schema validation (useful for initial "
+                "speed-up and offline work).",
+            true )
+        .list<std::string>( "aux-tag",
+                "GDML aux tags to be enabled for processing")
         ;
     return gdmlCfg;
 }
 
 void
-Geant4Application::_treat_geant4_options( const po::variables_map & vm ) {
+Geant4Application::_treat_geant4_options( const goo::dict::Dictionary & vm ) {
     // Set up a NIST material manager.
     // Note: materials (not elements!) of NIST library can be referenced from GDML
     // by G4_ prefix.
-    if( cfg_option<bool>("g4.useNIST") ) {
+    if( vm.parameter("useNIST").as<bool>() ) {
         //sV_log3("Enabling NIST.\n");
         (_NISTMatMan = G4NistManager::Instance())->SetVerbose(1);
     }
-
-    if( cfg_option<bool>("g4.customExceptionHandler") ) {
+    if( vm.parameter("customExceptionHandler").as<bool>() ) {
         sV::aux::ExceptionHandler::enable();
     }
-
-    if( !vm.count("geometry") ) {
-        emraise( malformedArguments, "Geometry file must be specified." );
+    if( vm.parameter("randomSeed").as<unsigned int>() ) {
+        CLHEP::HepRandom::setTheSeed(vm.parameter("randomSeed").as<unsigned int>());
     }
 }
 
 void
-Geant4Application::_treat_geant4_gdml_options( const po::variables_map & vm ) {
+Geant4Application::_treat_geant4_gdml_options( const goo::dict::Dictionary & vm ) {
     _parser = new G4GDMLParser();
-    if( vm["gdml.overlapCheck"].as<bool>() ) {
+    if( vm.parameter("overlapCheck").as<bool>() ) {
         _parser->SetOverlapCheck(true);
     }
-    //sV_log2("Parsing a GDML geometry from \"%s\".\n", vm["geometry"].as<std::string>().c_str());
-    _parser->Read(vm["geometry"].as<std::string>(),
-        vm["gdml.enableXMLSchemaValidation"].as<bool>() );
-    //sV_log2("Parsing GDML geometry succeed.\n");
-    if( vm["g4.randomSeed"].as<unsigned int>() ) {
-        CLHEP::HepRandom::setTheSeed(vm["g4.randomSeed"].as<unsigned int>());
-    }
+    sV_log2("Reading a GDML geometry from \"%s\".\n",
+            vm.parameter("geometry").as<std::string>().c_str());
+    _parser->Read( vm.parameter("geometry").as<std::string>(),
+        vm.parameter("enableXMLSchemaValidation").as<bool>() );
 }
 
 void
-Geant4Application::_clear_geant4_options( const po::variables_map & /*vm*/ ) {
+Geant4Application::_clear_geant4_options( const goo::dict::Dictionary & /*vm*/ ) {
     // FIXME: sometimes causes strange segfaults...
     # if 0
-    if( vm["g4.customExceptionHandler"].as<bool>() ) {
+    if( vm["Geant4.customExceptionHandler"].as<bool>() ) {
         sV::aux::ExceptionHandler::disable();
     }
     # endif
 }
 
 void
-Geant4Application::_clear_geant4_gdml_options( const po::variables_map & ) {
+Geant4Application::_clear_geant4_gdml_options( const goo::dict::Dictionary & ) {
     if( _parser ) {
         delete _parser;
     }
@@ -283,23 +292,23 @@ Geant4Application::_initialize_geometry() {
 
 void
 Geant4Application::_initialize_physics() {
-    if( co().count("g4.physicsList") &&
-            cfg_option<std::string>("g4.physicsList") != "none" ) {
+    if( cfg_option<std::string>("Geant4.physicsList") != "none" ) {
         // Create a PhysicsList instance if it is not configured to `none':
         G4RunManager::GetRunManager()->SetUserInitialization(
-                sV::obtain_physics_list_instance( co()["g4.physicsList"].as<std::string>() )
-            );
+                sV::obtain_physics_list_instance(
+                            co()["Geant4.physicsList"].as<std::string>() ) );
     } else {
-        sV_logw( "No physics list assigned to MC simulation as there is no physicsList option provided.\n" );
+        sV_logw( "No physics list assigned to MC simulation as there is no "
+                 "physicsList option provided.\n" );
     }
 }
 
 void
 Geant4Application::_initialize_primary_generator_action() {
     G4UImessenger * srcMessenger = nullptr;  // TODO: set srcMessenger
-    if( "none" != cfg_option<std::string>("g4.primaryGenerator") ) {
+    if( "none" != cfg_option<std::string>("Geant4.primaryGenerator") ) {
         G4RunManager::GetRunManager()->SetUserAction( sV::user_primary_generator_action(
-                    cfg_option<std::string>("g4.primaryGenerator"),
+                    cfg_option<std::string>("Geant4.primaryGenerator"),
                     srcMessenger
                 ) );
     }
@@ -307,11 +316,11 @@ Geant4Application::_initialize_primary_generator_action() {
 
 void
 Geant4Application::_build_up_run() {
-    if( cfg_option<bool>("g4.customExceptionHandler") ) {
+    if( cfg_option<bool>("Geant4.customExceptionHandler") ) {
         sV::aux::ExceptionHandler::enable();  // as G4RunManagerKernel overrides our handler in ctr,
                                                 // we must re-set it again here.
     }
-    _setupName = cfg_option<std::string>("gdml.setup");
+    _setupName = cfg_option<std::string>("Geant4.gdml.setup");
     // Do the G4 initialization stuff.
     _initialize_geometry();
     // assign physlist:
@@ -337,7 +346,7 @@ Geant4Application::_gui_run( const std::string & macroFilePath ) {
     if( !macroFilePath.empty() ) {
         char bf[128];
         snprintf( bf, sizeof(bf),
-                  "/vis/verbose %d", cfg_option<int>("g4.verbosity"));
+                  "/vis/verbose %d", cfg_option<int>("Geant4.verbosity"));
         G4UImanager::GetUIpointer()->ApplyCommand( bf );
         snprintf( bf, sizeof(bf),
                   "/control/execute %s", macroFilePath.c_str() );
@@ -357,8 +366,9 @@ Geant4Application::_gui_run( const std::string & macroFilePath ) {
 int
 Geant4Application::_batch_run( const std::string & macroFilePath ) {
     char bf[128];
+    // TODO: support for "application"!
     snprintf( bf, sizeof(bf),
-              "/vis/verbose %d", cfg_option<int>("g4.verbosity"));
+              "/vis/verbose %d", g4_verbosity() );
     G4UImanager::GetUIpointer()->ApplyCommand( bf );
     snprintf( bf, sizeof(bf),
               "/control/execute %s", macroFilePath.c_str() );
@@ -378,9 +388,11 @@ Geant4Application::_run_session( bool isBatch,
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
     sV_log2("Processing aux info.\n");
+    const auto & tagNamesLst = co()["Geant4.gdml.aux-tag"]
+                                                    .as_list_of<std::string>();
     extGDML::AuxInfoSet * auxInfoSet =
-        new extGDML::AuxInfoSet(cfg_option<std::vector<std::string> >
-                                    ("gdml.aux.tag"));
+        new extGDML::AuxInfoSet(
+            std::vector<std::string>(tagNamesLst.begin(), tagNamesLst.end()) );
     auxInfoSet->apply( *gdml_parser_ptr() );
     extGDML::extras::apply_styles_selector( _setupName );
 

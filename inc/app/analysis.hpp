@@ -74,7 +74,7 @@ public:
 protected:
     // INTERFACE
     /// Produces concrete application-specific options.
-    virtual std::vector<po::options_description> _V_get_options() const override;
+    virtual std::vector<goo::dict::Dictionary> _V_get_options() const override;
     /// Called after common configuration options is done. Can set 
     /// _immediateExit flag.
     virtual void _V_configure_concrete_app() override;
@@ -82,7 +82,7 @@ protected:
     /// event processing.
     virtual void _finalize_event( Event * ) override;
 public:
-    AnalysisApplication( po::variables_map * vm );
+    AnalysisApplication( Parent::Config * vm );
     virtual ~AnalysisApplication();
 
     /// Find processor by name and push back it to chain.

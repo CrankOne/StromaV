@@ -68,7 +68,8 @@ void __static_custom_segfault_handler( int signum ) {
 
 AbstractApplication::AbstractApplication( Config * cfg ) :
             _eStr(nullptr),
-            _variablesMap( cfg ),
+            _appCfg( cfg ),
+            _configuration( "sV-config", "StromaV app-managed config" ),
             _immediateExit(false),
             _verbosity(1),
             _ROOTAppFeatures(0x0) {
@@ -118,6 +119,83 @@ AbstractApplication::_enable_ROOT_feature( uint8_t ftCode ) {
 
 AbstractApplication::Config *
 AbstractApplication::_V_construct_config_object( int argc, char * const argv [] ) const {
+    # if 1
+    //
+    // This is a pre-initialization step that assembles the common
+    // configuration dictionaries from dynamically loaded stuff. It can cause
+    // immediate exit if some particular flags were provided (help, build-info,
+    // etc.).
+    Config & conf = *_appCfg;
+    conf.insertion_proxy()
+        .flag( 'h', "help",
+                "Prints help message and exits." )
+        .flag( "build-info",
+                "Prints build configuration info and exits." )
+        .p<std::string>( 'c', "config",
+                "Path to .yml-configuration.", StromaV_DEFAULT_CONFIG_FILE_PATH )
+        .list<std::string>( 'O', "override-option",
+                "Overrides config entry in common config options set." )
+        .p<int>('v', "verbosity",
+                "Sets common verbosity level. [0..3] values are allowed.", 1 )
+        .p<std::string>( "stdout",
+                "Redirects internal logging messages to stream. Use '-' for "
+                "stdout (default).", "-")
+        .p<std::string>( "stderr",
+                "Redirects internal error logging messages to stream. Use '-' "
+                "for stderr (default).", "-")
+        .list<std::string>( 'l', "load-module",
+                "Dynamically loads a third-party library. An interfacing "
+                "option to set-up sV plugins.")
+        .flag( 'A', "ascii-display",
+                "When enabled, can print to terminal some info updated in "
+                "real-time. Not useful with loquacious verbosity. Not "
+                "supported by all the sV applications.")
+        ;
+    auto optsVect = _V_get_options();
+    for( auto p : optsVect ) {
+        conf.append_section( p );
+    }
+
+    conf.extract( argc, argv, true );
+    
+    if( conf["h"].as<bool>() ) {
+        # ifdef ANSI_ESCSEQ_PRINT
+        conf.usage_text( std::cout, true );
+        # else
+        conf.usage_text( std::cout, false );
+        # endif
+        std::cout << "Environment variables:" << std::endl;
+        dump_envvars( std::cout );
+        _immediateExit = true;
+        return _appCfg;
+    }
+
+    if( conf["build-info"].as<bool>() ) {
+        dump_build_info( std::cout );
+        _immediateExit = true;
+        return _appCfg;
+    }
+
+    _verbosity = conf["verbosity"].as<int>();
+    if( _verbosity > 3 || _verbosity < 0 ) {
+        std::cerr << "Invalid verbosity level specified: " << (int) _verbosity;
+        _verbosity = 3;
+        std::cerr << ". Level " << (int) _verbosity << " was set." << std::endl;
+    }
+
+    const auto & ll = conf["load-module"].as_list_of<std::string>();
+    for( const auto & dlPath : ll ) {
+        void * handle = dlopen( dlPath.c_str(), RTLD_NOW );
+        if( !handle ) {
+            std::cerr << "Failed to load \"" << dlPath << "\"" << std::endl;
+        } else {
+            std::cout << "Shared object file \"" << dlPath 
+                      << "\" loaded." << std::endl;
+        }
+    }
+
+    return _appCfg;
+    # else
     po::options_description genericCfg,
                             rootAppCfg("CERN ROOT framework extras")
                             ;
@@ -219,6 +297,7 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
     }
 
     return _variablesMap;
+    # endif
 }
 
 void
@@ -249,19 +328,13 @@ AbstractApplication::_V_acquire_errstream() {
     return new std::ostream( &_eBuffer );
 }
 
-std::vector<po::options_description>
+std::vector<goo::dict::Dictionary>
 AbstractApplication::_V_get_options() const {
-    return std::vector<po::options_description>();
+    return std::vector<goo::dict::Dictionary>();
 }
 
 void
-AbstractApplication::_process_options( const Config * vmPtr ) {
-    const Config & vm = *vmPtr;
-
-    if(vm.count("build-info")) {
-        dump_build_info( std::cout );
-        _immediateExit = true;
-    }
+AbstractApplication::_process_options( const Config * ) {
 
     if( _ROOTAppFeatures ) {
         mixins::RootApplication::initialize_ROOT_system( _ROOTAppFeatures );
@@ -302,10 +375,6 @@ AbstractApplication::_process_options( const Config * vmPtr ) {
     # endif
 
     _V_configure_concrete_app();
-
-    # if 0
-
-    # endif
 
     if( cfg_option<bool>( "ascii-display" ) ) {
         aux::ASCII_Display::enable_ASCII_display();

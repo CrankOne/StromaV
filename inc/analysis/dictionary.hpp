@@ -42,7 +42,7 @@ namespace sV {
  * */
 class AnalysisDictionary {
 public:
-    typedef po::options_description (*OptionsSupplement)();
+    typedef goo::dict::Dictionary (*OptionsSupplement)();
 
     typedef AnalysisPipeline::iEventSequence iEventSequence;
     typedef AnalysisPipeline::iEventProcessor iEventProcessor;
@@ -103,11 +103,11 @@ static sV::AnalysisDictionary::iEventProcessor * _static_construct_ ## Processor
 /**@def StromaV_DEFINE_CONFIG_ARGUMENTS
  * @brief Supplementary configuration insertion macro for \ref AnalysisDictionary . */
 # define StromaV_DEFINE_CONFIG_ARGUMENTS                                     \
-static ::boost::program_options::options_description _get_supp_options();   \
+static goo::dict::Dictionary _get_supp_options();   \
 static void __static_register_args() __attribute__ ((constructor(156)));    \
 static void __static_register_args() {                                      \
     sV::AnalysisDictionary::supp_options( _get_supp_options );}         \
-static ::boost::program_options::options_description _get_supp_options()
+static goo::dict::Dictionary _get_supp_options()
 
 /**@def StromaV_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR
  * @brief A data processor constructor insertion macro. */

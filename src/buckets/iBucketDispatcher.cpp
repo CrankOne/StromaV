@@ -85,30 +85,6 @@ void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
     }
 }
 
-po::options_description iBucketDispatcher::_dispatcher_options() {
-    po::options_description dispatcherCfg("BucketDispatcher options");
-    dispatcherCfg.add_options()
-        ("b-dispatcher.maxBucketSize.KB",
-         po::value<int>()->default_value(500),
-         "Maximum size (in kbytes) of the bucket storing without \
-         serialization")
-        ("b-dispatcher.maxBucketSize.events",
-         po::value<int>()->default_value(0),
-         "Maximum size (nof enents) of the bucket storing without \
-         serialization")
-        ("b-dispatcher.BufSize.KB",
-         po::value<int>()->default_value(600),
-         "Size of the buffer for bucket compression")
-        ("b-dispatcher.comressionAlgorithm",
-         po::value<std::string>()->default_value("bz2"),
-         "Compression algorithm for bucket compression")
-        ("b-dispatcher.outFile",
-         po::value<std::string>()->default_value("/tmp/testout.buckets"),
-         "Output file for serialized data")
-        ;
-    return dispatcherCfg;
-}
-
 }  //  namespace sV
 
 # endif  //  RPC_PROTOCOLS

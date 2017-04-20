@@ -68,7 +68,7 @@ protected:
                         std::list<alignment::DetectorPlacement> &,
                         TrackingMembersNames & );
 public:
-    AlignmentApplication( po::variables_map * );
+    AlignmentApplication( AbstractApplication::Config * );
     ~AlignmentApplication();
 
     /// Returns dictionary of detector construction functions.

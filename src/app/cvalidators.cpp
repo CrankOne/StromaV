@@ -23,6 +23,10 @@
 # include "app/abstract.hpp"
 # include "app/cvalidators.hpp"
 
+# include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
 namespace sV {
 namespace aux {
 

@@ -94,36 +94,36 @@ RootApplication::_create_TApplication( const std::string & rootAppArguments ) {
 
 void
 RootApplication::append_ROOT_config_options(
-                po::options_description & rootAppCfg,
+                goo::dict::Dictionary & rootAppCfg,
                 uint8_t featuresEnabled ) {
     if( enableCommonFile && featuresEnabled ) {
-        rootAppCfg.add_options()
-        ("root.output-file,R",
-            po::value<std::string>()->default_value("none"),
-            "output ROOT-file path for current session. Set to \"none\" to omit.");
+        rootAppCfg.insertion_proxy()
+        .p<std::string>("output-file",
+                "output ROOT-file path for current session. Set to \"none\" "
+                "to omit.",
+            "none" );
     }
     if( enablePlugins && featuresEnabled ) {
-        rootAppCfg.add_options()
-        ("root.plugin-handlers-file",
-            po::value<std::string>()->default_value("sV-plugins.rootrc"),
-            "Path to file containing root plugin handlers (see reference to "
-            "TPluginManager for syntax).");
+        rootAppCfg.insertion_proxy()
+        .p<std::string>("plugin-handlers-file",
+                "Path to file containing root plugin handlers (see reference "
+                "to TPluginManager for syntax).",
+            "sV-plugins.rootrc" );
     }
     if( enableDynamicPath && featuresEnabled ) {
-        rootAppCfg.add_options()
-        ("root.dynamic-path",
-            po::value<std::vector<std::string>>()/*->default_value("")*/,
-            "Additional dynamic path to extend ROOT TSystem "
-            "(search path for shared libraries).");
+        rootAppCfg.insertion_proxy()
+        .p<std::string>("dynamic-path",
+                "Additional dynamic path to extend ROOT TSystem "
+                "(search path for shared libraries).");
     }
     if( enableTApplication && featuresEnabled ) {
-        rootAppCfg.add_options()
-        ("TApplication-args",
-                po::value<std::string>()->default_value(""),
+        rootAppCfg.insertion_proxy()
+        .p<std::string>("TApplication-args",
                 "A string to be parsed as TApplication command line. "
                 "See TApplication::GetOptions() reference for your "
                 "ROOT installation for reference. Note, that any spaces "
-                "or special characters need to be escaped." );
+                "or special characters need to be escaped.",
+            "" );
     }
 }
 
@@ -139,7 +139,7 @@ void
 RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
     AbstractApplication & thisApp = goo::app<AbstractApplication>();
     if( featuresEnabled & enableDynamicPath ) {
-        if( thisApp.co().count("root.dynamic-path") && !thisApp.do_immediate_exit() ) {
+        if( thisApp.co()["root.dynamic-path"].is_set() && !thisApp.do_immediate_exit() ) {
             for( auto additionalPath : thisApp.cfg_option<std::vector<std::string>>("root.dynamic-path") ) {
                 if( !additionalPath.empty() ) {
                     gSystem->AddDynamicPath( additionalPath.c_str() );

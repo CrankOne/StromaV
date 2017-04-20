@@ -97,27 +97,25 @@ AnalysisApplication::~AnalysisApplication() {
     }
 }
 
-std::vector<po::options_description>
+std::vector<goo::dict::Dictionary>
 AnalysisApplication::_V_get_options() const {
-    std::vector<po::options_description> res = Parent::_V_get_options();
-    po::options_description analysisAppCfg;
-    { analysisAppCfg.add_options()
-        ("input-file,i",
-            po::value<std::string>(),
-            "Input file --- an actual data source.")
-        ("input-format,F",
-            po::value<std::string>()->default_value("unset"),
-            "Sets input file format.")
-        ("processor,p",
-            po::value<std::vector<std::string>>(),
+    std::vector<goo::dict::Dictionary> res = Parent::_V_get_options();
+    goo::dict::Dictionary analysisAppCfg("analysis", "Options related to analysis application.");
+    { analysisAppCfg.insertion_proxy()
+        .p<std::string>('i', "input-file",
+            "Input file --- an actual data source.") //.required_argument()? 
+        .p<std::string>('F', "input-format",
+            "Sets input file format.",
+            "unset" )
+        .list<std::string>('p', "processor",
             "Pushes processor in chain, one by one, in order.")
-        ("list-src-formats",
+        .flag("list-src-formats",
             "Prints a list of available input file data formats.")
-        ("list-processors",
+        .flag("list-processors",
             "Prints a list of available treatment routines.")
-        ("max-events-to-read,n",
-            po::value<size_t>()->default_value(0),
-            "Number of events to read; (set zero to read all available).")
+        .p<size_t>('n', "max-events-to-read",
+            "Number of events to read; (set zero to read all available).",
+            0 )
         ;
     } res.push_back(analysisAppCfg);
     if( _suppOpts ) {
@@ -130,20 +128,19 @@ AnalysisApplication::_V_get_options() const {
 
 void
 AnalysisApplication::_V_configure_concrete_app() {
-    po::variables_map & vm = co();
-    if( vm.count("list-src-formats") ) {
+    if( co()["analysis.list-src-formats"].as<bool>() ) {
         list_readers( std::cout );
         _immediateExit = true;
     }
-    if( vm.count("list-processors") ) {
+    if( co()["analysis.list-processors"].as<bool>() ) {
         list_processors( std::cout );
         _immediateExit = true;
     }
-    if( !do_immediate_exit() && _readersDict && cfg_option<std::string>("input-format") != "unset" ) {
-        _evSeq = find_reader( cfg_option<std::string>("input-format") )();
+    if( !do_immediate_exit() && _readersDict && cfg_option<std::string>("analysis.input-format") != "unset" ) {
+        _evSeq = find_reader( cfg_option<std::string>("analysis.input-format") )();
     }
     if( !do_immediate_exit() && _procsDict ) {
-        auto procNamesVect = cfg_option<std::vector<std::string>>("processor");
+        auto procNamesVect = co()["analysis.processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
             push_back_processor( *it );

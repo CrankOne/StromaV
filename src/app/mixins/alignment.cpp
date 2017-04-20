@@ -46,7 +46,7 @@
 namespace sV {
 namespace mixins {
 
-AlignmentApplication::AlignmentApplication( po::variables_map * vmPtr ) :
+AlignmentApplication::AlignmentApplication( AbstractApplication::Config * vmPtr ) :
         AbstractApplication( vmPtr ),
         _detectorsSet(nullptr) {}
 

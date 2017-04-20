@@ -71,7 +71,7 @@ public:
     static void reset_ROOT_signal_handlers();
 
     /// Appends config object with ROOT-specific options.
-    static void append_ROOT_config_options( po::options_description &,
+    static void append_ROOT_config_options( goo::dict::Dictionary &,
                                             uint8_t featuresEnabled );
 
     /// Invoked by abstract application to init configured features.

@@ -125,19 +125,19 @@ EventMulticaster::_V_print_brief_summary( std::ostream & os ) const {
 
 // Register processor:
 StromaV_DEFINE_CONFIG_ARGUMENTS {
-    po::options_description multicastP( "Multicasting (network multicast)" );
-    { multicastP.add_options()
-        ("multicast.address",
-            po::value<std::string>()->default_value("239.255.0.1"),
-            "Multicast address to use." )
-        ("multicast.port",
-            po::value<int>()->default_value(30001),
-            "Multicast port number.")
-        ("multicast.storage-capacity",
-            po::value<size_t>()->default_value(500),
-            "Event to be stored. Defines the capacitance of last read events.")
+    goo::dict::Dictionary multicastP( "multicast",
+                                      "Multicasting (network multicast)" );
+    multicastP.insertion_proxy()
+        .p<std::string>("address",
+            "Multicast address to use.",
+            "239.255.0.1" )
+        .p<int>("port",
+            "Multicast port number.",
+            30001 )
+        .p<size_t>("storageCapacity",
+            "Event to be stored. Defines the capacitance of last read events.",
+            500)
         ;
-    }
     return multicastP;
 }
 StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
@@ -146,7 +146,7 @@ StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
             boost::asio::ip::address::from_string(
                 goo::app<sV::AbstractApplication>().cfg_option<std::string>("multicast.address")
             ),
-            goo::app<sV::AbstractApplication>().cfg_option<size_t>("multicast.storage-capacity"),
+            goo::app<sV::AbstractApplication>().cfg_option<size_t>("multicast.storageCapacity"),
             goo::app<sV::AbstractApplication>().cfg_option<int>("multicast.port"),
             goo::app<sV::AbstractApplication>().boost_io_service_ptr()
         );

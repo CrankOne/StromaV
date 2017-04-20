@@ -62,7 +62,7 @@ protected:
     virtual int _V_run() final;
     /// Calls cleaners.
     virtual int _V_quench( int runRC );
-    virtual std::vector<po::options_description> _V_get_options() const override;
+    virtual std::vector<goo::dict::Dictionary> _V_get_options() const override;
     virtual void _V_configure_concrete_app() override;
 public:
     TaskDrivenApplication( Config * );
