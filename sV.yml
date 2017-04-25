@@ -18,8 +18,8 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-verbosity: 3
-
+%YAML 1.2
+---
 Geant4:
     useNIST: true
     physicsList: modular
@@ -71,4 +71,4 @@ ROOT:
         width: 1200
         height: 400
         palette: 1
-
+...

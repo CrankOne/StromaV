@@ -96,40 +96,40 @@ void
 RootApplication::append_ROOT_config_options(
                 goo::dict::Dictionary & rootAppCfg,
                 uint8_t featuresEnabled ) {
+    auto ip = rootAppCfg.insertion_proxy().bgn_sect(
+            "ROOT",
+            "CERN ROOT analysis framework integration runtime options." );
     if( enableCommonFile && featuresEnabled ) {
-        rootAppCfg.insertion_proxy()
-        .p<std::string>("output-file",
+        ip.p<std::string>("output-file",
                 "output ROOT-file path for current session. Set to \"none\" "
                 "to omit.",
             "none" );
     }
     if( enablePlugins && featuresEnabled ) {
-        rootAppCfg.insertion_proxy()
-        .p<std::string>("plugin-handlers-file",
-                "Path to file containing root plugin handlers (see reference "
+        ip.p<std::string>("plugin-handlers-file",
+                "Path to file containing ROOT plugin handlers (see reference "
                 "to TPluginManager for syntax).",
             "sV-plugins.rootrc" );
     }
     if( enableDynamicPath && featuresEnabled ) {
-        rootAppCfg.insertion_proxy()
-        .p<std::string>("dynamic-path",
+        ip.p<std::string>("dynamic-path",
                 "Additional dynamic path to extend ROOT TSystem "
                 "(search path for shared libraries).");
     }
     if( enableTApplication && featuresEnabled ) {
-        rootAppCfg.insertion_proxy()
-        .p<std::string>("TApplication-args",
+        ip.p<std::string>("TApplication-args",
                 "A string to be parsed as TApplication command line. "
                 "See TApplication::GetOptions() reference for your "
                 "ROOT installation for reference. Note, that any spaces "
                 "or special characters need to be escaped.",
             "" );
     }
+    ip.end_sect( "ROOT" );
 }
 
 void
 RootApplication::reset_ROOT_signal_handlers() {
-    // Disable those damn default root's signal handler.
+    // Disable those damn default ROOT's signal handler.
     for( int sig = 0; sig < kMAXSIGNALS; sig++ ) {
         gSystem->ResetSignal((ESignals)sig);
     }
@@ -139,8 +139,8 @@ void
 RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
     AbstractApplication & thisApp = goo::app<AbstractApplication>();
     if( featuresEnabled & enableDynamicPath ) {
-        if( thisApp.co()["root.dynamic-path"].is_set() && !thisApp.do_immediate_exit() ) {
-            for( auto additionalPath : thisApp.cfg_option<std::vector<std::string>>("root.dynamic-path") ) {
+        if( thisApp.co()["ROOT.dynamic-path"].is_set() && !thisApp.do_immediate_exit() ) {
+            for( auto additionalPath : thisApp.cfg_option<std::vector<std::string>>("ROOT.dynamic-path") ) {
                 if( !additionalPath.empty() ) {
                     gSystem->AddDynamicPath( additionalPath.c_str() );
                     sV_log2( "ROOT's dynamic path extended: %s.\n", additionalPath.c_str() );
@@ -150,7 +150,7 @@ RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
     }
     if( featuresEnabled & enablePlugins ) {
         // Set plugin handlers:
-        TEnv * env = new TEnv( thisApp.cfg_option<std::string>("root.plugin-handlers-file").c_str() );
+        TEnv * env = new TEnv( thisApp.cfg_option<std::string>("ROOT.plugin-handlers-file").c_str() );
         env->SaveLevel(kEnvLocal);
         # if 0
         // Due to a known issue https://sft.its.cern.ch/jira/si/jira.issueviews:issue-html/ROOT-8109/ROOT-8109.html
@@ -163,21 +163,21 @@ RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
     }
     if( featuresEnabled & enableTApplication ) {
         goo::app<RootApplication>()._create_TApplication(
-            thisApp.cfg_option<std::string>("TApplication-args") );
+            thisApp.cfg_option<std::string>("ROOT.TApplication-args") );
     }
     if( featuresEnabled & enableCommonFile ) {
         // Try to open ROOT file, if provided:
-        if( !thisApp.cfg_option<std::string>("root.output-file").empty()
-         && "none" != thisApp.cfg_option<std::string>("root.output-file")
+        if( !thisApp.cfg_option<std::string>("ROOT.output-file").empty()
+         && "none" != thisApp.cfg_option<std::string>("ROOT.output-file")
          && !thisApp.do_immediate_exit() ) {
             // will be closed as gFile
-            auto f = new TFile( thisApp.cfg_option<std::string>("root.output-file").c_str(), "RECREATE" );
+            auto f = new TFile( thisApp.cfg_option<std::string>("ROOT.output-file").c_str(), "RECREATE" );
             if( f->IsZombie() ) {
                 sV_logw( "Error opening file \"%s\".\n",
-                             thisApp.cfg_option<std::string>("root.output-file").c_str() );
+                             thisApp.cfg_option<std::string>("ROOT.output-file").c_str() );
             } else {
                 sV_log1( "Output file opened: \"%s\".\n",
-                             thisApp.cfg_option<std::string>("root.output-file").c_str() );
+                             thisApp.cfg_option<std::string>("ROOT.output-file").c_str() );
             }
         }
     }

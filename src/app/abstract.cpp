@@ -22,6 +22,7 @@
 
 # include "app/abstract.hpp"
 # include "app/mixins/root.hpp"
+# include "yaml-adapter.hpp"
 # include "detector_ids.h"
 # include "utils.hpp"
 
@@ -29,6 +30,8 @@
 # include <goo_versioning.h>
 # include <dlfcn.h>
 # include <dirent.h>
+
+# include <yaml.h>
 
 /**@defgroup app Appplications
  * @brief General infrastructure of applications.
@@ -155,7 +158,9 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         conf.append_section( p );
     }
 
-    conf.extract( argc, argv, true );
+    if( conf.extract( argc, argv, true ) < 0) {
+        _immediateExit = true;
+    }
     
     if( conf["h"].as<bool>() ) {
         conf.usage_text( std::cout, argv[0] );
@@ -168,7 +173,6 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
     if( conf["build-info"].as<bool>() ) {
         dump_build_info( std::cout );
         _immediateExit = true;
-        return _appCfg;
     }
 
     _verbosity = conf["verbosity"].as<int>();
@@ -194,6 +198,15 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
 
 void
 AbstractApplication::_V_configure_application( const Config * cfg ) {
+    if( _immediateExit ) {
+        return;
+    }
+
+    if( ROOT_features() ) {
+        mixins::RootApplication
+              ::append_ROOT_config_options( _configuration, ROOT_features() );
+    }
+
     const Config & conf = *cfg;
     // Here, we have pre-initialization stage done: all modules loaded and
     // we're ready for assembling up common configuration dictionary:
@@ -211,7 +224,7 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
             emraise( badParameter, "Unable to interpret expression "
                 "\"%s\" (no equal sign in token). Please, use the notation "
                 "\"-O<opt-name>=<opt-val>\" to override option from common "
-                "config." )
+                "config.", overridenOpt.c_str() );
         }
         std::string path = overridenOpt.substr(0, eqPos),
                     strVal = overridenOpt.substr(eqPos)
@@ -224,9 +237,14 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
 
 std::ostream *
 AbstractApplication::_V_acquire_stream() {
-    if( cfg_option<std::string>("logfile") != "stdout" ) {
-        _lBuffer.add_target( new std::ofstream(cfg_option<std::string>("logfile")),
-                             false );
+    if( _immediateExit ) {
+        return nullptr;
+    }
+
+    if( _appCfg->parameter("stdout").as<std::string>() != "-" ) {
+        _lBuffer.add_target(
+                new std::ofstream(_appCfg->parameter("logfile").as<std::string>()),
+                false );
     }
 
     // TODO: Goo API must provide err stream acquizition method.
@@ -237,9 +255,10 @@ AbstractApplication::_V_acquire_stream() {
 
 std::ostream *
 AbstractApplication::_V_acquire_errstream() {
-    if( cfg_option<std::string>("errfile") != "stderr" ) {
-        _eBuffer.add_target( new std::ofstream(cfg_option<std::string>("errfile")),
-                             false );
+    if( _appCfg->parameter("stderr").as<std::string>() != "-" ) {
+        _eBuffer.add_target(
+                new std::ofstream(_appCfg->parameter("errfile").as<std::string>()),
+                false );
     }
 
     return new std::ostream( &_eBuffer );
@@ -293,7 +312,7 @@ AbstractApplication::_process_options( const Config * ) {
 
     _V_configure_concrete_app();
 
-    if( cfg_option<bool>( "ascii-display" ) ) {
+    if( _appCfg->parameter("ascii-display").as<bool>() ) {
         aux::ASCII_Display::enable_ASCII_display();
     }
 }
@@ -344,14 +363,17 @@ AbstractApplication::_parse_configs( const std::string & path ) {
 }
 
 void
-AbstractApplication::_parse_config_file( const std::string & /*path*/ ) {
-    _TODO_  // TODO
+AbstractApplication::_parse_config_file( const std::string & path ) {
+    aux::read_yaml_config_file_to_goo_dict( _configuration, path );
 }
 
 void
-AbstractApplication::_set_common_option( const std::string & /*path*/,
-                                         const std::string & /*strVal*/ ) {
-    _TODO_  // TODO
+AbstractApplication::_set_common_option( const std::string & path,
+                                         const std::string & strVal ) {
+    _configuration
+        .goo::dict::Dictionary::parameter( path.c_str() )
+        .parse_argument( strVal.c_str() )
+        ;
 }
 
 void

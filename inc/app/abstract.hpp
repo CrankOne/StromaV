@@ -74,7 +74,7 @@ protected:
     /// Configures application according to recently constructed config object.
     virtual void _V_configure_application( const Config * ) override;
     /// Appends common configuration dictionary.
-    virtual void _V_append_common_config( Config & ) const = 0;
+    virtual void _V_append_common_config( Config & ) const {};
     /// Should create the logging stream of type LogStreamT (app already configured).
     virtual Stream * _V_acquire_stream() override;
     virtual Stream * _V_acquire_errstream();
@@ -124,15 +124,10 @@ public:
     /// Routes message to appropriate streams.
     virtual void message( int8_t level, const std::string message, bool noprefix=false );
 
-    /// Safe po::variables_map getter.
+    /// Safe config option getter (common config).
     template<typename T>
     T cfg_option(const std::string & name) {
-        if( !co_is_set() ) {
-            emraise(badState, "Couldn't get option \"%s\" value as config "
-                    "object is not constructed yet (pre-init stage).",
-                    name.c_str());
-        }
-        return co()[name.c_str()].as<T>();
+        return _configuration[name.c_str()].as<T>();
     }
 
     bool do_immediate_exit() const { return _immediateExit; }
@@ -140,6 +135,8 @@ public:
     /// Returns pointer to common boost::io_service instance
     /// (interface method for future usage).
     boost::asio::io_service * boost_io_service_ptr() { return &_ioService; }
+
+    uint8_t ROOT_features() const { return _ROOTAppFeatures; }
 };  // AbstractApplication
 
 }  // namespace sV
