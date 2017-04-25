@@ -81,8 +81,8 @@ AFR_DetMjNo compose_detector_major(
                             AFR_DetFamID /*fmID*/,
                             const struct sV_DSuL_MVarIndex * /*mvIdx*/ )
     { _FORBIDDEN_CALL_; }
-void decode_minor_to_indexes( AFR_DetMnNo minorNo,
-                                        struct sV_DSuL_MVarIndex * /*mvIdx*/ )
+void decode_minor_to_indexes( AFR_DetMnNo /*minorNo*/,
+                              struct sV_DSuL_MVarIndex * /*mvIdx*/ )
     { _FORBIDDEN_CALL_; }
 # endif
 

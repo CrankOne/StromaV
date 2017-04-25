@@ -115,6 +115,22 @@ option_depend( ALIGNMENT_ROUTINES       RPC_PROTOCOLS )
 # THIRD-PARTY LIBRARIES AND PACKAGES
 ###################################
 
+# YAML-cpp provides config parsing facility dealing with flexible YAML fmt
+find_package( yaml-cpp )
+if( NOT yaml-cpp_FOUND )
+    find_package( PkgConfig )
+    if( PKG_CONFIG_FOUND )
+        pkg_search_module( yaml-cpp REQUIRED yaml-cpp )
+    endif( PKG_CONFIG_FOUND )
+    if( NOT PKG_CONFIG_FOUND OR NOT yaml-cpp_FOUND )
+        message( FATAL_ERROR "
+        Unable to locate required package yaml-cpp.
+        Please submit the path to yaml-cpp-config.cmake with
+        -Dyaml-cpp_DIR=..." )
+    else()
+        message( STATUS "yaml-cpp found with pkg-config: ${yaml-cpp_INCLUDE_DIRS}" )
+    endif()
+endif()
 # ROOT framework is a major data analysis toolkit used in many applications
 # inside of StromaV
 find_package( ROOT
@@ -275,6 +291,7 @@ include_directories( "inc"
                      ${Boost_INCLUDE_DIRS}
                      ${ROOT_INCLUDE_DIRS}
                      ${CMAKE_CURRENT_BINARY_DIR}/inc
+                     ${yaml-cpp_INCLUDE_DIRS}
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
@@ -292,6 +309,7 @@ link_directories( ${extGDML_LIBRARY_DIR} )
 if( genfit_LIBRARY_DIR )
     link_directories( ${genfit_LIBRARY_DIR} )
 endif( genfit_LIBRARY_DIR )
+link_directories( ${yaml-cpp_LIBRARY_DIRS} )
 
 #
 # Configure sources
@@ -464,6 +482,7 @@ target_link_libraries( ${StromaV_LIB} ${Goo_LIBRARIES}   )
 target_link_libraries( ${StromaV_LIB} ${Boost_LIBRARIES} )
 target_link_libraries( ${StromaV_LIB} ${ROOT_LIBRARIES}  )
 target_link_libraries( ${StromaV_LIB} ${extGDML_LIBRARIES} )
+target_link_libraries( ${StromaV_LIB} ${yaml-cpp_LIBRARIES} )
 if( GEANT4_MC_MODEL )
     target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )

@@ -73,10 +73,13 @@ protected:
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
     /// Configures application according to recently constructed config object.
     virtual void _V_configure_application( const Config * ) override;
+    /// Appends common configuration dictionary.
+    virtual void _V_append_common_config( Config & ) const = 0;
     /// Should create the logging stream of type LogStreamT (app already configured).
     virtual Stream * _V_acquire_stream() override;
     virtual Stream * _V_acquire_errstream();
-    /// User application should fullfill this chain to provide its own options.
+    /// User application should fullfill this chain to provide its own options
+    /// to command line.
     virtual std::vector<goo::dict::Dictionary> _V_get_options() const;
     /// User application should be configured here.
     virtual void _V_configure_concrete_app() {}
@@ -93,6 +96,15 @@ protected:
     virtual const char * _get_prefix_for_loglevel( int8_t );
     /// For available features codes see mixins::RootApplication.
     void _enable_ROOT_feature( uint8_t ftCode );
+
+    /// Performs configs parsing if path in dir, or just forwards execution to
+    /// _parse_config_file() if it is a file.
+    void _parse_configs( const std::string & path );
+    /// Parses config file by given path into common config.
+    void _parse_config_file( const std::string & path );
+    /// Sets the common config option.
+    void _set_common_option( const std::string & path,
+                             const std::string & strVal );
 public:
     /// Default ctr --- the void config instance should be provided here.
     AbstractApplication( Config * );

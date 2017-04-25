@@ -27,7 +27,8 @@
 
 # include <fstream>
 # include <goo_versioning.h>
-#include <dlfcn.h>
+# include <dlfcn.h>
+# include <dirent.h>
 
 /**@defgroup app Appplications
  * @brief General infrastructure of applications.
@@ -119,10 +120,8 @@ AbstractApplication::_enable_ROOT_feature( uint8_t ftCode ) {
 
 AbstractApplication::Config *
 AbstractApplication::_V_construct_config_object( int argc, char * const argv [] ) const {
-    # if 1
-    //
     // This is a pre-initialization step that assembles the common
-    // configuration dictionaries from dynamically loaded stuff. It can cause
+    // configuration dictionaries from descendants specifications. It can cause
     // immediate exit if some particular flags were provided (help, build-info,
     // etc.).
     Config & conf = *_appCfg;
@@ -133,7 +132,7 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
                 "Prints build configuration info and exits." )
         .p<std::string>( 'c', "config",
                 "Path to .yml-configuration.", StromaV_DEFAULT_CONFIG_FILE_PATH )
-        .list<std::string>( 'O', "override-option",
+        .list<std::string>( 'O', "override-opt",
                 "Overrides config entry in common config options set." )
         .p<int>('v', "verbosity",
                 "Sets common verbosity level. [0..3] values are allowed.", 1 )
@@ -159,11 +158,7 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
     conf.extract( argc, argv, true );
     
     if( conf["h"].as<bool>() ) {
-        # ifdef ANSI_ESCSEQ_PRINT
-        conf.usage_text( std::cout, true );
-        # else
-        conf.usage_text( std::cout, false );
-        # endif
+        conf.usage_text( std::cout, argv[0] );
         std::cout << "Environment variables:" << std::endl;
         dump_envvars( std::cout );
         _immediateExit = true;
@@ -177,7 +172,7 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
     }
 
     _verbosity = conf["verbosity"].as<int>();
-    if( _verbosity > 3 || _verbosity < 0 ) {
+    if( _verbosity > 3 ) {
         std::cerr << "Invalid verbosity level specified: " << (int) _verbosity;
         _verbosity = 3;
         std::cerr << ". Level " << (int) _verbosity << " was set." << std::endl;
@@ -195,113 +190,35 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
     }
 
     return _appCfg;
-    # else
-    po::options_description genericCfg,
-                            rootAppCfg("CERN ROOT framework extras")
-                            ;
-    { genericCfg.add_options()
-        ("help,h",
-            "Prints this help message and exits.")
-        ("config,c",
-            po::value<std::string>()->default_value(StromaV_DEFAULT_CONFIG_FILE_PATH),
-            "Sets the config file to command line options be interfereded with.")
-        ("verbosity,v",
-            po::value<int>()->default_value(1),
-            "Sets verbosity level (from 0 -- silent, to 3 -- loquacious).")
-        ("build-info",
-            "Prints out current build information and exits.")
-        ("logfile",
-            po::value<std::string>()->default_value("stdout"),
-            "Stream for logging. Use \"stdout\" for stdout.")
-        ("errfile",
-            po::value<std::string>()->default_value("stderr"),
-            "Stream for error logging. Use \"stderr\" for stderr.")
-        ("dynload",
-            po::value<std::vector<std::string> >(),
-            "Shared objects to be loaded with dlopen(). Useful for enabling"
-            "plug-ins and back-ends built as a shared libraries.")
-        ("ascii-display,A",
-            po::value<bool>()->default_value(false),
-            "When enabled, can print to terminal some info updated in real-time. "
-            "Not useful with loquacious verbosity. Not supported by all the "
-            "sV applications.")
-        ;
-    }
-
-    po::options_description opts;
-    auto optsVect = _V_get_options();
-    opts.add(genericCfg);
-    if( _ROOTAppFeatures ) {
-        mixins::RootApplication::append_ROOT_config_options( rootAppCfg, _ROOTAppFeatures );
-        opts.add(rootAppCfg);
-    }
-    for( auto it = optsVect.begin(); optsVect.end() != it; ++it ) {
-        opts.add(*it);
-    }
-    po::store(po::command_line_parser(argc, argv)
-        .options(opts)
-        .run(),
-        *_variablesMap);
-    // ...
-    po::variables_map & vm = *_variablesMap;
-    std::string confFilePath;
-
-    _verbosity = vm["verbosity"].as<int>();
-    if( _verbosity > 3 ) {
-        std::cout << "Invalid verbosity level specified: " << (int) _verbosity;
-        _verbosity = 3;
-        std::cerr << ". Set to " << (int) _verbosity << "." << std::endl;
-    }
-
-    if( vm.count("dynload") ) {
-        for( const std::string & dlPath :
-                        vm["dynload"].as<std::vector<std::string>>() ) {
-            void * handle = dlopen( dlPath.c_str(), RTLD_NOW );
-            if( !handle ) {
-                std::cerr << "Failed to load \"" << dlPath << "\"" << std::endl;
-            } else {
-                std::cout << "Shared object file \"" << dlPath 
-                          << "\" loaded." << std::endl;
-            }
-        }
-    }
-
-    if( vm.count("config") ) {
-        confFilePath = vm["config"].as<std::string>();
-        if( verbosity() > 1 ) {
-            std::cerr << "Using user's config file: " << confFilePath << std::endl;
-        }
-    } else {
-        if( verbosity() > 0 ) {
-            std::cerr << "Using default config file: " << confFilePath << std::endl;
-        }
-    }
-    std::ifstream configFile( confFilePath, std::ifstream::in );
-    if( ! configFile ) {
-        emraise( fileNotReachable, "Couldn't open config file \"%s\".", confFilePath.c_str() );
-    }
-    po::store( po::parse_config_file( configFile, opts, /*allow_unregistered*/ true ), vm );
-    configFile.close();
-
-    try {
-        po::notify( vm );
-    } catch ( const std::exception & e ) {
-        std::cerr << "variables_map::notify() Error: " << e.what() << std::endl;
-    }
-    
-    if(vm.count("help")) {
-        std::cout << opts << std::endl;
-        std::cout << "Environment variables:" << std::endl;
-        dump_envvars( std::cout );
-        _immediateExit = true;
-    }
-
-    return _variablesMap;
-    # endif
 }
 
 void
 AbstractApplication::_V_configure_application( const Config * cfg ) {
+    const Config & conf = *cfg;
+    // Here, we have pre-initialization stage done: all modules loaded and
+    // we're ready for assembling up common configuration dictionary:
+    _V_append_common_config( _configuration );
+
+    // Load configuration files
+    _parse_configs( conf["config"].as<std::string>() );
+
+    // Override configuration with command-line ones specified with
+    // -O|--override-opt
+    const auto & overridenOpts = conf["override-opt"].as_list_of<std::string>();
+    for( const auto & overridenOpt : overridenOpts ) {
+        std::size_t eqPos = overridenOpt.find('=');
+        if( std::string::npos == eqPos ) {
+            emraise( badParameter, "Unable to interpret expression "
+                "\"%s\" (no equal sign in token). Please, use the notation "
+                "\"-O<opt-name>=<opt-val>\" to override option from common "
+                "config." )
+        }
+        std::string path = overridenOpt.substr(0, eqPos),
+                    strVal = overridenOpt.substr(eqPos)
+                    ;
+        _set_common_option( path, strVal );
+    }
+
     _process_options( cfg );
 }
 
@@ -379,6 +296,62 @@ AbstractApplication::_process_options( const Config * ) {
     if( cfg_option<bool>( "ascii-display" ) ) {
         aux::ASCII_Display::enable_ASCII_display();
     }
+}
+
+void
+AbstractApplication::_parse_configs( const std::string & path ) {
+    struct stat pStat;
+    if( 0 == ::stat( path.c_str(), &pStat ) ) {
+        if( pStat.st_mode & S_IFDIR ) {
+            // it's a directory
+            DIR * dp;
+            struct dirent * dirPtr;
+            if( (dp  = opendir(path.c_str())) == NULL ) {
+                emraise( ioError, "Unable to open dir \"%s\": %s.",
+                    path.c_str(), strerror(errno) );
+            }
+            std::set<std::string> filesToParse;
+            while( (dirPtr = readdir(dp)) != NULL ) {
+                // Check if file name matches the pattern:
+                std::string fName( dirPtr->d_name );
+                std::size_t dotP = fName.find('.');
+                if( dotP != std::string::npos ) {
+                    std::string tail = fName.substr( dotP );
+                    if( ".yml" == tail || ".yaml" == tail || ".conf" == tail ) {
+                        filesToParse.insert( fName );
+                    }
+                }
+            }
+            if( filesToParse.empty() ) {
+                emraise( badParameter, "Unable to find config files at \"%s\"."
+                    "Expected at least one file with .yml/.yaml/.conf name postfix "
+                    "(extension).", path.c_str() );
+            }
+            for( const auto & p : filesToParse ) {
+                _parse_config_file( p );
+            }
+        } else if( pStat.st_mode & S_IFREG ) {
+            // it's a file
+            _parse_config_file( path );
+        } else {
+            emraise( fileNotReachable, "Unable to interpret stat() for "
+                "path \"%s\". It is not a file, nor a directory.", path.c_str() );
+        }
+    } else {
+        emraise( ioError, "Unable to retrieve stat() for path \"%s\": %s.",
+            path.c_str(), strerror(errno) );
+    }
+}
+
+void
+AbstractApplication::_parse_config_file( const std::string & /*path*/ ) {
+    _TODO_  // TODO
+}
+
+void
+AbstractApplication::_set_common_option( const std::string & /*path*/,
+                                         const std::string & /*strVal*/ ) {
+    _TODO_  // TODO
 }
 
 void
