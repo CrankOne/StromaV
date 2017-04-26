@@ -97,9 +97,6 @@ push_option( DOC_HTML
     "Whether to produce HTML documentation with doxygen."
         OFF )
 
-set( DEFAULT_STROMAV_CFG_PATH "../../StromaV/defaults.cfg"
-    CACHE STRING "Default config file for StromaV library.")
-
 # check for options deps in form (dependent, [dependencies ...])
 # The \opt-dep: tag is used by buildtest.sh script.
 #\opt-dep:
@@ -315,12 +312,6 @@ link_directories( ${yaml-cpp_LIBRARY_DIRS} )
 # Configure sources
 ##################
 
-# generic StromaV lib configuration
-configure_file (
-    "${StromaV_LIB_INCLUDE_DIR}/config.h.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h"
-)
-
 # Physics list aux config
 if( GEANT4_MC_MODEL )
     if( NOT DEFINED Geant4_PHLIST_INCLUDE_DIR )
@@ -433,16 +424,26 @@ if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
         "system path."
         "To override this specification, use -DCMAKE_INSTALL_PREFIX=<path> "
         "option." )
+    set( StromaV_CONFIG_INSTALL_PATH /etc/StromaV )
 else( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
     message( STATUS "NOTE: Install prefix is manually set to \""
         ${CMAKE_INSTALL_PREFIX} "\"." )
     # ...
-    SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/StromaV")
-    SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/StromaV")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     # the RPATH to be used when installing, but only if it's not a system directory
-    LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+    list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+    set( StromaV_CONFIG_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/etc/StromaV )
 endif( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
+
+set( DEFAULT_STROMAV_CFG_PATH ${StromaV_CONFIG_INSTALL_PATH}
+    CACHE STRING "Default config file for StromaV library.")
+set( StromaV_ASSETS_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/share/StromaV )
+set( StromaV_MODULES_INSTALL_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/StromaV/modules )
+set( StromaV_ROOT_PLUGINS_INSTALL_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/StromaV/modules/root )
 
 #
 # Add custom uninstall target (CMake by default does not provide it)
@@ -452,6 +453,12 @@ configure_file(
     IMMEDIATE @ONLY)
 add_custom_target( uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/CMakeUninstall.cmake") 
+
+# generic StromaV lib configuration
+configure_file (
+    "${StromaV_LIB_INCLUDE_DIR}/config.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h"
+)
 
 #
 # Library target
@@ -556,13 +563,22 @@ configure_file (
     @ONLY
 )
 
+configure_file (
+    conf/00_sV.yml.in
+    ${CMAKE_CURRENT_BINARY_DIR}/00_sV.yml
+    @ONLY
+)
+
 install( FILES
     "${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake"
          DESTINATION lib/cmake/StromaV )
 
 install( FILES
-         "${CMAKE_CURRENT_SOURCE_DIR}/defaults.cfg"
-         DESTINATION etc/StromaV )
+    ${CMAKE_CURRENT_BINARY_DIR}/00_sV.yml
+         DESTINATION ${StromaV_CONFIG_INSTALL_PATH} )
+
+install( DIRECTORY conf/ DESTINATION ${StromaV_CONFIG_INSTALL_PATH} FILES_MATCHING PATTERN
+    "*.yml" PATTERN "*.yaml" PATTERN "*.conf" )
 
 install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
@@ -570,10 +586,10 @@ install( FILES
 
 install( FILES
          ${CMAKE_CURRENT_BINARY_DIR}/StromaV-plugins.rootrc
-         DESTINATION usr/share/StromaV )
+         DESTINATION ${StromaV_ROOT_PLUGINS_INSTALL_PATH} )
 
 install(
     CODE "file( GLOB _GeneratedROOTDicts \"${CMAKE_CURRENT_BINARY_DIR}/*.pcm\" )"
-    CODE "file( INSTALL \${_GeneratedROOTDicts} DESTINATION \"${CMAKE_INSTALL_PREFIX}/lib/StromaV\" )"
+    CODE "file( INSTALL \${_GeneratedROOTDicts} DESTINATION \"${StromaV_ROOT_PLUGINS_INSTALL_PATH}\" )"
 )
 

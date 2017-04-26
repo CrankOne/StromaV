@@ -21,10 +21,6 @@
 %YAML 1.2
 ---
 
-sV-paths:
-    assets: TODO-assets
-    root-plugins: TODO-root-plugins
-
 Geant4:
     useNIST: true
     physicsList: modular
@@ -78,3 +74,4 @@ ROOT:
         palette: 1
 
 ...
+

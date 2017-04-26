@@ -30,7 +30,7 @@
  * (in most cases, this can be overriden by providing -c
  * option to application)
  */
-# define StromaV_DEFAULT_CONFIG_FILE_PATH "@DEFAULT_STROMAV_CFG_PATH@"
+# define StromaV_DEFAULT_CONFIG_PATH "@DEFAULT_STROMAV_CFG_PATH@"
 
 /* Features
  */

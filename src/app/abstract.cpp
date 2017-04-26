@@ -79,7 +79,8 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
             _appCfg( cfg ),
             _configuration( "sV-config", "StromaV app-managed config" ),
             _immediateExit(false),
-            _verbosity(1),
+            _verbosity(3),
+            _pathInterpolator( _configuration ),
             _ROOTAppFeatures(0x0) {
     // Initialize log dispatching to standard streams by
     // default:
@@ -128,7 +129,7 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
         .flag( "build-info",
                 "Prints build configuration info and exits." )
         .p<goo::filesystem::Path>( 'c', "config",
-                "Path to .yml-configuration.", StromaV_DEFAULT_CONFIG_FILE_PATH )
+                "Path to .yml-configuration.", StromaV_DEFAULT_CONFIG_PATH )
         .list<std::string>( 'O', "override-opt",
                 "Overrides config entry in common config options set." )
         .p<int>('v', "verbosity",
@@ -139,9 +140,9 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
         .p<std::string>( "stderr",
                 "Redirects internal error logging messages to stream. Use '-' "
                 "for stderr (default).", "-")
-        .list<std::string>( 'l', "load-module",
+        .list<goo::filesystem::Path>( 'l', "load-module",
                 "Dynamically loads a third-party library. An interfacing "
-                "option to set-up sV plugins.")
+                "option to set-up sV plugins." )
         .flag( 'A', "ascii-display",
                 "When enabled, can print to terminal some info updated in "
                 "real-time. Not useful with loquacious verbosity. Not "
@@ -153,6 +154,20 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
                 "-O|--override-opt option). The config dump will be "
                 "accompanied with descriptive reference information for each "
                 "parameter. Application will be terminated after dump.")
+        ;
+
+    // This paths are related to StromaV and may be used for in-config
+    // substitution.
+    _configuration.insertion_proxy()
+        .bgn_sect( "sV-paths", "StromaV system paths." )
+            .p<goo::filesystem::Path>( "plugins",
+                            "Path to StromaV plugins directory",
+                            "TODO" )  // TODO
+            .p<goo::filesystem::Path>( "assets",
+                            "Path to StromaV assests directory" )
+            .p<goo::filesystem::Path>( "root-plugins",
+                            "Path to sV's ROOT plugins dir." )
+        .end_sect( "sV-paths" )
         ;
 }
 
@@ -188,14 +203,23 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         sV_logw("Verbosity level %d was set.\n", (int) _verbosity);
     }
 
-    const auto & ll = conf["load-module"].as_list_of<std::string>();
-    for( const auto & dlPath : ll ) {
-        void * handle = dlopen( dlPath.c_str(), RTLD_NOW );
+    auto & ll = conf["load-module"].as_list_of<goo::filesystem::Path>();
+    for( const goo::filesystem::Path & dlPath : ll ) {
+        dlPath.interpolator( path_interpolator() );
+        const std::string intrpltdPath = dlPath.interpolated();
+        if( intrpltdPath.empty() ) {
+            sV_logw( "Empty load path ignored.\n" );
+            continue;
+        }
+        void * handle = dlopen( intrpltdPath.c_str(), RTLD_NOW );
         if( !handle ) {
-            std::cerr << "Failed to load \"" << dlPath << "\"" << std::endl;
+            //std::cerr << "Failed to load \"" << intrpltdPath << "\": "
+            //          << dlerror() << std::endl;
+            sV_loge( "Failed to load module: %s.\n", dlerror() );
         } else {
-            std::cout << "Shared object file \"" << dlPath 
-                      << "\" loaded." << std::endl;
+            //std::cout << "Shared object file \"" << dlPath.interpolated()
+            //          << "\" loaded." << std::endl;
+            sV_log1( "Module \"%s\" loaded.\n", intrpltdPath.c_str() );
         }
     }
     return _appCfg;
@@ -344,6 +368,41 @@ AbstractApplication::_process_options( const Config * ) {
 
 void
 AbstractApplication::_parse_configs( const goo::filesystem::Path & path ) {
+    # if 1
+    if( !path.exists() ) {
+        emraise( ioError, "Path \"%s\" doesn't exist.", path.c_str() );
+    }
+    if( path.is_file() ) {
+        _parse_config_file( path );
+    } else if( path.is_dir() ) {
+        DIR * dp;
+        struct dirent * dirPtr;
+        if( (dp  = opendir(path.c_str())) == NULL ) {
+            emraise( ioError, "Unable to open dir \"%s\": %s.",
+                path.c_str(), strerror(errno) );
+        }
+        std::set<std::string> filesToParse;
+        while( (dirPtr = readdir(dp)) != NULL ) {
+            // Check if file name matches the pattern:
+            std::string fName( path.concat(dirPtr->d_name) );
+            std::size_t dotP = fName.find('.');
+            if( dotP != std::string::npos ) {
+                std::string tail = fName.substr( dotP );
+                if( ".yml" == tail || ".yaml" == tail || ".conf" == tail ) {
+                    filesToParse.insert( fName );
+                }
+            }
+        }
+        if( filesToParse.empty() ) {
+            emraise( badParameter, "Unable to find config files at \"%s\"."
+                "Expected at least one file with .yml/.yaml/.conf name postfix "
+                "(extension).", path.c_str() );
+        }
+        for( const auto & p : filesToParse ) {
+            _parse_config_file( p );
+        }
+    }
+    # else
     struct stat pStat;
     if( 0 == ::stat( path.c_str(), &pStat ) ) {
         if( pStat.st_mode & S_IFDIR ) {
@@ -385,6 +444,7 @@ AbstractApplication::_parse_configs( const goo::filesystem::Path & path ) {
         emraise( ioError, "Unable to retrieve stat() for path \"%s\": %s.",
             path.c_str(), strerror(errno) );
     }
+    # endif
 }
 
 void
@@ -421,7 +481,7 @@ AbstractApplication::dump_build_info( std::ostream & os ) const {
                                               << "." << STROMAV_VERSION_MINOR << std::endl
        << "                build type ... : " << STRINGIFY_MACRO_ARG(STROMAV_BUILD_TYPE) << std::endl
        << "              build system ... : " << STRINGIFY_MACRO_ARG(STROMAV_CMAKE_SYSTEM) << std::endl
-       << "  default config file path ... : " << StromaV_DEFAULT_CONFIG_FILE_PATH << std::endl
+       << "  default config file path ... : " << StromaV_DEFAULT_CONFIG_PATH << std::endl
        << "          featurs hex code ... : " << std::hex << "0x" << features << std::endl
        // TODO ... etc.
        ;
@@ -464,9 +524,40 @@ AbstractApplication::message( int8_t level, const std::string msg, bool noprefix
         std::ostream * os = &(level > 0 ? ls() : es());
         *os << prefix << msg;
         //if( level < 0 ) {
-            os->flush();
+        os->flush();
         //}
     }
+}
+
+std::string
+AbstractApplication::ConfigPathInterpolator::interpolate( const std::string & p ) const {
+    std::size_t bgnPos, endPos, bgnBrckt;
+    std::string intrpltdCpy(p);
+    while( std::string::npos != (bgnPos = intrpltdCpy.find("$(CFG:")) ||
+           std::string::npos != (bgnBrckt = intrpltdCpy.find("$(")) ) {
+        if( std::string::npos == 
+                (endPos = intrpltdCpy.find( ')', bgnPos == std::string::npos
+                                                 ? bgnBrckt : bgnPos )) ) {
+            emraise( badParameter, "Unable to interpolate "
+                "path expression \"%s\" (original: \"%s\"): "
+                "unbalanced bracket at position %zu.",
+                intrpltdCpy.c_str(), p.c_str(), bgnPos == std::string::npos
+                                                ? bgnBrckt : bgnPos );
+        }
+        if( std::string::npos != bgnPos ) {
+            // Substitute config parameter:
+            std::string cfgPath = intrpltdCpy.substr(bgnPos + 6, endPos - bgnPos - 6),
+                        value = _cfgRef.parameter(cfgPath.c_str()).to_string()
+                        ;
+            intrpltdCpy.replace( bgnPos, endPos - bgnPos + 1, value );
+        } else {
+            // Substitute environment variable:
+            std::string envVarName = intrpltdCpy.substr(bgnBrckt + 2, endPos - bgnBrckt - 2);
+            intrpltdCpy.replace( bgnBrckt, endPos - bgnBrckt + 1,
+                                 goo::aux::iApp::envvar( envVarName ) );
+        }
+    }
+    return intrpltdCpy;
 }
 
 }  // namespace sV

@@ -59,6 +59,18 @@ public:
     typedef goo::dict::Configuration Config;
     typedef std::ostream Stream;
     typedef goo::App<Config, Stream> Parent;
+
+    /// Aux class substituting config definitions and environment variables in
+    /// the insertable config-parameters. To refer the config option, use
+    /// $(CFG:config.path) syntax (were "CFG:" is mandatory prefix). To refer
+    /// environment variable, use the $(EVVARNAME) syntax.
+    class ConfigPathInterpolator : public goo::filesystem::Path::Interpolator {
+    protected:
+        const Config & _cfgRef;
+    public:
+        ConfigPathInterpolator( const Config & cfgRef ) : _cfgRef( cfgRef ) {}
+        virtual std::string interpolate( const std::string & p ) const override;
+    };  // class ConfigPathInterpolator
 protected:
     std::map<std::string, std::string> _envVarsDocs;
     Stream * _eStr;
@@ -69,6 +81,8 @@ protected:
            _configuration;
     mutable bool _immediateExit;
     mutable uint8_t _verbosity;
+
+    mutable ConfigPathInterpolator _pathInterpolator;
 
     /// Creates instance of type ConfigObjectT according to command-line arguments
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
@@ -119,6 +133,9 @@ public:
 
     /// Returns error stream (as goo basically doesn't support it).
     std::ostream & es() { return ( _eStr ? *_eStr : std::cerr ); }
+
+    /// Returns common interpolator ptr;
+    ConfigPathInterpolator * path_interpolator() const { return &_pathInterpolator; }
 
     /// Routes message to appropriate streams.
     virtual void message( int8_t level, const std::string message, bool noprefix=false );
