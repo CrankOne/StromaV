@@ -37,12 +37,12 @@
 
 namespace sV {
 
-void
-AnalysisApplication::push_back_processor( const std::string & name ) {
-    auto p = find_processor( name )();
-    sV_log3( "Adding processor %s:%p.\n", name.c_str(), p );
-    AnalysisPipeline::push_back_processor( p );
-}
+//void
+//AnalysisApplication::push_back_processor( const std::string & name ) {
+//    auto p = find_processor( name )();
+//    sV_log3( "Adding processor %s:%p.\n", name.c_str(), p );
+//    AnalysisPipeline::push_back_processor( p );
+//}
 
 void
 AnalysisApplication::_finalize_event( Event * ep ) {
@@ -55,13 +55,11 @@ AnalysisApplication::_finalize_event( Event * ep ) {
 AnalysisApplication::AnalysisApplication( Config * vm ) :
             sV::AbstractApplication( vm ),
             mixins::PBEventApp(vm) {
-    _enable_ROOT_feature( mixins::RootApplication::enableCommonFile );
+    # if 0 // XXX (dev)
     // Inject custom stacktrace info acauizition into boost exception construction
     // procedures; TODO: doesn't work; may be here `handler' means "how to treat" the
     // exception, not "hook for user code to throw one"?)
     //init_boost_exception_handler();
-
-    // XXX (dev)
     {
         namespace ga = ::goo::aux;
         # ifdef GOO_GDB_EXEC
@@ -80,6 +78,26 @@ AnalysisApplication::AnalysisApplication( Config * vm ) :
             );
         # endif
     }
+    # endif
+
+    _enable_ROOT_feature( mixins::RootApplication::enableCommonFile );
+
+    vm->insertion_proxy()
+        .p<std::string>('i', "input-file",
+            "Input file --- an actual data source.") //.required_argument()? 
+        .p<std::string>('F', "input-format",
+            "Sets input file format.",
+            "unset" )
+        .list<std::string>('p', "processor",
+            "Pushes processor in chain, one by one, in order.")
+        .flag("list-src-formats",
+            "Prints a list of available input file data formats.")
+        .flag("list-processors",
+            "Prints a list of available treatment routines.")
+        .p<size_t>('n', "max-events-to-read",
+            "Number of events to read; (set zero to read all available).",
+            0 )
+        ;
 }
 
 AnalysisApplication::~AnalysisApplication() {
@@ -97,6 +115,7 @@ AnalysisApplication::~AnalysisApplication() {
     }
 }
 
+# if 0
 std::vector<goo::dict::Dictionary>
 AnalysisApplication::_V_get_options() const {
     std::vector<goo::dict::Dictionary> res = Parent::_V_get_options();
@@ -125,30 +144,30 @@ AnalysisApplication::_V_get_options() const {
     }
     return res;
 }
+# endif
 
 void
 AnalysisApplication::_V_configure_concrete_app() {
-    if( co()["analysis.list-src-formats"].as<bool>() ) {
+    if( co()["list-src-formats"].as<bool>() ) {
         list_readers( std::cout );
         _immediateExit = true;
     }
-    if( co()["analysis.list-processors"].as<bool>() ) {
+    if( co()["list-processors"].as<bool>() ) {
         list_processors( std::cout );
         _immediateExit = true;
     }
-    if( !do_immediate_exit() && _readersDict && cfg_option<std::string>("analysis.input-format") != "unset" ) {
+    if( !do_immediate_exit()
+                && _readersDict
+                && cfg_option<std::string>("input-format") != "unset" ) {
         _evSeq = find_reader( cfg_option<std::string>("analysis.input-format") )();
     }
     if( !do_immediate_exit() && _procsDict ) {
-        auto procNamesVect = co()["analysis.processor"].as_list_of<std::string>();
+        auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
-            push_back_processor( *it );
+            AnalysisPipeline::push_back_processor( find_processor(*it)() );
         }
     }
-    //if( !cfg_option<std::string>("root-file").empty() ) {
-    //    new TFile( cfg_option<std::string>("root-file").c_str(), "RECREATE" );
-    //}
 }
 
 }  // namespace sV

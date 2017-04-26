@@ -39,10 +39,15 @@ namespace sV {
  * sources and data processing handlers. This class implements no actual
  * object and represents more like a scope summing up the static indexing
  * maps and access functions.
+ *
+ * For C++ applications one has to push this class into inheritance chain to
+ * make sV::AbstractApplication append common configuration dictionary with
+ * its supplementary options. For other use cases, one may consider to use
+ * supp_options() manually.
  * */
 class AnalysisDictionary {
 public:
-    typedef goo::dict::Dictionary (*OptionsSupplement)();
+    typedef void (*OptionsSupplement)( goo::dict::Dictionary & );
 
     typedef AnalysisPipeline::iEventSequence iEventSequence;
     typedef AnalysisPipeline::iEventProcessor iEventProcessor;
@@ -77,8 +82,10 @@ public:
     static void list_processors( std::ostream & );
     /// Looks for processor pointed out by string. Raises notFound on failure.
     static EvProcCtr find_processor( const std::string & );
-    /// Adds options supplement routine.
+    /// Supplumentary options appending routine.
     static void supp_options( OptionsSupplement );
+    /// Supplementary options getter.
+    static std::unordered_set<OptionsSupplement> * supp_options() { return _suppOpts; }
 };  // class AnalysisDictionary
 
 /**@def StromaV_DEFINE_DATA_SOURCE_FMT_CONSTRUCTOR
@@ -102,12 +109,12 @@ static sV::AnalysisDictionary::iEventProcessor * _static_construct_ ## Processor
 
 /**@def StromaV_DEFINE_CONFIG_ARGUMENTS
  * @brief Supplementary configuration insertion macro for \ref AnalysisDictionary . */
-# define StromaV_DEFINE_CONFIG_ARGUMENTS                                     \
-static goo::dict::Dictionary _get_supp_options();   \
+# define StromaV_DEFINE_CONFIG_ARGUMENTS( DNAME )                           \
+static void _get_supp_options( goo::dict::Dictionary & );                   \
 static void __static_register_args() __attribute__ ((constructor(156)));    \
 static void __static_register_args() {                                      \
-    sV::AnalysisDictionary::supp_options( _get_supp_options );}         \
-static goo::dict::Dictionary _get_supp_options()
+    sV::AnalysisDictionary::supp_options( _get_supp_options );}             \
+static void _get_supp_options( goo::dict::Dictionary & DNAME )
 
 /**@def StromaV_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR
  * @brief A data processor constructor insertion macro. */

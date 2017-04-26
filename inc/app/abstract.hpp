@@ -32,6 +32,7 @@
 # include <goo_exception.hpp>
 # include <goo_app.hpp>
 # include <goo_dict/configuration.hpp>
+# include <goo_path.hpp>
 
 # include <iostream>
 
@@ -73,14 +74,9 @@ protected:
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
     /// Configures application according to recently constructed config object.
     virtual void _V_configure_application( const Config * ) override;
-    /// Appends common configuration dictionary.
-    virtual void _V_append_common_config( Config & ) const {};
     /// Should create the logging stream of type LogStreamT (app already configured).
     virtual Stream * _V_acquire_stream() override;
     virtual Stream * _V_acquire_errstream();
-    /// User application should fullfill this chain to provide its own options
-    /// to command line.
-    virtual std::vector<goo::dict::Dictionary> _V_get_options() const;
     /// User application should be configured here.
     virtual void _V_configure_concrete_app() {}
 private:
@@ -97,9 +93,12 @@ protected:
     /// For available features codes see mixins::RootApplication.
     void _enable_ROOT_feature( uint8_t ftCode );
 
+    /// Appends common config with various options from dynamically loaded
+    /// modules. See implementation for details.
+    virtual void _append_common_config();
     /// Performs configs parsing if path in dir, or just forwards execution to
     /// _parse_config_file() if it is a file.
-    void _parse_configs( const std::string & path );
+    void _parse_configs( const goo::filesystem::Path & path );
     /// Parses config file by given path into common config.
     void _parse_config_file( const std::string & path );
     /// Sets the common config option.

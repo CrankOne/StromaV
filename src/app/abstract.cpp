@@ -22,12 +22,16 @@
 
 # include "app/abstract.hpp"
 # include "app/mixins/root.hpp"
+# include "analysis/dictionary.hpp"
 # include "yaml-adapter.hpp"
 # include "detector_ids.h"
 # include "utils.hpp"
 
-# include <fstream>
 # include <goo_versioning.h>
+# include <goo_dict/parameters/path_parameter.hpp>
+
+# include <fstream>
+
 # include <dlfcn.h>
 # include <dirent.h>
 
@@ -114,26 +118,16 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
         );
     }
     # endif
-}
 
-void
-AbstractApplication::_enable_ROOT_feature( uint8_t ftCode ) {
-    _ROOTAppFeatures |= ftCode;
-}
-
-AbstractApplication::Config *
-AbstractApplication::_V_construct_config_object( int argc, char * const argv [] ) const {
-    // This is a pre-initialization step that assembles the common
-    // configuration dictionaries from descendants specifications. It can cause
-    // immediate exit if some particular flags were provided (help, build-info,
-    // etc.).
-    Config & conf = *_appCfg;
-    conf.insertion_proxy()
+    // Assembles base application configuration dictionary. Descendants has to
+    // further append the config object if they wish to introduce some specific
+    // options like buildconf, list entries, load .so-libraries, etc.
+    _appCfg->insertion_proxy()
         .flag( 'h', "help",
                 "Prints help message and exits." )
         .flag( "build-info",
                 "Prints build configuration info and exits." )
-        .p<std::string>( 'c', "config",
+        .p<goo::filesystem::Path>( 'c', "config",
                 "Path to .yml-configuration.", StromaV_DEFAULT_CONFIG_FILE_PATH )
         .list<std::string>( 'O', "override-opt",
                 "Overrides config entry in common config options set." )
@@ -152,12 +146,24 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
                 "When enabled, can print to terminal some info updated in "
                 "real-time. Not useful with loquacious verbosity. Not "
                 "supported by all the sV applications.")
+        .flag( "inspect-config",
+                "Will dump config state upon all modules (.so referenced with "
+                "-l|--load-module) will be loaded, config file(s) parsed and "
+                "(possibly) overriden with command line (with "
+                "-O|--override-opt option). The config dump will be "
+                "accompanied with descriptive reference information for each "
+                "parameter. Application will be terminated after dump.")
         ;
-    auto optsVect = _V_get_options();
-    for( auto p : optsVect ) {
-        conf.append_section( p );
-    }
+}
 
+void
+AbstractApplication::_enable_ROOT_feature( uint8_t ftCode ) {
+    _ROOTAppFeatures |= ftCode;
+}
+
+AbstractApplication::Config *
+AbstractApplication::_V_construct_config_object( int argc, char * const argv [] ) const {
+    Config & conf = *_appCfg;
     if( conf.extract( argc, argv, true ) < 0) {
         _immediateExit = true;
     }
@@ -177,9 +183,9 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
 
     _verbosity = conf["verbosity"].as<int>();
     if( _verbosity > 3 ) {
-        std::cerr << "Invalid verbosity level specified: " << (int) _verbosity;
+        sV_loge("Invalid verbosity level specified: %d.\n", (int) _verbosity);
         _verbosity = 3;
-        std::cerr << ". Level " << (int) _verbosity << " was set." << std::endl;
+        sV_logw("Verbosity level %d was set.\n", (int) _verbosity);
     }
 
     const auto & ll = conf["load-module"].as_list_of<std::string>();
@@ -192,8 +198,28 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
                       << "\" loaded." << std::endl;
         }
     }
-
     return _appCfg;
+}
+
+void
+AbstractApplication::_append_common_config() {
+    // Upon module loding is performed, one may fill common config with
+    // supplementary options subsections. Here we use dynamic_cast<>() to
+    // determine whether this application (in its final descendant form)
+    // common config dictionary needs corresponding supplementary options.
+    // One may desire to append this list with various classes.
+    # ifdef RPC_PROTOCOLS
+    const AnalysisDictionary * ad = dynamic_cast<const AnalysisDictionary *>(this);
+    if( ad && AnalysisDictionary::supp_options() ) {
+        uint32_t n = 0;
+        for( auto append : *AnalysisDictionary::supp_options() ) {
+            append( _configuration );
+            ++n;
+        }
+        sV_log2( "%u analysis subsections loaded.\n", n );
+    }
+    # endif
+    // ...
 }
 
 void
@@ -208,12 +234,12 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
     }
 
     const Config & conf = *cfg;
-    // Here, we have pre-initialization stage done: all modules loaded and
-    // we're ready for assembling up common configuration dictionary:
-    _V_append_common_config( _configuration );
+
+    // Before config files will be parsed --- finalize the common config.
+    _append_common_config();
 
     // Load configuration files
-    _parse_configs( conf["config"].as<std::string>() );
+    _parse_configs( conf["config"].as<goo::filesystem::Path>() );
 
     // Override configuration with command-line ones specified with
     // -O|--override-opt
@@ -227,12 +253,18 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
                 "config.", overridenOpt.c_str() );
         }
         std::string path = overridenOpt.substr(0, eqPos),
-                    strVal = overridenOpt.substr(eqPos)
+                    strVal = overridenOpt.substr(eqPos+1)
                     ;
         _set_common_option( path, strVal );
     }
 
     _process_options( cfg );
+
+    if( conf["inspect-config"].as<bool>() ) {
+        // TODO: support various help renderers from Goo.
+        _configuration.print_ASCII_tree( std::cout );
+        _immediateExit = true;
+    }
 }
 
 std::ostream *
@@ -264,18 +296,11 @@ AbstractApplication::_V_acquire_errstream() {
     return new std::ostream( &_eBuffer );
 }
 
-std::vector<goo::dict::Dictionary>
-AbstractApplication::_V_get_options() const {
-    return std::vector<goo::dict::Dictionary>();
-}
-
 void
 AbstractApplication::_process_options( const Config * ) {
-
-    if( _ROOTAppFeatures ) {
+    if( _ROOTAppFeatures && !do_immediate_exit() ) {
         mixins::RootApplication::initialize_ROOT_system( _ROOTAppFeatures );
     }
-
 
     # if 0
     {   // Try dynamic_cast<RootApplication*>() and initialize ROOT's mixin:
@@ -318,7 +343,7 @@ AbstractApplication::_process_options( const Config * ) {
 }
 
 void
-AbstractApplication::_parse_configs( const std::string & path ) {
+AbstractApplication::_parse_configs( const goo::filesystem::Path & path ) {
     struct stat pStat;
     if( 0 == ::stat( path.c_str(), &pStat ) ) {
         if( pStat.st_mode & S_IFDIR ) {

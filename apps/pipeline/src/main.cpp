@@ -26,7 +26,9 @@
 StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( sV::App, "afpipe",
     "This application is a generic-purpose data analysis conveyor designed "
     "with focus for reentrant usage. It implements a pipeline conception "
-    "while the small data portions (called event) are produced by data source "
+    "where the small data portions (events) are produced by data source "
     "(which may be a data file, network socket, stdin, etc) and further are "
-    "treated by sequence of handlers (called processors)." )
+    "treated by sequence of handlers (called processors).\n"
+    "Thus, at least the data source has to be specified for this application "
+    "(with input file command-line argument) to perform the reading.")
 

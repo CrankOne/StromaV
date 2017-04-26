@@ -21,6 +21,8 @@
  */
 
 # include <goo_versioning.h>
+# include <goo_exception.hpp>
+
 # include "app/abstract.hpp"
 # include "utils.hpp"
 
@@ -48,10 +50,14 @@ sV_C_message( const int8_t level, const char * fmt, ... ) {
     if( sV::AbstractApplication::exists() && goo::app<sV::AbstractApplication>().ls_is_set() ) {
         goo::app<sV::AbstractApplication>().message(level, dest);
     } else {
-        if( level < 0 ) {
-            std::cerr << dest;
+        if( -2 == level ) {
+            eprintf( "StromaV : %s", dest );
+        } else if( -1 == level ) {
+            wprintf( "StromaV : %s", dest );
         } else {
-            std::cout << dest;
+            char  prfxBf[512];
+            snprintf(prfxBf, 256, ESC_BLDCYAN "[%d%7s]" ESC_CLRCLEAR " %s", (int) level, hctime(), dest );
+            fputs(prfxBf, stdout);
         }
     }
 }

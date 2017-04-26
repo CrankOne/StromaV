@@ -98,13 +98,17 @@ AnalysisPipeline::process( AnalysisPipeline::Event * evPtr ) {
 
 int
 AnalysisPipeline::process( AnalysisPipeline::iEventSequence * evSeqPtr ) {
-    assert( evSeqPtr );
-    _evSeq = evSeqPtr;
+    if( !(_evSeq = evSeqPtr) ) {
+        sV_loge( "No events source specified --- has nothing to do for "
+                     "pipeline %p.\n", this );
+        return -1;
+    }
 
     // Check if we actually have something to do
     if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- has nothing to do for "
+        sV_loge( "No processors specified --- has nothing to do for "
                      "pipeline %p.\n", this );
+        return -1;
     }
     //AnalysisPipeline::iEventSequence & evseq
     //                        = get_evseq<AnalysisPipeline::iEventSequence&>();

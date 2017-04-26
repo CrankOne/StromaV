@@ -124,10 +124,10 @@ EventMulticaster::_V_print_brief_summary( std::ostream & os ) const {
 }
 
 // Register processor:
-StromaV_DEFINE_CONFIG_ARGUMENTS {
-    goo::dict::Dictionary multicastP( "multicast",
-                                      "Multicasting (network multicast)" );
-    multicastP.insertion_proxy()
+StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
+    commonConfig.insertion_proxy().bgn_sect( "multicast",
+         "Options for \"multicast\" processor. Includes port and address as "
+         "well as max capacity of sending FIFO queue.")
         .p<std::string>("address",
             "Multicast address to use.",
             "239.255.0.1" )
@@ -138,7 +138,6 @@ StromaV_DEFINE_CONFIG_ARGUMENTS {
             "Event to be stored. Defines the capacitance of last read events.",
             500)
         ;
-    return multicastP;
 }
 StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
     auto p = new EventMulticaster(
@@ -155,7 +154,10 @@ StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
 } StromaV_REGISTER_DATA_PROCESSOR(
     EventMulticaster,
     "multicast",
-    "An asynchroneous event-multicasting pipeline." )
+    "This processor performs asynchroneous network multicasting of events "
+    "received from analysis pipeline. Parameters are listed at "
+    "\"multicasting\" subsection of commong config. Note, that if buffering "
+    "queue is overflown, the older events will not be sent.")
 
 }  // namespace sV
 }  // namespace dprocessors

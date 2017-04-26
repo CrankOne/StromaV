@@ -29,10 +29,15 @@ App::_V_run() {
     if( do_immediate_exit() ) return EXIT_FAILURE;
     // Check if we actually have something to do
     if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- has nothing to do.\n" );
+        sV_logw( "No processors specified --- will do nothing with events read.\n" );
     }
+    if( !event_sequence() ) {
+        sV_loge( "No data source specified. Has nothing to do.\n" );
+        return EXIT_FAILURE;
+    }
+
     AnalysisPipeline::iEventSequence * evseq
-        = dynamic_cast<AnalysisPipeline::iEventSequence*>(event_sequence());
+        = dynamic_cast<AnalysisPipeline::iEventSequence*>( event_sequence() );
 
     int rc = this->AnalysisPipeline::process( evseq );
 

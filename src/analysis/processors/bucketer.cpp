@@ -49,10 +49,13 @@ Bucketer::_V_process_event( Event * uEvent ){
     return true;
 }
 
-StromaV_DEFINE_CONFIG_ARGUMENTS {
-    goo::dict::Dictionary dispatcherCfg( "b-dispatcher",
-                                "Bucket dispatching (storaging) options");
-    dispatcherCfg.insertion_proxy()
+StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
+    commonConfig.insertion_proxy().bgn_sect( "bucketDispatching",
+        "StromaV offers a kind of facility to store and retreive serialized "
+        "data (usually physical events) based on Google Protocol Buffers. The "
+        "so-called \"bucket dispatcher\" performs accumulation and in-RAM "
+        "temporary bufferization of events. Such a write-back caching "
+        "mechanism (pretty common) allows to increase performance.")
         .p<uint32_t>("maxBucketSize_kB",
                         "Maximum bucket capacity (in kilobytes). 0 --- "
                         "criterion not used.", 500)
@@ -61,35 +64,37 @@ StromaV_DEFINE_CONFIG_ARGUMENTS {
                         "criterion not used.", 0)
         .p<uint32_t>("bufferSize_kB",
                         "Size of the buffer for bucket compression.", 600)
-        .p<std::string>("comressionAlgo",
+        .p<std::string>("comression",
                         "Algorithm name for compressing buckets.",
                         "bz2")
         .p<std::string>("outFile",
                         "Default output file for serialized buckets.",
                         "/tmp/sV_latest.svbs" )
-        ;
-    return dispatcherCfg;
+        .end_sect("bucketDispatching");
 }
 StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
     std::fstream * fileRef = new std::fstream();
     fileRef->open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
-        ("b-dispatcher.outFile"), std::ios::out | std::ios::binary |
+        ("bucketDispatching.outFile"), std::ios::out | std::ios::binary |
                                   std::ios::app );
     sV::DummyCompressor * compressor = new sV::DummyCompressor;
     sV::ComprBucketDispatcher * dispatcher = new sV::ComprBucketDispatcher(
                 compressor,
                 *(fileRef),
                 (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("b-dispatcher.maxBucketSize_kB"),
+                ("bucketDispatching.maxBucketSize_kB"),
                 (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("b-dispatcher.maxBucketSize_events"),
+                ("bucketDispatching.maxBucketSize_events"),
                 (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("b-dispatcher.bufferSize_kB")
+                ("bucketDispatching.bufferSize_kB")
             );
     return new Bucketer("bucketer", dispatcher, fileRef);
 } StromaV_REGISTER_DATA_PROCESSOR( BucketerProcessor,
-    "bucketer",
-    "Processor performing accumulation of events into buckets. TODO: more doc" )
+    "save",
+    "This processor writes events received from analysis pipeline to file. "
+    "File is referenced by \"bucketDispatching.outFile\" argument. Write-back "
+    "caching may be configured using other options from \"bucketDispatching\" "
+    "subsection.")
 
 }  // namespace dprocessors
 }  // namespace sV
