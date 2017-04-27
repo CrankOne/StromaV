@@ -20,48 +20,30 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 cmake_minimum_required( VERSION 2.6 )
-project( StromaVUtils )
+project( svmc )
 
-#\option
-push_option( build_pipeline
-            "Build data pipelining library and executable."
-            OFF )
-#\option
-push_option( build_mdlv
-            "Build TGDML browsing library and executable."
-            OFF )
-#\option
-push_option( build_unit_tests
-            "Build unit tests for StromaV library."
-            ON )
+include_directories( "${PROJECT_SOURCE_DIR}/inc/"
+                     "${PROJECT_SOURCE_DIR}/../../inc/" )
 
-#\option
-option( build_svmc
-    "Build Monte-Carlo simulation library and executable."
-    OFF )
+file( GLOB_RECURSE svmc-implem_SRCS
+    ${PROJECT_SOURCE_DIR}/src/*.c*)
+list( REMOVE_ITEM svmc-implem_SRCS
+    ${PROJECT_SOURCE_DIR}/src/main.cpp )
 
-#\opt-dep:
-option_depend( build_pipeline   ANALYSIS_ROUTINES RPC_PROTOCOLS )
-#\opt-dep:
-option_depend( build_mdlv       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
-#\opt-dep:
-option_depend( build_svmc       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
-#\opt-dep:
-option_depend( build_svmc       StromaV_GEANT4_MC_MODEL )
+file( GLOB svmc_SRCS ${PROJECT_SOURCE_DIR}/src/main.cpp )
 
-if( build_pipeline )
-    add_subdirectory( pipeline )
-endif( build_pipeline )
+set( svmc_exec svmc${StromaV_BUILD_POSTFIX}
+    CACHE STRING "StromaV svmc exec name." )
+set( svmc_implem svmc_implem${StromaV_BUILD_POSTFIX}
+    CACHE STRING "StromaV svmc implementation library name." )
 
-if( build_mdlv )
-    add_subdirectory( mdlv )
-endif( build_mdlv )
+add_library( ${svmc_implem} SHARED ${svmc-implem_SRCS} )
+#target_link_libraries( ${svmc_implem} ${StromaV_LIB} )
+target_link_libraries( ${svmc_implem} ${afNA64_LIB} )
 
-if( build_svmc )
-    add_subdirectory( svmc )
-endif( build_svmc )
+add_executable( ${svmc_exec} ${svmc_SRCS} )
+target_link_libraries( ${svmc_exec} ${svmc_implem} )
 
-if( build_unit_tests )
-    add_subdirectory( ut )
-endif( build_unit_tests )
+install( TARGETS ${svmc_implem}   LIBRARY DESTINATION lib/na64 )
+install( TARGETS ${svmc_exec}     RUNTIME DESTINATION bin )
 

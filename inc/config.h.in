@@ -31,6 +31,7 @@
  * option to application)
  */
 # define StromaV_DEFAULT_CONFIG_PATH "@DEFAULT_STROMAV_CFG_PATH@"
+# define StromaV_MODULES_INSTALL_PATH "@StromaV_MODULES_INSTALL_PATH@"
 
 /* Features
  */

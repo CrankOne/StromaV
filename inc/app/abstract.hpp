@@ -140,10 +140,21 @@ public:
     /// Routes message to appropriate streams.
     virtual void message( int8_t level, const std::string message, bool noprefix=false );
 
-    /// Safe config option getter (common config).
+    /// Common config option getter.
     template<typename T>
-    T cfg_option(const std::string & name) {
+    T cfg_option(const std::string & name) const {
         return _configuration[name.c_str()].as<T>();
+    }
+
+    /// Common config option getter.
+    template<typename T>
+    const std::list<T> & cfg_options_list(const std::string & name) const {
+        return _configuration[name.c_str()].as_list_of<T>();
+    }
+
+    template<typename T>
+    T app_option(const std::string & name) const {
+        return _appCfg->parameter(name.c_str()).as<T>();
     }
 
     bool do_immediate_exit() const { return _immediateExit; }

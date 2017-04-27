@@ -162,7 +162,7 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
         .bgn_sect( "sV-paths", "StromaV system paths." )
             .p<goo::filesystem::Path>( "plugins",
                             "Path to StromaV plugins directory",
-                            "TODO" )  // TODO
+                            StromaV_MODULES_INSTALL_PATH )
             .p<goo::filesystem::Path>( "assets",
                             "Path to StromaV assests directory" )
             .p<goo::filesystem::Path>( "root-plugins",
@@ -211,14 +211,12 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
             sV_logw( "Empty load path ignored.\n" );
             continue;
         }
+        // TODO: try too look-up provided paths relatively to sV-paths.plugins
+        // location?
         void * handle = dlopen( intrpltdPath.c_str(), RTLD_NOW );
         if( !handle ) {
-            //std::cerr << "Failed to load \"" << intrpltdPath << "\": "
-            //          << dlerror() << std::endl;
             sV_loge( "Failed to load module: %s.\n", dlerror() );
         } else {
-            //std::cout << "Shared object file \"" << dlPath.interpolated()
-            //          << "\" loaded." << std::endl;
             sV_log1( "Module \"%s\" loaded.\n", intrpltdPath.c_str() );
         }
     }

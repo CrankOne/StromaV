@@ -137,7 +137,8 @@ StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
         .p<size_t>("storageCapacity",
             "Event to be stored. Defines the capacitance of last read events.",
             500)
-        ;
+    .end_sect("multicast")
+    ;
 }
 StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
     auto p = new EventMulticaster(

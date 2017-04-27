@@ -26,11 +26,13 @@
 # include <iostream>
 # include <cstdint>
 # include <regex>
+
+# if 0
 # include <boost/lexical_cast.hpp>
 # include <boost/optional.hpp>
 # include <boost/program_options.hpp>
-
 # include <boost/program_options/errors.hpp>
+# endif
 
 namespace sV {
 namespace aux {
@@ -70,7 +72,7 @@ CoordinateParameter<D, ComponentT>::validate(
 }
 # endif
 
-
+# if 0
 //
 // Arbitrary length vector (need to be validated as one line in cfg file)
 //
@@ -104,6 +106,18 @@ template<typename ComponentT> void
     }
     v = l;
 }
+# endif
+
+// The histogram parametization grammar is following:
+// expr ::= '{' axes '}'
+//
+// axes ::= axis
+//        | axis 'x' axes
+//        ;
+//
+// axis ::= NBINS '[' MIN ':' MAX ']'
+//      ;
+
 
 struct HistogramParameters1D {
 public:
@@ -111,12 +125,15 @@ public:
     float min, max;
     HistogramParameters1D( int nBins_, float min_, float max_ ) :
         nBins(nBins_), min(min_), max(max_) {}
+
+    HistogramParameters1D() : HistogramParameters1D( 10, 0, 1 ) {}
+
     friend std::ostream & operator<<( std::ostream & os, const HistogramParameters1D & );
 };
 
-void validate(boost::any& v,
-              const std::vector<std::string>& values,
-              HistogramParameters1D * target_type, int);
+//void validate(boost::any& v,
+//              const std::vector<std::string>& values,
+//              HistogramParameters1D * target_type, int);
 
 
 struct HistogramParameters2D {
@@ -126,15 +143,68 @@ public:
     HistogramParameters2D( int nBins1, float min1, float max1,
                            int nBins2, float min2, float max2 ) :
         nBins{ nBins1, nBins2 }, min{min1, min2}, max{max1, max2} {}
+
+    HistogramParameters2D( ) : HistogramParameters2D( 10, 0, 1, 10, 0, 1 ) {}
+
     friend std::ostream & operator<<( std::ostream & os, const HistogramParameters2D & );
 };
 
-void validate(boost::any& v,
-              const std::vector<std::string>& values,
-              HistogramParameters2D * target_type, int);
+//void validate(boost::any& v,
+//              const std::vector<std::string>& values,
+//              HistogramParameters2D * target_type, int);
 
 }  // namespace aux
 }  // namespace sV
+
+namespace goo {
+namespace dict {
+
+template<>
+class Parameter<sV::aux::HistogramParameters2D> : public
+                        mixins::iDuplicable< iAbstractParameter,
+                        Parameter<sV::aux::HistogramParameters2D>,
+                        iParameter<sV::aux::HistogramParameters2D> > {
+public:
+    typedef typename DuplicableParent::Parent::Value Value;
+public:
+    /// Only long option ctr.
+    Parameter( const char * name_,
+               const char * description_,
+               const sV::aux::HistogramParameters2D & );
+
+    Parameter( const Parameter<sV::aux::HistogramParameters2D> & o ) : DuplicableParent( o ) {}
+    friend class ::goo::dict::InsertionProxy;
+protected:
+    /// Sets parameter value from given string.
+    virtual Value _V_parse( const char * ) const override;
+    /// Returns set value.
+    virtual std::string _V_stringify_value( const Value & ) const override;
+};
+
+template<>
+class Parameter<sV::aux::HistogramParameters1D> : public
+                        mixins::iDuplicable< iAbstractParameter,
+                        Parameter<sV::aux::HistogramParameters1D>,
+                        iParameter<sV::aux::HistogramParameters1D> > {
+public:
+    typedef typename DuplicableParent::Parent::Value Value;
+public:
+    /// Only long option ctr.
+    Parameter( const char * name_,
+               const char * description_,
+               const sV::aux::HistogramParameters1D & );
+
+    Parameter( const Parameter<sV::aux::HistogramParameters1D> & o ) : DuplicableParent( o ) {}
+    friend class ::goo::dict::InsertionProxy;
+protected:
+    /// Sets parameter value from given string.
+    virtual Value _V_parse( const char * ) const override;
+    /// Returns set value.
+    virtual std::string _V_stringify_value( const Value & ) const override;
+};
+
+}  // namespace dict
+}  // namespace goo
 
 # endif  /* H_STROMA_V_APPLICATION_BOOST_PO_CUSTOM_VALIDATORS_H */
 

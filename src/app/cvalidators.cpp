@@ -23,9 +23,10 @@
 # include "app/abstract.hpp"
 # include "app/cvalidators.hpp"
 
-# include <boost/program_options.hpp>
+//# include <boost/program_options.hpp>
+# include <boost/lexical_cast.hpp>  // TODO: change to something from Goo's dicts
 
-namespace po = boost::program_options;
+//namespace po = boost::program_options;
 
 namespace sV {
 namespace aux {
@@ -35,6 +36,7 @@ const std::string sciFltRxStr = "([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)",
                   sciRxStr2 = sciRxStr1 + "x" + sciRxStr1
                   ;
 
+# if 0
 void
 validate(boost::any& v,
               const std::vector<std::string>& values,
@@ -98,6 +100,7 @@ validate(boost::any& v,
         throw po::validation_error(po::validation_error::invalid_option_value);
     }
 }
+# endif
 
 std::ostream &
 operator<<( std::ostream & os, const HistogramParameters1D & p ) {
@@ -116,4 +119,96 @@ operator<<( std::ostream & os, const HistogramParameters2D & p ) {
 
 }  // namespace aux
 }  // namespace sV
+
+namespace goo {
+namespace dict {
+
+Parameter<sV::aux::HistogramParameters2D>::Parameter( const char * name_,
+               const char * description_,
+               const sV::aux::HistogramParameters2D & ) :
+                        DuplicableParent( name_,
+                              description_,
+                              0x0 | iAbstractParameter::set
+                                  | iAbstractParameter::atomic
+                                  | iAbstractParameter::singular,
+                              '\0' ) {}
+
+Parameter<sV::aux::HistogramParameters2D>::Value
+Parameter<sV::aux::HistogramParameters2D>::_V_parse( const char * s ) const {
+    static std::regex r( sV::aux::sciRxStr2 );
+    std::smatch match;
+    if( std::regex_match(std::string(s), match, r) ) {
+        # if 1
+        return sV::aux::HistogramParameters2D(
+                boost::lexical_cast<int>(match[1]),
+                boost::lexical_cast<float>(match[2]),
+                boost::lexical_cast<float>(match[4]),
+                boost::lexical_cast<int>(match[6]),
+                boost::lexical_cast<float>(match[7]),
+                boost::lexical_cast<float>(match[9])
+            );
+        # else
+        std::cout << s << '\n';
+        for (size_t i = 0; i < match.size(); ++i) {
+            std::ssub_match subMatch = match[i];
+            std::string piece = subMatch.str();
+            std::cout << "  submatch " << i << ": " << piece << '\n';
+        }
+        # endif
+    }
+    emraise( parserFailure, "Unable to interpret string \"%s\" as 2D "
+        "histogram parameters. Expected form: "
+        "{<nBinX>[<minX>:<maxX>]x<nBinY>[<minY>:<maxY>]}.", s );
+}
+
+std::string
+Parameter<sV::aux::HistogramParameters2D>::_V_stringify_value( const Value & v ) const {
+    std::stringstream ss;
+    ss << v;
+    return ss.str();
+}
+
+
+Parameter<sV::aux::HistogramParameters1D>::Parameter( const char * name_,
+               const char * description_,
+               const sV::aux::HistogramParameters1D & ) :
+                        DuplicableParent( name_,
+                              description_,
+                              0x0 | iAbstractParameter::set
+                                  | iAbstractParameter::atomic
+                                  | iAbstractParameter::singular,
+                              '\0' ) {}
+
+sV::aux::HistogramParameters1D
+Parameter<sV::aux::HistogramParameters1D>::_V_parse( const char * s ) const {
+    static std::regex r(sV::aux::sciRxStr1);
+    std::smatch match;
+    if( std::regex_match(std::string(s), match, r) ) {
+        return sV::aux::HistogramParameters1D(
+                boost::lexical_cast<int>(match[1]),
+                boost::lexical_cast<float>(match[2]),
+                boost::lexical_cast<float>(match[4])
+            );
+        # if 0
+        std::cout << s << '\n';
+        for (size_t i = 0; i < match.size(); ++i) {
+            std::ssub_match subMatch = match[i];
+            std::string piece = subMatch.str();
+            std::cout << "  submatch " << i << ": " << piece << '\n';
+        }
+        # endif
+    }
+    emraise( parserFailure, "Unable to interpret string \"%s\" as 1D "
+        "histogram parameters. Expected form: {<nBin>[<min>:<max>]}.", s );
+}
+
+std::string
+Parameter<sV::aux::HistogramParameters1D>::_V_stringify_value( const Value & v ) const {
+    std::stringstream ss;
+    ss << v;
+    return ss.str();
+}
+
+}  // namespace dict
+}  // namespace goo
 

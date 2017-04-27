@@ -70,7 +70,8 @@ StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
         .p<std::string>("outFile",
                         "Default output file for serialized buckets.",
                         "/tmp/sV_latest.svbs" )
-        .end_sect("bucketDispatching");
+    .end_sect("bucketDispatching")
+    ;
 }
 StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
     std::fstream * fileRef = new std::fstream();
