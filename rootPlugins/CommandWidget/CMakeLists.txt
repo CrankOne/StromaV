@@ -37,12 +37,13 @@ add_library( P348CommandWidgetPlugin SHARED ${P348CommandWidgetPlugin_SRCS}
 target_link_libraries( P348CommandWidgetPlugin ${StromaV_LIB} )
 target_link_libraries( P348CommandWidgetPlugin ${ROOT_LIBRARIES} )
 
-install( TARGETS P348CommandWidgetPlugin LIBRARY DESTINATION lib/StromaV )
+install( TARGETS P348CommandWidgetPlugin LIBRARY DESTINATION
+    ${StromaV_ROOT_PLUGINS_INSTALL_PATH} )
 install( FILES P348CommandWidgetPlugin.h
          DESTINATION include/StromaV/CommandWidget.root-plugin )
-#install( FILES
-#    ${CMAKE_CURRENT_BINARY_DIR}/P348CommandWidgetPluginDict_rdict.pcm )  #
-#    TODO: where?
+install( FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/P348CommandWidgetPluginDict_rdict.pcm
+    DESTINATION ${StromaV_ROOT_PLUGINS_INSTALL_PATH} )
 #install( DIRECTORY inc/ DESTINATION include/StromaV/CommandWidget.root-plugin
 #    FILES_MATCHING PATTERN "*.h"
 #                   PATTERN "*.hpp"

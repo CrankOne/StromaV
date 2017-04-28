@@ -24,7 +24,7 @@
 Geant4:
     useNIST: true
     physicsList: modular
-    visMacroFile: $(sV-paths.assets)/mac/vis.mac
+    visMacroFile: $(CFG:sV-paths.assets)/mac/vis.mac
     customExceptionHandler : true
     extraPhysics:
         verbosity: application
@@ -42,7 +42,7 @@ Geant4:
         setup: Default
         enableXMLSchemaValidation: true
         preprocessorOutput: /dev/shm
-        preprocessorEnvironment: $(sV-paths.assets)/setups/overview.py
+        preprocessorEnvironment: $(CFG:sV-paths.assets)/setups/overview.py
     simpleGun:
         particleType: e-
         position-cm: [0., 0., 0.]
@@ -50,8 +50,8 @@ Geant4:
         energy-MeV: 2e5
 
 ROOT:
-    dynamic-path: $(sV-paths.root-plugins)/CommandWidget
-    plugin-handlers-file: $(sV-paths.assets)/root/StromaV-plugins.rootrc
+    dynamic-path: $(CFG:sV-paths.root-plugins)
+    plugin-handlers-file: $(CFG:sV-paths.root-plugins)/StromaV-plugins.rootrc
     output-file: /tmp/sV_latest.root
     TGraphics:
         width: 1200

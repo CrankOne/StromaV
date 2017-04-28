@@ -138,28 +138,31 @@ Parameter<sV::aux::HistogramParameters2D>::Value
 Parameter<sV::aux::HistogramParameters2D>::_V_parse( const char * s ) const {
     static std::regex r( sV::aux::sciRxStr2 );
     std::smatch match;
-    if( std::regex_match(std::string(s), match, r) ) {
-        # if 1
-        return sV::aux::HistogramParameters2D(
-                boost::lexical_cast<int>(match[1]),
-                boost::lexical_cast<float>(match[2]),
-                boost::lexical_cast<float>(match[4]),
-                boost::lexical_cast<int>(match[6]),
-                boost::lexical_cast<float>(match[7]),
-                boost::lexical_cast<float>(match[9])
-            );
-        # else
-        std::cout << s << '\n';
-        for (size_t i = 0; i < match.size(); ++i) {
-            std::ssub_match subMatch = match[i];
-            std::string piece = subMatch.str();
-            std::cout << "  submatch " << i << ": " << piece << '\n';
+    std::string sCpy(s);
+    if( std::regex_match(sCpy, match, r) ) {
+        try {
+            return sV::aux::HistogramParameters2D(
+                    boost::lexical_cast<int>(match[1]),
+                    boost::lexical_cast<float>(match[2]),
+                    boost::lexical_cast<float>(match[4]),
+                    boost::lexical_cast<int>(match[6]),
+                    boost::lexical_cast<float>(match[7]),
+                    boost::lexical_cast<float>(match[9])
+                );
+        } catch( boost::bad_lexical_cast & e ) {
+            std::cout << "Bad lexical cast while extracting tokens "
+                         "1, 2, 4, 6, 7, 8 from \""
+                      << s << "\":" << std::endl;
+            for (size_t i = 0; i < match.size(); ++i) {
+                std::ssub_match subMatch = match[i];
+                std::string piece = subMatch.str();
+                std::cout << "  submatch " << i << ": " << piece << '\n';
+            }
         }
-        # endif
     }
     emraise( parserFailure, "Unable to interpret string \"%s\" as 2D "
         "histogram parameters. Expected form: "
-        "{<nBinX>[<minX>:<maxX>]x<nBinY>[<minY>:<maxY>]}.", s );
+        "<nBinX>[<minX>:<maxX>]x<nBinY>[<minY>:<maxY>].", s );
 }
 
 std::string
@@ -184,23 +187,26 @@ sV::aux::HistogramParameters1D
 Parameter<sV::aux::HistogramParameters1D>::_V_parse( const char * s ) const {
     static std::regex r(sV::aux::sciRxStr1);
     std::smatch match;
-    if( std::regex_match(std::string(s), match, r) ) {
-        return sV::aux::HistogramParameters1D(
-                boost::lexical_cast<int>(match[1]),
-                boost::lexical_cast<float>(match[2]),
-                boost::lexical_cast<float>(match[4])
-            );
-        # if 0
-        std::cout << s << '\n';
-        for (size_t i = 0; i < match.size(); ++i) {
-            std::ssub_match subMatch = match[i];
-            std::string piece = subMatch.str();
-            std::cout << "  submatch " << i << ": " << piece << '\n';
+    std::string sCpy(s);
+    if( std::regex_match(sCpy, match, r) ) {
+        try {
+            return sV::aux::HistogramParameters1D(
+                    boost::lexical_cast<int>(match[1]),
+                    boost::lexical_cast<float>(match[2]),
+                    boost::lexical_cast<float>(match[4])
+                );
+        } catch( boost::bad_lexical_cast & e ) {
+            std::cout << "Bad lexical cast while extracting tokens 1, 2, 4 from \""
+                      << s << "\":" << std::endl;
+            for (size_t i = 0; i < match.size(); ++i) {
+                std::ssub_match subMatch = match[i];
+                std::string piece = subMatch.str();
+                std::cout << "  submatch " << i << ": " << piece << '\n';
+            }
         }
-        # endif
     }
     emraise( parserFailure, "Unable to interpret string \"%s\" as 1D "
-        "histogram parameters. Expected form: {<nBin>[<min>:<max>]}.", s );
+        "histogram parameters. Expected form: <nBin>[<min>:<max>].", s );
 }
 
 std::string

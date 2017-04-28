@@ -27,6 +27,8 @@
 # include "event.pb.h"
 # include "app/mixins/root.hpp"
 
+# include <goo_dict/parameters/path_parameter.hpp>
+
 # include <TFile.h>
 
 /**@defgroup analysis Analysis
@@ -83,11 +85,11 @@ AnalysisApplication::AnalysisApplication( Config * vm ) :
     _enable_ROOT_feature( mixins::RootApplication::enableCommonFile );
 
     vm->insertion_proxy()
-        .p<std::string>('i', "input-file",
+        .list<goo::filesystem::Path>('i', "input-file",
             "Input file --- an actual data source.") //.required_argument()? 
         .p<std::string>('F', "input-format",
             "Sets input file format.",
-            "unset" )
+            "unset" )  //.required_argument()?
         .list<std::string>('p', "processor",
             "Pushes processor in chain, one by one, in order.")
         .flag("list-src-formats",
@@ -158,8 +160,8 @@ AnalysisApplication::_V_configure_concrete_app() {
     }
     if( !do_immediate_exit()
                 && _readersDict
-                && cfg_option<std::string>("input-format") != "unset" ) {
-        _evSeq = find_reader( cfg_option<std::string>("analysis.input-format") )();
+                && app_option<std::string>("input-format") != "unset" ) {
+        _evSeq = find_reader( app_option<std::string>("input-format") )();
     }
     if( !do_immediate_exit() && _procsDict ) {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();

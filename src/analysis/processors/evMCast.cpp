@@ -131,13 +131,13 @@ StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
         .p<std::string>("address",
             "Multicast address to use.",
             "239.255.0.1" )
-        .p<int>("port",
+        .p<int>( "port",
             "Multicast port number.",
             30001 )
         .p<size_t>("storageCapacity",
             "Event to be stored. Defines the capacitance of last read events.",
             500)
-    .end_sect("multicast")
+    .end_sect( "multicast" )
     ;
 }
 StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {

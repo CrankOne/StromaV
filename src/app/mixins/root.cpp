@@ -32,6 +32,7 @@
 # include <TSystem.h>
 
 # include <goo_app.hpp>
+# include <goo_dict/parameters/path_parameter.hpp>
 
 static void __static_disable_damn_root_handlers() __attribute__ ((constructor(101)));
 void __static_disable_damn_root_handlers() {
@@ -100,19 +101,20 @@ RootApplication::append_ROOT_config_options(
             "ROOT",
             "CERN ROOT analysis framework integration runtime options." );
     if( enableCommonFile && featuresEnabled ) {
-        ip.p<std::string>("output-file",
+        ip.p<goo::filesystem::Path>("output-file",
                 "output ROOT-file path for current session. Set to \"none\" "
                 "to omit.",
             "none" );
     }
     if( enablePlugins && featuresEnabled ) {
-        ip.p<std::string>("plugin-handlers-file",
+        ip.p<goo::filesystem::Path>("plugin-handlers-file",
                 "Path to file containing ROOT plugin handlers (see reference "
                 "to TPluginManager for syntax).",
             "sV-plugins.rootrc" );
     }
     if( enableDynamicPath && featuresEnabled ) {
-        ip.p<std::string>("dynamic-path",
+        // TODO: Make it list!
+        ip.list<goo::filesystem::Path>("dynamic-path",
                 "Additional dynamic path to extend ROOT TSystem "
                 "(search path for shared libraries).");
     }
@@ -137,47 +139,61 @@ RootApplication::reset_ROOT_signal_handlers() {
 
 void
 RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
+    using goo::filesystem::Path;
     AbstractApplication & thisApp = goo::app<AbstractApplication>();
+    ConfigPathInterpolator * pathIpPtr = thisApp.path_interpolator();
     if( featuresEnabled & enableDynamicPath ) {
-        if( thisApp.co()["ROOT.dynamic-path"].is_set() && !thisApp.do_immediate_exit() ) {
-            for( auto additionalPath : thisApp.cfg_option<std::vector<std::string>>("ROOT.dynamic-path") ) {
+        if( !thisApp.cfg_option<Path>("ROOT.dynamic-path").empty()
+         && !thisApp.do_immediate_exit() ) {
+            for( auto additionalPath : thisApp.cfg_options_list<Path>("ROOT.dynamic-path") ) {
+                additionalPath.interpolator( pathIpPtr );
                 if( !additionalPath.empty() ) {
-                    gSystem->AddDynamicPath( additionalPath.c_str() );
-                    sV_log2( "ROOT's dynamic path extended: %s.\n", additionalPath.c_str() );
+                    gSystem->AddDynamicPath( additionalPath.interpolated().c_str() );
+                    sV_log2( "Added ROOT's dynamic path: %s.\n", 
+                            additionalPath.interpolated().c_str() );
                 }
             }
         }
     }
     if( featuresEnabled & enablePlugins ) {
-        // Set plugin handlers:
-        TEnv * env = new TEnv( thisApp.cfg_option<std::string>("ROOT.plugin-handlers-file").c_str() );
-        env->SaveLevel(kEnvLocal);
-        # if 0
-        // Due to a known issue https://sft.its.cern.ch/jira/si/jira.issueviews:issue-html/ROOT-8109/ROOT-8109.html
-        // we're unable to use gPluginMgr variable here.
-        gPluginMgr->LoadHandlersFromEnv( env );
-        # else
-        // Load from env:
-        gROOT->GetPluginManager()->LoadHandlersFromEnv( env );
-        # endif
+        Path path = thisApp.cfg_option<Path>("ROOT.plugin-handlers-file");
+        path.interpolator( pathIpPtr );
+        if( !path.interpolated().empty() ) {
+            sV_log2( "Adding ROOT plugins handlers file \"%s\".\n",
+                path.interpolated().c_str() );
+            // Set plugin handlers:
+            TEnv * env = new TEnv( path.interpolated().c_str() );
+            env->SaveLevel(kEnvLocal);
+            # if 0
+            // Due to a known issue
+            // https://sft.its.cern.ch/jira/si/jira.issueviews:issue-html/ROOT-8109/ROOT-8109.html
+            // we're unable to use gPluginMgr variable here.
+            gPluginMgr->LoadHandlersFromEnv( env );
+            # else
+            // Load from env:
+            gROOT->GetPluginManager()->LoadHandlersFromEnv( env );
+            # endif
+        }
     }
     if( featuresEnabled & enableTApplication ) {
         goo::app<RootApplication>()._create_TApplication(
             thisApp.cfg_option<std::string>("ROOT.TApplication-args") );
     }
     if( featuresEnabled & enableCommonFile ) {
+        Path path = thisApp.cfg_option<Path>("ROOT.output-file");
+        path.interpolator( pathIpPtr );
         // Try to open ROOT file, if provided:
-        if( !thisApp.cfg_option<std::string>("ROOT.output-file").empty()
-         && "none" != thisApp.cfg_option<std::string>("ROOT.output-file")
+        if( !path.interpolated().empty()
+         && "none" != path.interpolated()
          && !thisApp.do_immediate_exit() ) {
             // will be closed as gFile
-            auto f = new TFile( thisApp.cfg_option<std::string>("ROOT.output-file").c_str(), "RECREATE" );
+            auto f = new TFile( path.interpolated().c_str(), "RECREATE" );
             if( f->IsZombie() ) {
                 sV_logw( "Error opening file \"%s\".\n",
-                             thisApp.cfg_option<std::string>("ROOT.output-file").c_str() );
+                             path.interpolated().c_str() );
             } else {
                 sV_log1( "Output file opened: \"%s\".\n",
-                             thisApp.cfg_option<std::string>("ROOT.output-file").c_str() );
+                             path.interpolated().c_str() );
             }
         }
     }

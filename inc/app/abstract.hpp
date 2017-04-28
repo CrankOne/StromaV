@@ -109,7 +109,7 @@ protected:
 
     /// Appends common config with various options from dynamically loaded
     /// modules. See implementation for details.
-    virtual void _append_common_config();
+    virtual void _append_common_config( Config & cfg );
     /// Performs configs parsing if path in dir, or just forwards execution to
     /// _parse_config_file() if it is a file.
     void _parse_configs( const goo::filesystem::Path & path );
@@ -156,6 +156,14 @@ public:
     T app_option(const std::string & name) const {
         return _appCfg->parameter(name.c_str()).as<T>();
     }
+
+    /// App config multiple option getter.
+    template<typename T>
+    const std::list<T> & app_options_list(const std::string & name) const {
+        return _appCfg->parameter(name.c_str()).as_list_of<T>();
+    }
+
+    const Config & common_co() const { return _configuration; }
 
     bool do_immediate_exit() const { return _immediateExit; }
 

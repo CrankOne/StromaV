@@ -224,21 +224,22 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
 }
 
 void
-AbstractApplication::_append_common_config() {
+AbstractApplication::_append_common_config( Config & ) {
     // Upon module loding is performed, one may fill common config with
     // supplementary options subsections. Here we use dynamic_cast<>() to
     // determine whether this application (in its final descendant form)
     // common config dictionary needs corresponding supplementary options.
     // One may desire to append this list with various classes.
     # ifdef RPC_PROTOCOLS
-    const AnalysisDictionary * ad = dynamic_cast<const AnalysisDictionary *>(this);
-    if( ad && AnalysisDictionary::supp_options() ) {
+    //const AnalysisDictionary * ad = dynamic_cast<const AnalysisDictionary *>(this);
+    if( /*ad &&*/ AnalysisDictionary::supp_options() ) {
         uint32_t n = 0;
         for( auto append : *AnalysisDictionary::supp_options() ) {
             append( _configuration );
             ++n;
         }
-        sV_log2( "%u analysis subsections loaded.\n", n );
+        sV_log2( "%u analysis subsections appended to common "
+                "configuration.\n", n );
     }
     # endif
     // ...
@@ -258,7 +259,7 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
     const Config & conf = *cfg;
 
     // Before config files will be parsed --- finalize the common config.
-    _append_common_config();
+    _append_common_config( _configuration );
 
     // Load configuration files
     _parse_configs( conf["config"].as<goo::filesystem::Path>() );
@@ -320,10 +321,6 @@ AbstractApplication::_V_acquire_errstream() {
 
 void
 AbstractApplication::_process_options( const Config * ) {
-    if( _ROOTAppFeatures && !do_immediate_exit() ) {
-        mixins::RootApplication::initialize_ROOT_system( _ROOTAppFeatures );
-    }
-
     # if 0
     {   // Try dynamic_cast<RootApplication*>() and initialize ROOT's mixin:
         mixins::RootApplication * ra;
@@ -356,6 +353,10 @@ AbstractApplication::_process_options( const Config * ) {
         }
     }
     # endif
+
+    if( _ROOTAppFeatures && !do_immediate_exit() ) {
+        mixins::RootApplication::initialize_ROOT_system( _ROOTAppFeatures );
+    }
 
     _V_configure_concrete_app();
 
