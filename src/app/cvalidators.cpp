@@ -112,6 +112,7 @@ std::ostream &
 operator<<( std::ostream & os, const HistogramParameters2D & p ) {
     os << "{"
        << p.nBins[0] << "[" << p.min[0] << ":" << p.max[0] << "]"
+       << "x"
        << p.nBins[1] << "[" << p.min[1] << ":" << p.max[1] << "]"
        << "}";
     return os;

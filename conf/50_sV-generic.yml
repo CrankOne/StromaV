@@ -37,21 +37,6 @@ Geant4:
                 - APrimePhysics
         SynchrotronRadiationPhysics:
             considerMaterials: yes
-        APrimePhysics:
-            gslIntegration:
-                epsabs: 1e-12
-                epsrel: 1e-12
-                limit:  1000
-                nnodes: 1000
-            TFoam:
-                nCells: 500
-                nSamples: 200
-                nBins: 8
-                oRej: true
-                oDrive: 2
-                oEvPerBin: 25
-            matMinAWWApprox: 50
-            considerDecay: no
     gdml:
         action: view
         setup: Default
