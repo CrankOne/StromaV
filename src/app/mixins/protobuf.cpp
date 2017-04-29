@@ -37,7 +37,11 @@ PBEventApp::c_event() {
         emraise( badState, "No PBEventApp singleton-instance initialized still." );
     }
     PBEventApp & appInst = *PBEventApp::_self_PBEventAppPtr;
-    if( !appInst._cEvent ) { appInst._cEvent = new ::sV::events::Event(); }
+    if( !appInst._cEvent ) {
+        appInst._cEvent = google::protobuf::Arena::CreateMessage<UniEvent>(
+                                                        &(appInst._msgArena));
+        //appInst._cEvent = new ::sV::events::Event();
+    }
     return *appInst._cEvent;
 }
 
@@ -45,6 +49,15 @@ PBEventApp::PBEventApp( AbstractApplication::Config * c ) :
         AbstractApplication(c),
         _cEvent(nullptr) {
     PBEventApp::_self_PBEventAppPtr = this;
+}
+
+google::protobuf::Arena *
+PBEventApp::arena_ptr() {
+    if( !PBEventApp::_self_PBEventAppPtr ) {
+        emraise( badState, "No PBEventApp singleton-instance initialized still." );
+    }
+    PBEventApp & appInst = *PBEventApp::_self_PBEventAppPtr;
+    return &(appInst._msgArena);
 }
 
 }  // namespace mixins

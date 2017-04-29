@@ -27,6 +27,8 @@
 
 # ifdef RPC_PROTOCOLS
 
+# include <google/protobuf/arena.h>
+
 # include "app/abstract.hpp"
 
 namespace sV {
@@ -61,11 +63,15 @@ private:
 protected:
     /// Pointer to current event.
     UniEvent * _cEvent;
+    /// Message allocation arena instance.
+    google::protobuf::Arena _msgArena;
 public:
     PBEventApp( AbstractApplication::Config * c );
 
     /// Returns current event.
     static UniEvent & c_event();
+
+    static google::protobuf::Arena * arena_ptr();
 };
 
 }  // namespace mixins
