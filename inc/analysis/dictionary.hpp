@@ -31,97 +31,152 @@
 # include "app/abstract.hpp"
 
 namespace sV {
+namespace sys {
 
-/**@class AnalysisDictionary
+/**@class IndexOfConstructibles
  * @brief Dictionary indexing available data analysis routines.
  *
  * This dictionary is designed for automated run-time indexing of all data
- * sources and data processing handlers. This class implements no actual
- * object and represents more like a scope summing up the static indexing
- * maps and access functions.
+ * sources and data processing handlers.
  *
  * For C++ applications one has to push this class into inheritance chain to
  * make sV::AbstractApplication append common configuration dictionary with
  * its supplementary options. For other use cases, one may consider to use
  * supp_options() manually.
  * */
-class AnalysisDictionary {
+class IndexOfConstructibles {
 public:
-    typedef void (*OptionsSupplement)( goo::dict::Dictionary & );
+    /// Callback type for functions that assemble configuration dictionary and
+    /// its mapping to common config for constructable types enumerated in this
+    /// dictionary.
+    typedef std::pair<goo::dict::Dictionary, goo::dict::DictionaryInjectionMap>
+                                (*OptionsSupplement)( goo::dict::Dictionary & );
 
-    typedef AnalysisPipeline::iEventSequence iEventSequence;
-    typedef AnalysisPipeline::iEventProcessor iEventProcessor;
-    /// Data source constructor type.
-    typedef iEventSequence *(*EvSeqCtr)();
-    /// Handler constructor type.
-    typedef iEventProcessor *(*EvProcCtr)();
+    template<typename ConstructableT>
+    struct EnumerableEntry {
+        typedef ConstructableT * (*ConstructorT)( const goo::dict::Dictionary & );
+        ConstructorT constructor;
+        std::string  description;
+        struct Arguments {
+            goo::dict::Dictionary dict;
+            goo::dict::DictionaryInjectionMap parametersInjector;
+        } * arguments;
+    };
+
+    struct iConstructibleSectionBase { };
+
+    template<class ConstructibleT> struct ConstructiblesSection : public iConstructibleSectionBase {
+        std::unordered_map<std::string, EnumerableEntry<ConstructibleT> > byName;
+    };
 protected:
-    /// Set of named reading object constructors.
-    static std::unordered_map<
-                std::string,
-                std::pair<EvSeqCtr, std::string> >  * _readersDict;
-    /// Set of named handlers constructors.
-    static std::unordered_map<
-                std::string,
-                std::pair<EvProcCtr, std::string> > * _procsDict;
-    /// Supplementary options usually filled by processors.
-    static std::unordered_set<OptionsSupplement> * _suppOpts;
+    /// by-TypeID index of constructible objects.
+    /// The key refers to common parent type of constructible, thus, defining
+    /// particular set (section) of constructible objects, e.g. data source
+    /// formats, event treatment handlers, geometry shapes, etc.
+    std::unordered_map<
+                std::type_index,
+                iConstructibleSectionBase *> _procsCtrDict;
+
+    static AnalysisDictionary * _self;
+
+    template<typename ConstructableT> ConstructiblesSection<ConstructableT> *
+    _get_section( bool insertNonExisting=false );
 public:
+    /// Singleton getter.
+    static AnalysisDictionary & self();
+
+    /// Returns true if no analysis routines were enabled.
+    static bool empty() { return !_self || _self->_procsCtrDict.empty(); }
+
     /// Inserts reader callback.
-    static void add_reader( const std::string &, EvSeqCtr,
-                            const std::string & descr );
-    /// Prints out available reader callbacks keys.
-    static void list_readers( std::ostream & );
-    /// Looks for reader callback pointed out by string. Raises notFound on
-    /// failure.
-    static EvSeqCtr find_reader( const std::string & );
-    /// Inserts processor callback.
-    static void add_processor( const std::string &, EvProcCtr,
-                               const std::string & descr );
-    /// Prints out available processors keys.
-    static void list_processors( std::ostream & );
-    /// Looks for processor pointed out by string. Raises notFound on failure.
-    static EvProcCtr find_processor( const std::string & );
-    /// Supplumentary options appending routine.
-    static void supp_options( OptionsSupplement );
-    /// Supplementary options getter.
-    static std::unordered_set<OptionsSupplement> * supp_options() { return _suppOpts; }
-};  // class AnalysisDictionary
+    template<typename ConstructableT> void add_constructor(
+                const std::string &, const EnumerableEntry<ConstructableT> & );
 
-/**@def StromaV_DEFINE_DATA_SOURCE_FMT_CONSTRUCTOR
- * @brief A data format reader constructor implementation macro. */
-# define StromaV_DEFINE_DATA_SOURCE_FMT_CONSTRUCTOR( ReaderClass )           \
-static void __static_register_ ## ReaderClass ## _fmt() __attribute__ ((constructor(156))); \
-static sV::AnalysisDictionary::iEventSequence * _static_construct_ ## ReaderClass ()
+    /// Returns known constructors for specified (as a template argument) base
+    /// type.
+    template<typename ConstructableT> void const ConstructiblesSection<ConstructableT> &
+    known_constructors() const { return self()->_get_section<ConstructableT>(); }
 
-/**@def StromaV_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR
- * @brief A data format reader constructor insertion macro. */
-# define StromaV_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR( ReaderClass, txtName, descr ) \
-static void __static_register_ ## ReaderClass ## _fmt() {                   \
-    sV::AnalysisDictionary::add_reader( \
-                        txtName, _static_construct_ ## ReaderClass, descr ); }
+    /// Looks for reader callback pointed out by string.
+    template<typename ConstructableT> const EnumerableEntry<ConstructableT> & find( const std::string & );
+};  // class IndexOfConstructibles
+
+
+//
+// Implementation
+
+template<typename ConstructableT> ConstructiblesSection<ConstructableT> *
+IndexOfConstructibles::_get_section( bool insertNonExisting ) {
+    std::type_index tIndex = std::type_index(typeid(ConstructableT));
+    auto sectionIt = _procsCtrDict.find( tIndex );
+    if( _procsCtrDict.end() == sectionIt ) {
+        if( insertNonExisting ) {
+            sectionIt = _procsCtrDict.emplace(
+                    tIndex, new ConstructiblesSection<ConstructableT>() ).first;
+        } else {
+            emraise( notFound, "Has no enumerated descendants of type %s.",
+                typeid(ConstructableT).name() );
+        }
+    }
+    return static_cast<ConstructiblesSection<ConstructableT> >( sectionIt.second );
+}
+
+template<typename ConstructableT>
+void IndexOfConstructibles::add_constructor(
+                const std::string & name,
+                const EnumerableEntry<ConstructableT> & entry ) {
+    // Get appropriate section (or insert it if it does not yet exist).
+    auto sectPtr = _get_section<ConstructableT>( true );
+    // Emplace new entry into by-name map for this ancestor:
+    auto ir = sectPtr->emplace( name, entry );
+    if( ! ir.second ) {
+        sV_logw( "Omitting repeatative enumeration of entry \"%s\":%s.\n",
+            name.c_str(), typeid(ConstructableT).name() );
+    } else {
+        sV_log2( "Constructor for type \"%s\":%s has been registered.\n",
+            name.c_str(), typeid(ConstructableT).name() );
+    }
+}
+
+template<typename ConstructableT> const EnumerableEntry<ConstructableT> &
+IndexOfConstructibles::find( const std::string & name ) {
+    auto sectPtr = _get_section<ConstructableT>();
+    auto it = sectPtr->find( name );
+    if( sectPtr->end() == it ) {
+        emraise( notFound, "Unable to find constructor for \"%s\" with base type %s.\n",
+            name.c_str(), typeid(ConstructableT).name() );
+    }
+    return it->second;
+}
+
+
+// Helper macros
+///////////////
 
 /**@def StromaV_DEFINE_DATA_PROCESSOR
  * @brief A data processing constructor implementation macro. */
-# define StromaV_DEFINE_DATA_PROCESSOR( ProcessorClass )                     \
+# define StromaV_DEFINE_CONSTRUCTIBLE( cxxClassName, name, description )        \
 static void __static_register_ ## ProcessorClass ## _prc() __attribute__ ((constructor(156)));  \
-static sV::AnalysisDictionary::iEventProcessor * _static_construct_ ## ProcessorClass ()
+static void __static_register_ ## ProcessorClass ## _prc() {                    \
+    sV::sys::add_constructor( txtName, __static_construct_ ## ProcessorClass, description ); }
+
 
 /**@def StromaV_DEFINE_CONFIG_ARGUMENTS
- * @brief Supplementary configuration insertion macro for \ref AnalysisDictionary . */
-# define StromaV_DEFINE_CONFIG_ARGUMENTS( DNAME )                           \
-static void _get_supp_options( goo::dict::Dictionary & );                   \
+ * @brief Supplementary configuration insertion macro for
+ * \ref AnalysisDictionary . Performs appending of common config options.
+ * Returns pair consisting of own config option dict and its injective mapping.
+ * This mapping has to describe common config to own config parameters
+ * correspondance. */
+# define StromaV_DEFINE_CONFIG_ARGUMENTS( DNAME, ClassName )                \
+static std::pair<goo::dict::Dictionary, goo::dict::DictionaryInjectionMap>  \
+            _get_supp_options( goo::dict::Dictionary & );                   \
 static void __static_register_args() __attribute__ ((constructor(156)));    \
 static void __static_register_args() {                                      \
     sV::AnalysisDictionary::supp_options( _get_supp_options );}             \
-static void _get_supp_options( goo::dict::Dictionary & DNAME )
+static std::pair<goo::dict::Dictionary, goo::dict::DictionaryInjectionMap>  \
+                _get_supp_options( goo::dict::Dictionary & DNAME )
 
-/**@def StromaV_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR
- * @brief A data processor constructor insertion macro. */
-# define StromaV_REGISTER_DATA_PROCESSOR( ProcessorClass, txtName, descr )   \
-static void __static_register_ ## ProcessorClass ## _prc() {                \
-    sV::AnalysisDictionary::add_processor( txtName, _static_construct_ ## ProcessorClass, descr ); }
-
+}  // namespace sys
 }  // namespace sV
 
 # endif  // RPC_PROTOCOLS

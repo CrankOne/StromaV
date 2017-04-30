@@ -30,118 +30,13 @@ namespace sV {
 // Readers
 /////////
 
-std::unordered_map<std::string, std::pair<AnalysisDictionary::EvSeqCtr, std::string> >  *
-    AnalysisDictionary::_readersDict = nullptr;
+IndexOfConstructibles * IndexOfConstructibles::_self = nullptr;
 
-void
-AnalysisDictionary::add_reader( const std::string & key, EvSeqCtr ctr, const std::string & descr ) {
-    if( !_readersDict ) {
-        _readersDict = new std::remove_pointer<DECLTYPE(_readersDict)>::type;
+IndexOfConstructibles & IndexOfConstructibles::self() {
+    if( !_self ) {
+        _self = new IndexOfConstructibles();
     }
-    auto insertionResult = _readersDict->emplace( key,
-            std::pair<AnalysisDictionary::EvSeqCtr, std::string>( ctr, descr ) );
-    if( !insertionResult.second ) {
-        if( insertionResult.first->second.first != ctr ) {
-            sV_loge( "Failed to register an event sequence reader "
-                     "\"%s\" because this name isn't unique.\n", key.c_str() );
-        } else {
-            sV_log3( "Omitting repeatative insertion of event reader "
-                     "\"%s\" (%p).\n", key.c_str(), ctr );
-        }
-    }
-}
-
-void
-AnalysisDictionary::list_readers( std::ostream & os ) {
-    if( !_readersDict || _readersDict->empty() ) {
-        os << "No formats available." << std::endl;
-    } else {
-        os << "Available data formats:" << std::endl;
-        for( auto it  = _readersDict->begin();
-                  it != _readersDict->end(); ++it) {
-            os << "  - " << it->first << std::endl
-               << "  " << (void*) it->second.first
-               << " : " << it->second.second << std::endl;
-        }
-    }
-}
-
-AnalysisDictionary::EvSeqCtr
-AnalysisDictionary::find_reader( const std::string & key ) {
-    if( !_readersDict ) {
-        emraise( badState, "No readers registered." )
-    }
-    auto it = _readersDict->find(key);
-    if( _readersDict->end() == it ) {
-        emraise( notFound, "Format unknown: \"%s\".", key.c_str() );
-    }
-    return it->second.first;
-}
-
-// Processors
-////////////
-
-std::unordered_map<std::string, std::pair<AnalysisDictionary::EvProcCtr, std::string> > *
-    AnalysisDictionary::_procsDict = nullptr;
-
-void
-AnalysisDictionary::add_processor( const std::string & key, EvProcCtr ctr, const std::string & descr ) {
-    if( !_procsDict ) {
-        _procsDict = new std::remove_pointer<DECLTYPE(_procsDict)>::type;
-    }
-    auto insertionResult = _procsDict->emplace( key,
-            std::pair<AnalysisDictionary::EvProcCtr, std::string>( ctr, descr ) );
-    if( !insertionResult.second ) {
-        if( insertionResult.first->second.first != ctr ) {
-            sV_loge( "Failed to register an event processor \"%s\" because "
-                     "it's name isn't unique (adding %p vs known %p).\n",
-                     key.c_str(), ctr, insertionResult.first->second.first );
-        } else {
-            sV_log3( "Omitting repeatative insertion of event processor "
-                     "\"%s\" (%p).\n", key.c_str(), ctr );
-        }
-    }
-}
-
-void
-AnalysisDictionary::list_processors( std::ostream & os ) {
-    if( !_procsDict || _procsDict->empty() ) {
-        os << "No processors available." << std::endl;
-    } else {
-        os << "Available data processors:" << std::endl;
-        for( auto it  = _procsDict->begin();
-                  it != _procsDict->end(); ++it) {
-            os << "  - " << it->first << std::endl
-               << "  " << (void*) it->second.first
-               << " : " << it->second.second << std::endl;
-        }
-    }
-}
-
-AnalysisDictionary::EvProcCtr
-AnalysisDictionary::find_processor( const std::string & key ) {
-    if( !_procsDict ) {
-        emraise( badState, "No processors registered." )
-    }
-    auto it = _procsDict->find(key);
-    if( _procsDict->end() == it ) {
-        emraise( notFound, "Processor unknown: \"%s\".", key.c_str() );
-    }
-    return it->second.first;
-}
-
-// Options
-/////////
-
-std::unordered_set<AnalysisDictionary::OptionsSupplement> *
-AnalysisDictionary::_suppOpts = nullptr;
-
-void
-AnalysisDictionary::supp_options( OptionsSupplement optsSupp ) {
-    if( !_suppOpts ) {
-        _suppOpts = new std::unordered_set<OptionsSupplement>();
-    }
-    _suppOpts->insert( optsSupp );
+    return *_self;
 }
 
 }  // namespace sV
