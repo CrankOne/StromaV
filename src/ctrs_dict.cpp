@@ -39,14 +39,15 @@ IndexOfConstructables::self() {
     return *_self;
 }
 
-const IndexOfConstructables::ConstructablesSection &
+const IndexOfConstructables::ConstructablesSection *
 IndexOfConstructables::constructors_for( const std::type_index & tIdx ) const {
     auto it = _procsCtrDict.find(tIdx);
     if( _procsCtrDict.end() == it ) {
-        emraise( notFound, "Unable to locate virtual constructors with "
-            "base type hash %zu.", tIdx );
+        //emraise( notFound, "Unable to locate virtual constructors with "
+        //    "base type hash %zu.", tIdx );
+        return nullptr;
     }
-    return it->second;
+    return &(it->second);
 }
 
 }  // namespace sys

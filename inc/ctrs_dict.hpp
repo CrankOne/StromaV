@@ -116,8 +116,9 @@ public:
     find( const std::string & );
 
     /// Returns constructor's dictionary for referenced type. Useful for
-    /// runtime inspection of an available types.
-    const ConstructablesSection & constructors_for( const std::type_index & ) const;
+    /// runtime inspection of an available types. May return NULL if no
+    /// constructors where added for such base type.
+    const ConstructablesSection * constructors_for( const std::type_index & ) const;
 
     /// In-line construct.
     template<typename ConstructableT> ConstructableT *
@@ -148,7 +149,7 @@ void IndexOfConstructables::add_constructor(
                 const std::string & name,
                 EnumerableEntry<ConstructableT> * entry ) {
     // Get appropriate section (or insert it if it does not yet exist).
-    auto sectRef = _get_section<ConstructableT>( true );
+    auto & sectRef = _get_section<ConstructableT>( true );
     // Emplace new entry into by-name map for this ancestor:
     auto ir = sectRef.emplace( name, entry );
     if( ! ir.second ) {
@@ -162,7 +163,7 @@ void IndexOfConstructables::add_constructor(
 
 template<typename ConstructableT> const IndexOfConstructables::EnumerableEntry<ConstructableT> &
 IndexOfConstructables::find( const std::string & name ) {
-    auto sectRef = _get_section<ConstructableT>();
+    auto & sectRef = _get_section<ConstructableT>();
     auto it = sectRef.find( name );
     if( sectRef.end() == it ) {
         emraise( notFound, "Unable to find constructor for \"%s\" with base type %s.\n",

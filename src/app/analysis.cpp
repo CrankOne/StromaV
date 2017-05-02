@@ -100,6 +100,16 @@ AnalysisApplication::AnalysisApplication( Config * vm ) :
             "Number of events to read; (set zero to read all available).",
             0 )
         ;
+
+    AbstractApplication::ConstructableConfMapping::self()
+        .set_basetype_description<sV::aux::iEventSequence>( "src-formats",
+            "Data source formats to be read." )
+        ;
+    AbstractApplication::ConstructableConfMapping::self()
+        .set_basetype_description<sV::aux::iEventProcessor>( "processors",
+            "Events processing handlers (processors). By arranging them in "
+            "order one may configure particular data treatment procedure." )
+        ;
 }
 
 AnalysisApplication::~AnalysisApplication() {

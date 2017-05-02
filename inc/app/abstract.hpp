@@ -81,16 +81,18 @@ public:
     public:
         typedef goo::dict::DictionaryInjectionMap Injection;
         struct Mappings : public std::unordered_map<std::string, Injection> {
-            std::string baseName;
+            std::string baseName, baseDescription;
         };
     private:
         std::map<std::type_index, Mappings> _sections;
 
         static ConstructableConfMapping * _self;
     protected:
-        template<typename T> Mappings * _get_section( bool insertNonExisting=false );
+        template<typename T> Mappings & _get_section( bool insertNonExisting=false );
     public:
         static ConstructableConfMapping & self();
+
+        template<typename T> void set_basetype_description( const std::string &, const std::string & );
 
         template<typename T> goo::dict::DictionaryInjectionMap * add_mappings( const std::string & );
 
@@ -207,32 +209,51 @@ public:
 
 
 template<typename T>
-AbstractApplication::ConstructableConfMapping::Mappings *
+AbstractApplication::ConstructableConfMapping::Mappings &
 AbstractApplication::ConstructableConfMapping::_get_section( bool insertNonExisting ) {
     std::type_index tIndex = std::type_index(typeid(T));
     auto sectionIt = _sections.find( tIndex );
     if( _sections.end() == sectionIt ) {
         if( insertNonExisting ) {
             sectionIt = _sections.emplace(
-                    tIndex, new Mappings() ).first;
+                    tIndex, Mappings() ).first;
         } else {
             emraise( notFound, "Has no enumerated injection mappings section "
                 "for type %s.", typeid(T).name() );
         }
     }
-    return &(sectionIt->second);
+    return sectionIt->second;
 }
 
 template<typename T> goo::dict::DictionaryInjectionMap *
 AbstractApplication::ConstructableConfMapping::add_mappings( const std::string & name ) {
-    auto mappings = _get_section<T>();
-    auto ir = mappings->emplace( name, goo::dict::DictionaryInjectionMap() );
+    auto mappings = _get_section<T>( true );
+    auto ir = mappings.emplace( name, goo::dict::DictionaryInjectionMap() );
     if( !ir.first ) {
         sV_logw( "Omitting repeatative definition of config mappings "
             "for \"%s\":%s.\n", name.c_str(), typeid(T).name() );
         return nullptr;
     }
     return &(ir.first.second);
+}
+
+template<typename T> void
+AbstractApplication::ConstructableConfMapping::set_basetype_description(
+                const std::string & baseName,
+                const std::string & baseDescription ) {
+    auto & mappings = _get_section<T>( true );
+    if( !mappings.baseName.empty() ) {
+        if( mappings.baseName != baseName ) {
+            sV_logw( "Changing conf mapping base type %s name from \"%s\" to \"%s\".\n",
+                typeid(T).name(),
+                mappings.baseName.c_str(),
+                baseName.c_str() );
+            mappings.baseName = baseName;
+        }
+    } else {
+        mappings.baseName = baseName;
+    }
+    mappings.baseDescription = baseDescription;
 }
 
 }  // namespace sV

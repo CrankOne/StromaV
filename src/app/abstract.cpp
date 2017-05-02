@@ -62,7 +62,7 @@ AbstractApplication::ConstructableConfMapping::_self = nullptr;
 
 AbstractApplication::ConstructableConfMapping &
 AbstractApplication::ConstructableConfMapping::self() {
-    if( _self ) {
+    if( !_self ) {
         _self = new AbstractApplication::ConstructableConfMapping();
     }
     return *_self;
@@ -246,8 +246,22 @@ AbstractApplication::_append_common_config( Config & ) {
     for( auto injsPair : ccm.sections() ) {
         // Group of mappings related to one particular common base:
         const ConstructableConfMapping::Mappings & mappings = injsPair.second;
-        for( auto ctrs : sV::sys::IndexOfConstructables::self()
-                                .constructors_for( injsPair.first ) ) {
+        const auto * constructables = sV::sys::IndexOfConstructables::self()
+                                .constructors_for( injsPair.first )
+                                ;
+        if( !constructables ) {
+            // It's ok --- they may be supplied within loadable modules that
+            // for some reason wasn't loaded.
+            sV_log3( "No virtual constructors available for section "
+                    "\"%s\" (hash %zu).\n",
+                    injsPair.second.baseName.c_str(), injsPair.first );
+            continue;
+        } else {
+            sV_log3( "Adding parameters for section \"%s\" (with %zu entries) "
+                "mapped to common config.\n", injsPair.second.baseName.c_str(),
+                constructables->size() );
+        }
+        for( auto ctrs : *constructables ) {
             // Name of particular constructable entry:
             const std::string & entryName = ctrs.first;
             // Own config of particular constructable entry:
@@ -256,8 +270,9 @@ AbstractApplication::_append_common_config( Config & ) {
             auto injIt = mappings.find(entryName);
             if( mappings.end() == injIt ) {
                 sV_log3( "Arguments mapping for virtually-constructable object "
-                    "\"%s\" (with base \"%s\") is not defined so its "
-                    "parameters won't be added to common config.\n",
+                    "\"%s\" (with base \"%s\" known to conf-mapping) is not "
+                    "defined so its parameters won't be added to common "
+                    "config.\n",
                     entryName.c_str(), mappings.baseName.c_str() );
                 continue;
             }
@@ -299,7 +314,7 @@ AbstractApplication::_append_common_config( Config & ) {
                         "added a common config entry." );
                     }
                 } else {
-                    // TODO: compare types for existing parameter
+                    _TODO_  // TODO: compare types for existing parameter
                 }
             }
             # if 0
