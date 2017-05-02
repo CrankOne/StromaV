@@ -77,6 +77,15 @@ EventMulticaster::EventMulticaster( const std::string & pn,
             _ownIOService(!ioServicePtr) {
 }
 
+EventMulticaster::EventMulticaster( const goo::dict::Dictionary & dct ) :
+            EventMulticaster(
+                "multicast",
+                boost::asio::ip::address::from_string( dct["address"].as<std::string>() ),
+                dct["storageCapacity"].as<size_t>(),
+                dct["port"].as<int>(),
+                goo::app<sV::AbstractApplication>().boost_io_service_ptr()
+            ) {}
+
 EventMulticaster::~EventMulticaster() {
     if( _ioServicePtr && _ownIOService ) {
         delete _ioServicePtr;
@@ -123,11 +132,13 @@ EventMulticaster::_V_print_brief_summary( std::ostream & os ) const {
     // TODO: ... other stuff
 }
 
-// Register processor:
-StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
-    commonConfig.insertion_proxy().bgn_sect( "multicast",
-         "Options for \"multicast\" processor. Includes port and address as "
-         "well as max capacity of sending FIFO queue.")
+StromaV_ANALYSIS_PROCESSOR_DEFINE( EventMulticaster, "multicast" ) {
+    goo::dict::Dictionary mCastPDict( "mutlicast",
+        "This processor performs asynchroneous network multicasting of events "
+        "received from analysis pipeline. Parameters are listed at "
+        "\"multicasting\" subsection of commong config. Note, that if buffering "
+        "queue is overflown, the older events will not be sent." );
+    mCastPDict.insertion_proxy()
         .p<std::string>("address",
             "Multicast address to use.",
             "239.255.0.1" )
@@ -137,28 +148,9 @@ StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
         .p<size_t>("storageCapacity",
             "Event to be stored. Defines the capacitance of last read events.",
             500)
-    .end_sect( "multicast" )
-    ;
+        ;
+    return mCastPDict;
 }
-StromaV_DEFINE_DATA_PROCESSOR( EventMulticaster ) {
-    auto p = new EventMulticaster(
-            "multicast",
-            boost::asio::ip::address::from_string(
-                goo::app<sV::AbstractApplication>().cfg_option<std::string>("multicast.address")
-            ),
-            goo::app<sV::AbstractApplication>().cfg_option<size_t>("multicast.storageCapacity"),
-            goo::app<sV::AbstractApplication>().cfg_option<int>("multicast.port"),
-            goo::app<sV::AbstractApplication>().boost_io_service_ptr()
-        );
-    //io_service.run();
-    return p;
-} StromaV_REGISTER_DATA_PROCESSOR(
-    EventMulticaster,
-    "multicast",
-    "This processor performs asynchroneous network multicasting of events "
-    "received from analysis pipeline. Parameters are listed at "
-    "\"multicasting\" subsection of commong config. Note, that if buffering "
-    "queue is overflown, the older events will not be sent.")
 
 }  // namespace sV
 }  // namespace dprocessors

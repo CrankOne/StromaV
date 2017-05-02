@@ -28,7 +28,8 @@
 # ifdef RPC_PROTOCOLS
 
 # include "app/abstract.hpp"
-# include "analysis/dictionary.hpp"
+# include "app/mixins/protobuf.hpp"
+# include "analysis/pipeline.hpp"
 
 namespace sV {
 
@@ -63,8 +64,7 @@ namespace sV {
 class AnalysisApplication :
         public virtual sV::AbstractApplication,
         public mixins::PBEventApp,
-        public AnalysisPipeline,
-        public AnalysisDictionary {
+        public AnalysisPipeline {
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
@@ -88,6 +88,15 @@ public:
 };  // class AnalysisApplication
 
 }  // namespace sV
+
+# define StromaV_ANALYSIS_PROCESSOR_DEFINE( cxxClassName,                   \
+                                            name )                          \
+StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR( sV::aux::iEventProcessor,        \
+                                           cxxClassName )                   \
+StromaV_DEFINE_CONSTRUCTABLE( sV::aux::iEventProcessor,                     \
+                        cxxClassName,                                       \
+                        name,                                               \
+                        StromaV_DEFAULT_CONSTRUCTOR_NAME( cxxClassName ) )
 
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_ANALYSIS_APPLICATION_BASE_H

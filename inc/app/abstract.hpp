@@ -28,10 +28,12 @@
 # include "app.h"
 # include "app/ascii_display.hpp"
 # include "../logging.hpp"
+# include "../ctrs_dict.hpp"
 
 # include <goo_exception.hpp>
 # include <goo_app.hpp>
 # include <goo_dict/configuration.hpp>
+# include <goo_dict/injection.hpp>
 # include <goo_path.hpp>
 
 # include <iostream>
@@ -71,6 +73,29 @@ public:
         ConfigPathInterpolator( const Config & cfgRef ) : _cfgRef( cfgRef ) {}
         virtual std::string interpolate( const std::string & p ) const override;
     };  // class ConfigPathInterpolator
+
+    /// Class collecting configuration parameters mappings (from common config
+    /// to particular constructible classes). The utilizing usecase is uaually
+    /// restricted to only C++ applications, so we've made it a nested class.
+    class ConstructableConfMapping {
+    public:
+        typedef goo::dict::DictionaryInjectionMap Injection;
+        struct Mappings : public std::unordered_map<std::string, Injection> {
+            std::string baseName;
+        };
+    private:
+        std::map<std::type_index, Mappings> _sections;
+
+        static ConstructableConfMapping * _self;
+    protected:
+        template<typename T> Mappings * _get_section( bool insertNonExisting=false );
+    public:
+        static ConstructableConfMapping & self();
+
+        template<typename T> goo::dict::DictionaryInjectionMap * add_mappings( const std::string & );
+
+        const std::map<std::type_index, Mappings> sections() const { return _sections; }
+    };
 protected:
     std::map<std::string, std::string> _envVarsDocs;
     Stream * _eStr;
@@ -78,7 +103,13 @@ protected:
                       _eBuffer
                       ;
     Config * _appCfg,
-           _configuration;
+             _configuration;
+
+    /// Stores linked paths between common config and constructible configs.
+    static std::unordered_map<std::type_index,
+            std::unordered_map<std::string, goo::dict::DictionaryInjectionMap> >
+            * _cfgInjectionsPtr;
+
     mutable bool _immediateExit;
     mutable uint8_t _verbosity;
 
@@ -173,6 +204,36 @@ public:
 
     uint8_t ROOT_features() const { return _ROOTAppFeatures; }
 };  // AbstractApplication
+
+
+template<typename T>
+AbstractApplication::ConstructableConfMapping::Mappings *
+AbstractApplication::ConstructableConfMapping::_get_section( bool insertNonExisting ) {
+    std::type_index tIndex = std::type_index(typeid(T));
+    auto sectionIt = _sections.find( tIndex );
+    if( _sections.end() == sectionIt ) {
+        if( insertNonExisting ) {
+            sectionIt = _sections.emplace(
+                    tIndex, new Mappings() ).first;
+        } else {
+            emraise( notFound, "Has no enumerated injection mappings section "
+                "for type %s.", typeid(T).name() );
+        }
+    }
+    return &(sectionIt->second);
+}
+
+template<typename T> goo::dict::DictionaryInjectionMap *
+AbstractApplication::ConstructableConfMapping::add_mappings( const std::string & name ) {
+    auto mappings = _get_section<T>();
+    auto ir = mappings->emplace( name, goo::dict::DictionaryInjectionMap() );
+    if( !ir.first ) {
+        sV_logw( "Omitting repeatative definition of config mappings "
+            "for \"%s\":%s.\n", name.c_str(), typeid(T).name() );
+        return nullptr;
+    }
+    return &(ir.first.second);
+}
 
 }  // namespace sV
 

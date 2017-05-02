@@ -34,29 +34,53 @@ namespace sV {
 
 namespace po = boost::program_options;
 
+/**@class iBucketDispatcher
+ * @brief Helper event accumulation class.
+ *
+ * The idea of "bucket" is quite similar to ROOT's "basket" and in a nutshell
+ * is just a buffer containing discrete number of events. These "buckets" can
+ * be further compressed and forwarded to storage/stdout/network as a solid
+ * data chunks.
+ *
+ * One need such a thing because it leads for much more efficient compression
+ * and transmission comparing to ordinary per-event basis.
+ *
+ * This class may represents an automatic buffer that will accumulate data
+ * (events) until associated buffer will not be full.
+ *
+ * One can choose which bucket this processor has to consider as "full": either
+ * by entries number or by uncompressed size. If both criteria will be non-null,
+ * the first matching criterion will trigger bucket to be dropped. If both
+ * criteria are set to 0, the handler will never drop the buket until handler's
+ * destructor will be invoked.
+ * */
 class iBucketDispatcher {
 private:
     size_t _nMaxKB;
     size_t _nMaxEvents;
 protected:
     virtual size_t _V_drop_bucket() = 0;
-    events::Bucket _currentBucket;
+    events::Bucket _currentBucket;  // TODO: use arena?
 public:
     typedef sV::events::Bucket Bucket;
 
     iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents );
     virtual ~iBucketDispatcher();
 
+    events::Bucket & bucket() { return _currentBucket; }
+
+    const events::Bucket & bucket() const { return _currentBucket; }
+
     virtual void push_event(const events::Event & reentrantEvent);
 
     size_t n_max_KB() const {return _nMaxKB;};
-    size_t n_max_Events() const {return _nMaxEvents;};
+    size_t n_max_events() const {return _nMaxEvents;};
 
-    size_t n_Bytes() const {
-        return (size_t)(_currentBucket.ByteSize());
+    size_t n_bytes() const {
+        return (size_t)(bucket().ByteSize());
     };
-    size_t n_Events() const {
-        return (size_t)(_currentBucket.events_size());
+    size_t n_events() const {
+        return (size_t)(bucket().events_size());
     };
 
     virtual bool is_bucket_full();

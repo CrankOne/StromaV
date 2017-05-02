@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -20,8 +21,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_ANALYSIS_TESTING_PROCESSOR_H
-# define H_STROMA_V_ANALYSIS_TESTING_PROCESSOR_H
+# ifndef H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# define H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 
 # include "sV_config.h"
 
@@ -29,27 +30,48 @@
 
 # include "app/analysis.hpp"
 # include "uevent.hpp"
+# include "buckets/iBucketDispatcher.hpp"
+
+# include <goo_dict/dict.hpp>
+
+# include <fstream>
 
 namespace sV {
 namespace dprocessors {
-namespace aux {
 
-class TestingProcessor : public AnalysisPipeline::iEventProcessor {
+/**@class EventsStore
+ * @brief Pipeline handler performing saving of the events to file.
+ *
+ * This class uses \ref iBucketDispatcher interface to perform high-level
+ * version of write-back caching.
+ * */
+class EventsStore : public AnalysisPipeline::iEventProcessor {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
-    typedef AnalysisApplication::Event Event;
+    typedef sV::events::Event Event;
 protected:
+    sV::iBucketDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
+    std::fstream _file;
 public:
-    TestingProcessor( const std::string & pn ) :
-                AnalysisPipeline::iEventProcessor( pn ) {}
-};  // class TestingProcessor
+    EventsStore( const std::string & pn,
+                 const std::string & outFileName,
+              sV::iBucketDispatcher * bucketDispatcher );
+    EventsStore( const goo::dict::Dictionary & );
+    virtual ~EventsStore();
 
-}  // namespace aux
+    /// Returns true if "full" criterion(-ia) triggered.
+    //  bool is_bucket_full() const;
+
+    /// Causes current bucket to be compressed (and optionally forwarded) and,
+    /// further, cleared.
+    //  void drop_bucket();
+};  // class Bucketer
+
 }  // namespace dprocessors
 }  // namespace sV
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
-# endif  // H_STROMA_V_ANALYSIS_TESTING_PROCESSOR_H
+# endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 

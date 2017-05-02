@@ -43,7 +43,7 @@ PlainStreamBucketDispatcher::~PlainStreamBucketDispatcher() {
 
 size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
 
-    size_t bucketSize = n_Bytes();
+    size_t bucketSize = n_bytes();
     if ( _streamRef.good() ) {
         // Write size of the bucket to be dropped into output file
         _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
@@ -60,8 +60,8 @@ size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
         std::cerr << "Stream for serialized output isn't good." << std::endl;
         return EXIT_FAILURE;
     }
-    //std::cout << "Drop size bytes: " << n_Bytes() << std::endl;
-    //std::cout << "Drop size events: " << n_Events() << std::endl;
+    //std::cout << "Drop size bytes: " << n_bytes() << std::endl;
+    //std::cout << "Drop size events: " << n_events() << std::endl;
     clear_bucket();
     return bucketSize;;
 }

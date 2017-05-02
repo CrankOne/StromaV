@@ -52,16 +52,16 @@ void iBucketDispatcher::clear_bucket() {
 }
 
 bool iBucketDispatcher::is_bucket_full() {
-    return ( (n_Bytes() >= _nMaxKB*1024 && _nMaxKB != 0) ||
-         (n_Events() >= _nMaxEvents && _nMaxEvents != 0) );
+    return ( (n_bytes() >= _nMaxKB*1024 && _nMaxKB != 0) ||
+         (n_events() >= _nMaxEvents && _nMaxEvents != 0) );
 }
 
 bool iBucketDispatcher::is_bucket_empty() {
-    return ( n_Bytes() ?  false : true );
+    return ( n_bytes() ?  false : true );
 }
 
 void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
-    events::Event* event = _currentBucket.add_events();
+    events::Event* event = bucket().add_events();
     event->CopyFrom(reentrantEvent);
 
     //  XXX

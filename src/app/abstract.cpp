@@ -22,10 +22,10 @@
 
 # include "app/abstract.hpp"
 # include "app/mixins/root.hpp"
-# include "analysis/dictionary.hpp"
 # include "yaml-adapter.hpp"
 # include "detector_ids.h"
 # include "utils.hpp"
+# include "ctrs_dict.hpp"
 
 # include <goo_versioning.h>
 # include <goo_dict/parameters/path_parameter.hpp>
@@ -56,6 +56,9 @@ namespace sV {
 //
 // Abstract application
 //////////////////////
+
+AbstractApplication::ConstructableConfMapping *
+AbstractApplication::ConstructableConfMapping::_self = nullptr;
 
 # if 0
 const char * _static_procName = nullptr;
@@ -226,13 +229,89 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
 void
 AbstractApplication::_append_common_config( Config & ) {
     // Upon module loding is performed, one may fill common config with
-    // supplementary options subsections. Here we use dynamic_cast<>() to
-    // determine whether this application (in its final descendant form)
-    // common config dictionary needs corresponding supplementary options.
-    // One may desire to append this list with various classes.
-    # ifdef RPC_PROTOCOLS
+    // supplementary options subsections. Each constructible has its own
+    // configuration options definition stored in \ref IndexOfConstructables .
+    // While the \ref ConstructableConfMapping defines options correspondance
+    // with common config options. This information is used to build interim
+    // configuration dictionaries within common config instance.
+    ConstructableConfMapping & ccm = ConstructableConfMapping::self();
+    for( auto injsPair : ccm.sections() ) {
+        // Group of mappings related to one particular common base:
+        const ConstructableConfMapping::Mappings & mappings = injsPair.second;
+        for( auto ctrs : sV::sys::IndexOfConstructables::self()
+                                .constructors_for( injsPair.first ) ) {
+            // Name of particular constructable entry:
+            const std::string & entryName = ctrs.first;
+            // Own config of particular constructable entry:
+            const goo::dict::Dictionary & concreteCfg = ctrs.second->arguments;
+            // Injection (mapping) object (common -> own):
+            auto injIt = mappings.find(entryName);
+            if( mappings.end() == injIt ) {
+                sV_log3( "Arguments mapping for virtually-constructable object "
+                    "\"%s\" (with base \"%s\") is not defined so its "
+                    "parameters won't be added to common config.\n",
+                    entryName.c_str(), mappings.baseName.c_str() );
+                continue;
+            }
+            const ConstructableConfMapping::Injection inj = injIt->second;
+            for( auto injectionPair : inj.injections() ) {
+                const std::string & commonPath = injectionPair.first;
+                goo::dict::DictionaryInjectionMap::MappedEntry & entry =
+                                                        injectionPair.second;
+                auto commonParameterPtr = _configuration.probe_parameter( commonPath );
+                if( !commonParameterPtr ) {
+                    goo::dict::Dictionary & targetSection = _configuration;
+                    // Create parameter by path "commonPath" of type
+                    // concreteCfg[ownPath] with modifyed description:
+                    std::size_t lDelim = commonPath.rfind( '.' );
+                    if( std::string::npos != lDelim ) {
+                        std::string sectPath = commonPath.substr(0, lDelim);
+                        auto tSectPtr = _configuration.probe_subsection( sectPath );
+                        if( !tSectPtr ) {
+                            targetSection = *tSectPtr;
+                        } else {
+                            _configuration.insertion_proxy()
+                                .bgn_sect( sectPath.c_str(), "" ).end_sect();
+                            targetSection = _configuration.subsection( sectPath );
+                        }
+                    }
+                    if( !entry.transformation ) {
+                        // If transformation is not defined, guess identity
+                        // mapping and preserve parameter type.
+                        targetSection.insertion_proxy()
+                                .insert_copy_of( concreteCfg.parameter(entry.path) );
+                    } else {
+                        // If transformation is defined and we're here it
+                        // probably means that user code didn't yet
+                        // appended the common conf dictionary with
+                        // appropriate type.
+                        emraise( badState, "For configuration mapping: "
+                        "%s (common config) -> %s (local virtual ctr config) "
+                        "user code defined the transformation, but did not "
+                        "added a common config entry." );
+                    }
+                } else {
+                    // TODO: compare types for existing parameter
+                }
+            }
+            # if 0
+            // Construct temporary reverted map object.
+            std::map<std::string, std::string> invInj;
+            std::transform(
+                    inj.injections().begin(), inj.injections().end(),
+                    std::inserter( invInj, invInj.begin()),
+                    // Lambda function flipping pair:
+                    [](const std::pair<std::string, std::string> op){
+                            return std::make_pair( op.second, op.first );
+                        }
+                );
+            # endif
+        }
+    }
+
+    # if 0
     //const AnalysisDictionary * ad = dynamic_cast<const AnalysisDictionary *>(this);
-    if( /*ad &&*/ AnalysisDictionary::supp_options() ) {
+    if( /*ad &&*/ IndexOfConstructables::empty() ) {
         uint32_t n = 0;
         for( auto append : *AnalysisDictionary::supp_options() ) {
             append( _configuration );

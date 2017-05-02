@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -20,32 +19,27 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "compr/DummyCompressor.hpp"
+
+# include "analysis/dictionary.hpp"
+
 # ifdef RPC_PROTOCOLS
+# include "app/app.h"
 
 namespace sV {
 
-//namespace events {
-//    typedef DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED UNCOMPRESSED;
-//}
+// Readers
+/////////
 
-DummyCompressor::DummyCompressor() :
-    iCompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED) {
-}
+IndexOfConstructables * IndexOfConstructables::_self = nullptr;
 
-size_t DummyCompressor::_V_compress_series( uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const {
-    memcpy( comprBuf, uncomprBuf, lenUncomprBuf);
-    // _V_compress_series() should return real length of compressed series
-    // (not lenComprBuf, because lenComprBuf is a allocated memory for
-    // compressed data and real size of this compressed data could be
-    // different).
-    // Here it returns lenUncomprBuf, cause in fact DummyCompressor doesn't
-    // compress series and in this case real length equal to lenUncomprBuf.
-    return lenUncomprBuf;
+IndexOfConstructables & IndexOfConstructables::self() {
+    if( !_self ) {
+        _self = new IndexOfConstructables();
+        sV_log3( "New constructors dictionary allocated (%p).\n", _self );
+    }
+    return *_self;
 }
 
 }  // namespace sV
-# endif  // RPC_PROTOCOLS
 
+# endif  // RPC_PROTOCOLS

@@ -28,34 +28,53 @@
 # ifdef RPC_PROTOCOLS
 
 # include "buckets/iBucketDispatcher.hpp"
-# include "compr/iCompressor.hpp"
+# include "compression/iCompressor.hpp"
+
 # include <ostream>
 
 namespace sV {
 
-class ComprBucketDispatcher : public iBucketDispatcher {
+class CompressedBucketDispatcher : public iBucketDispatcher {
 private:
     iCompressor * _compressor;
-    events::DeflatedBucket _deflatedBucket;
-    uint8_t * _uncomprBuf;
-    uint8_t * _comprBuf;
-    size_t _bufSizeKB;
+    uint8_t * _srcBuffer,
+            * _dstBuffer
+            ;
+
+    size_t  _srcBfSize,
+            _dstBfSize
+            ;
+    std::ostream * _streamPtr;
+
+    events::Bucket _deflatedBucket;  // TODO: use arena?
 protected:
     virtual size_t _V_drop_bucket() override;
-    virtual size_t compress_bucket();
+    virtual size_t compress_bucket( const events::DeflatedBucket & );
 
-    virtual uint8_t * alloc_buffer( uint8_t * buf, const size_t & size );
-    virtual uint8_t * realloc_buffer( uint8_t * buf, const size_t & size );
-    virtual void clear_buffer( uint8_t * buf );
+    virtual uint8_t * alloc_buffer( const size_t size );
+    virtual void realloc_buffer( uint8_t *& buf, const size_t size );
+    virtual void clear_buffer( uint8_t *& buf );
     virtual void set_metainfo();
-    std::ostream & _streamRef;
+protected:
+    CompressedBucketDispatcher( iCompressor * compressor,
+                                std::ostream * streamPtr,
+                size_t nMaxKB, size_t nMaxEvents );
 public:
-    ComprBucketDispatcher( iCompressor * compressor,
-            std::ostream & streamRef,
-            size_t nMaxKB, size_t nMaxEvents, size_t maxBufSizeKB );
+    CompressedBucketDispatcher( iCompressor * compressor,
+                            std::ostream & streamRef,
+                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+            CompressedBucketDispatcher( compressor, &streamRef, nMaxKB, nMaxEvents ) {}
 
-    virtual ~ComprBucketDispatcher();
-};  // class ComprBucketDispatcher
+    CompressedBucketDispatcher( iCompressor * compressor,
+                                    size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+            CompressedBucketDispatcher( compressor, nullptr, nMaxKB, nMaxEvents ) {}
+
+    virtual ~CompressedBucketDispatcher();
+
+    void set_out_stream( std::ostream & strRef ) { _streamPtr = &strRef; }
+    std::ostream * get_out_stream_ptr() { return _streamPtr; }
+    bool stream_is_set() const { return !!_streamPtr; }
+};  // class CompressedBucketDispatcher
 
 }  //  namespace sV
 

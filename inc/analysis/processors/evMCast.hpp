@@ -31,6 +31,9 @@
 # include <mutex>
 # include <boost/circular_buffer.hpp>
 # include <boost/thread.hpp>
+
+# include <goo_dict/dict.hpp>
+
 # include "app/analysis.hpp"
 # include "uevent.hpp"
 # include "mCastSender.hpp"
@@ -101,6 +104,7 @@ public:
                       int portNo=30001,
                       boost::asio::io_service * ioServicePtr=nullptr,
                       size_t sendingBufferSize=1024*1024 );
+    EventMulticaster( const goo::dict::Dictionary & );
     ~EventMulticaster();
 
     boost::asio::io_service & ioservice() { return *_ioServicePtr; }
