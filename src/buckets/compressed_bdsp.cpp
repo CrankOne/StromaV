@@ -29,13 +29,14 @@
 
 namespace sV {
 
-CompressedBucketDispatcher( iCompressor * compressor,
-                            std::ostream * streamPtr,
-                            size_t nMaxKB,
-                            size_t nMaxEvents ) :
+CompressedBucketDispatcher::CompressedBucketDispatcher(
+                iCompressor * compressor,
+                std::ostream * streamPtr,
+                size_t nMaxKB,
+                size_t nMaxEvents ) :
                                     iBucketDispatcher( nMaxKB, nMaxEvents ),
-                                    _compressor(compressor),
-                                    _streamPtr(&streamRef)
+                                    _compressor( compressor ),
+                                    _streamPtr( streamPtr )
                                     // TODO: _deflatedBucket, using arena...
                                     {
     if( nMaxKB ) {
@@ -56,9 +57,11 @@ CompressedBucketDispatcher::~CompressedBucketDispatcher() {
 size_t CompressedBucketDispatcher::compress_bucket() {
     const size_t bucketSize = bucket().ByteSize();
     bucket().SerializeToArray( _srcBuffer, bucketSize );
-    return _compressor->compress_series(
+    size_t compressedSize = _compressor->compress_series(
                 _srcBuffer,     bucketSize,
                 _dstBuffer,     _dstBfSize );
+    _deflatedBucket.set_deflatedcontent( _dstBuffer, compressedSize );
+    return compressedSize;
 }
 
 void CompressedBucketDispatcher::set_metainfo() {
@@ -68,8 +71,7 @@ void CompressedBucketDispatcher::set_metainfo() {
 }
 
 size_t CompressedBucketDispatcher::_V_drop_bucket() {
-    size_t compressedSize = compress_bucket();
-    _deflatedBucket.set_deflatedcontent( _dstBuffer, compressedSize );
+    compress_bucket();
     set_metainfo();
 
     // Write size of the bucket to be dropped into output file
@@ -83,7 +85,7 @@ size_t CompressedBucketDispatcher::_V_drop_bucket() {
     }
     _deflatedBucket.Clear();
 
-    return bucketSize;;
+    return bucket().ByteSize();
 }
 
 uint8_t *
@@ -92,13 +94,13 @@ CompressedBucketDispatcher::alloc_buffer( const size_t size ) {
 }
 
 void
-CompressedBucketDispatcher::realloc_buffer( uint8_t &* buf,
+CompressedBucketDispatcher::realloc_buffer( uint8_t *& buf,
                                             const size_t size) {
-    clear_buffer( buf, size );
+    clear_buffer( buf );
     buf = alloc_buffer( size );
 }
 
-void CompressedBucketDispatcher::clear_buffer( uint8_t &* buf ) {
+void CompressedBucketDispatcher::clear_buffer( uint8_t *& buf ) {
     delete [] buf;
     buf = nullptr;
 }

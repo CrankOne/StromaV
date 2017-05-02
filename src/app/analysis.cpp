@@ -151,23 +151,27 @@ AnalysisApplication::_V_get_options() const {
 void
 AnalysisApplication::_V_configure_concrete_app() {
     if( co()["list-src-formats"].as<bool>() ) {
-        list_readers( std::cout );
+        print_constructables_reference<sV::aux::iEventSequence>( std::cout );
         _immediateExit = true;
     }
     if( co()["list-processors"].as<bool>() ) {
-        list_processors( std::cout );
+        print_constructables_reference<sV::aux::iEventProcessor>( std::cout );
         _immediateExit = true;
     }
     if( !do_immediate_exit()
-                && _readersDict
                 && app_option<std::string>("input-format") != "unset" ) {
-        _evSeq = find_reader( app_option<std::string>("input-format") )();
+        /*_evSeq = sys::IndexOfConstructables::self().construct<sV::aux::iEventSequence>(
+                        app_option<std::string>("input-format"),
+                        TODO )();
+        */
     }
-    if( !do_immediate_exit() && _procsDict ) {
+    if( !do_immediate_exit() ) {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
+            /* TODO
             AnalysisPipeline::push_back_processor( find_processor(*it)() );
+            */
         }
     }
 }

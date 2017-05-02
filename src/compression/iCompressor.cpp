@@ -20,7 +20,8 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "compr/iCompressor.hpp"
+# include "compression/iCompressor.hpp"
+
 # ifdef RPC_PROTOCOLS
 
 namespace sV {

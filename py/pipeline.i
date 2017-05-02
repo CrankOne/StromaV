@@ -1,5 +1,7 @@
 %module pipeline
 
+%nodefaultctor std::type_index;
+
 %ignore PACKAGE_VERSION;
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
@@ -24,11 +26,11 @@
 "build analysis module."
 #endif
 
-#include "analysis/dictionary.hpp"
+#include "ctrs_dict.hpp"
 
 %}
 
 %include "sV_config.h"
 %include "analysis/pipeline.hpp"
-%include "analysis/dictionary.hpp"
+%include "ctrs_dict.hpp"
 

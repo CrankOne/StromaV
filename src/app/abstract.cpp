@@ -60,6 +60,14 @@ namespace sV {
 AbstractApplication::ConstructableConfMapping *
 AbstractApplication::ConstructableConfMapping::_self = nullptr;
 
+AbstractApplication::ConstructableConfMapping &
+AbstractApplication::ConstructableConfMapping::self() {
+    if( _self ) {
+        _self = new AbstractApplication::ConstructableConfMapping();
+    }
+    return *_self;
+}
+
 # if 0
 const char * _static_procName = nullptr;
 void __static_custom_segfault_handler( int signum ) {

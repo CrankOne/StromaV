@@ -20,19 +20,18 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "analysis/dictionary.hpp"
+# include "ctrs_dict.hpp"
 
 # ifdef RPC_PROTOCOLS
 # include "app/app.h"
 
 namespace sV {
-
-// Readers
-/////////
+namespace sys {
 
 IndexOfConstructables * IndexOfConstructables::_self = nullptr;
 
-IndexOfConstructables & IndexOfConstructables::self() {
+IndexOfConstructables &
+IndexOfConstructables::self() {
     if( !_self ) {
         _self = new IndexOfConstructables();
         sV_log3( "New constructors dictionary allocated (%p).\n", _self );
@@ -40,6 +39,17 @@ IndexOfConstructables & IndexOfConstructables::self() {
     return *_self;
 }
 
+const IndexOfConstructables::ConstructablesSection &
+IndexOfConstructables::constructors_for( const std::type_index & tIdx ) const {
+    auto it = _procsCtrDict.find(tIdx);
+    if( _procsCtrDict.end() == it ) {
+        emraise( notFound, "Unable to locate virtual constructors with "
+            "base type hash %zu.", tIdx );
+    }
+    return it->second;
+}
+
+}  // namespace sys
 }  // namespace sV
 
 # endif  // RPC_PROTOCOLS

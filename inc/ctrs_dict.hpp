@@ -27,9 +27,14 @@
 
 # ifdef RPC_PROTOCOLS
 
+# include "app/app.h"
+
 # include <goo_dict/dict.hpp>
 # include <goo_dict/injection.hpp>
 # include <goo_exception.hpp>
+
+# include <typeinfo>
+# include <typeindex>
 
 namespace sV {
 namespace sys {
@@ -112,13 +117,12 @@ public:
 
     /// Returns constructor's dictionary for referenced type. Useful for
     /// runtime inspection of an available types.
-    const ConstructablesSection & constructors_for( std::type_index ) const;  // TODO
+    const ConstructablesSection & constructors_for( const std::type_index & ) const;
 
     /// In-line construct.
     template<typename ConstructableT> ConstructableT *
-    construct( const std::string &, const goo::dict::Dictionary & );  // TODO
+    construct( const std::string &, const goo::dict::Dictionary & );
 };  // class IndexOfConstructables
-
 
 //
 // Implementation
@@ -167,6 +171,19 @@ IndexOfConstructables::find( const std::string & name ) {
     return it->second;
 }
 
+template<typename ConstructableT> ConstructableT *
+IndexOfConstructables::construct(
+                    const std::string & name,
+                    const goo::dict::Dictionary & parameters ) {
+    auto & sect = _get_section<ConstructableT>();
+    auto it = sect.find( name );
+    if( sect.end() == it ) {
+        emraise( notFound, "Has no virtual constructor for entity \"%s\":%s.",
+            name.c_str(), typeid(ConstructableT).name() );
+    }
+    return static_cast<EnumerableEntry<ConstructableT>*>(it->second)
+            ->constructor( parameters );
+}
 
 //
 // Helper macros
@@ -225,6 +242,19 @@ static void __static_register_ ## cxxClassName ## _ctr() {                      
 goo::dict::Dictionary __static_assemble_config_ ## cxxClassName ()
 
 }  // namespace sys
+
+template<typename ConstructableT>
+void print_constructables_reference( std::ostream & os ) {
+    for( auto ctrEntry : sys::IndexOfConstructables::self().known_constructors<ConstructableT>() ) {
+        os  << "   * \"" << ctrEntry.first << "\" " << std::endl;
+        std::list<std::string> lines;
+        ctrEntry.second->arguments.print_ASCII_tree( lines );
+        for( auto line : lines ) {
+            os << "        " << line << std::endl;
+        }
+    }
+}
+
 }  // namespace sV
 
 # endif  // RPC_PROTOCOLS

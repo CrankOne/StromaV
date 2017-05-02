@@ -46,10 +46,10 @@ private:
             ;
     std::ostream * _streamPtr;
 
-    events::Bucket _deflatedBucket;  // TODO: use arena?
+    events::DeflatedBucket _deflatedBucket;  // TODO: use arena?
 protected:
     virtual size_t _V_drop_bucket() override;
-    virtual size_t compress_bucket( const events::DeflatedBucket & );
+    virtual size_t compress_bucket();
 
     virtual uint8_t * alloc_buffer( const size_t size );
     virtual void realloc_buffer( uint8_t *& buf, const size_t size );
@@ -58,7 +58,7 @@ protected:
 protected:
     CompressedBucketDispatcher( iCompressor * compressor,
                                 std::ostream * streamPtr,
-                size_t nMaxKB, size_t nMaxEvents );
+                                size_t nMaxKB, size_t nMaxEvents );
 public:
     CompressedBucketDispatcher( iCompressor * compressor,
                             std::ostream & streamRef,
