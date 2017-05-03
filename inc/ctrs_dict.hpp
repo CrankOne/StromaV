@@ -186,6 +186,23 @@ IndexOfConstructables::construct(
             ->constructor( parameters );
 }
 
+}  // namespace sys
+
+template<typename ConstructableT>
+void print_constructables_reference( std::ostream & os ) {
+    for( auto ctrEntry : sys::IndexOfConstructables::self().known_constructors<ConstructableT>() ) {
+        os  << "   * \"" << ctrEntry.first << "\" " << std::endl;
+        std::list<std::string> lines;
+        ctrEntry.second->arguments.print_ASCII_tree( lines );
+        for( auto line : lines ) {
+            os << "        " << line << std::endl;
+        }
+    }
+}
+
+}  // namespace sV
+
+
 //
 // Helper macros
 
@@ -242,21 +259,22 @@ static void __static_register_ ## cxxClassName ## _ctr() {                      
         constructorName, __static_assemble_config_ ## cxxClassName() ) ); }     \
 goo::dict::Dictionary __static_assemble_config_ ## cxxClassName ()
 
-}  // namespace sys
 
-template<typename ConstructableT>
-void print_constructables_reference( std::ostream & os ) {
-    for( auto ctrEntry : sys::IndexOfConstructables::self().known_constructors<ConstructableT>() ) {
-        os  << "   * \"" << ctrEntry.first << "\" " << std::endl;
-        std::list<std::string> lines;
-        ctrEntry.second->arguments.print_ASCII_tree( lines );
-        for( auto line : lines ) {
-            os << "        " << line << std::endl;
-        }
-    }
-}
-
-}  // namespace sV
+/**@def StromaV_DEFINE_STD_CONSTRUCTABLE
+ * @brief Helper macro summing up \ref StromaV_DEFINE_CONSTRUCTABLE and
+ *        \ref StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR .
+ *
+ * This macro is designed to even more abbreviate virtual ctr definition.
+ * */
+# define StromaV_DEFINE_STD_CONSTRUCTABLE(  cxxClassName,                   \
+                                            name,                           \
+                                            cxxBaseClass )                  \
+StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR( cxxBaseClass,                    \
+                                           cxxClassName )                   \
+StromaV_DEFINE_CONSTRUCTABLE( cxxBaseClass,                                 \
+                        cxxClassName,                                       \
+                        name,                                               \
+                        StromaV_DEFAULT_CONSTRUCTOR_NAME( cxxClassName ) )
 
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_CONSTRUCTORS_DICTIONARY_H

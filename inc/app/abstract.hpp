@@ -94,7 +94,7 @@ public:
 
         template<typename T> void set_basetype_description( const std::string &, const std::string & );
 
-        template<typename T> goo::dict::DictionaryInjectionMap * add_mappings( const std::string & );
+        template<typename T> void add_mappings( const std::string &, const goo::dict::DictionaryInjectionMap & );
 
         const std::map<std::type_index, Mappings> sections() const { return _sections; }
     };
@@ -225,16 +225,16 @@ AbstractApplication::ConstructableConfMapping::_get_section( bool insertNonExist
     return sectionIt->second;
 }
 
-template<typename T> goo::dict::DictionaryInjectionMap *
-AbstractApplication::ConstructableConfMapping::add_mappings( const std::string & name ) {
-    auto mappings = _get_section<T>( true );
-    auto ir = mappings.emplace( name, goo::dict::DictionaryInjectionMap() );
-    if( !ir.first ) {
+template<typename T> void
+AbstractApplication::ConstructableConfMapping::add_mappings(
+                            const std::string & name,
+                            const goo::dict::DictionaryInjectionMap & mps ) {
+    auto & mappings = _get_section<T>( true );
+    auto ir = mappings.emplace( name, mps );
+    if( !ir.second ) {
         sV_logw( "Omitting repeatative definition of config mappings "
             "for \"%s\":%s.\n", name.c_str(), typeid(T).name() );
-        return nullptr;
     }
-    return &(ir.first.second);
 }
 
 template<typename T> void
@@ -257,6 +257,32 @@ AbstractApplication::ConstructableConfMapping::set_basetype_description(
 }
 
 }  // namespace sV
+
+
+/**@def StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF
+ * @brief Helper macro utilizing \ref StromaV_DEFINE_STD_CONSTRUCTABLE with
+ *      minor addendum for referencing common config parameters.
+ *
+ * The expected return type of function definition that has to follow right
+ * after this macro is an std::pair consisting of (own) parameters dictionary
+ * and mapping object. The sV::AbstractApplication::ConstructableConfMapping
+ * will be appended with this mapping object while dictionary will be forwarded
+ * to \ref IndexOfConstructables singleton index as usual for
+ * \ref StromaV_DEFINE_STD_CONSTRUCTABLE.
+ * */
+# define StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF(    cxxClassName,           \
+                                                    name,                   \
+                                                    cxxBaseClassName )      \
+static std::pair<goo::dict::Dictionary, goo::dict::DictionaryInjectionMap>  \
+    __static_shim_ ## cxxClassName ## _ctr_w_mapping();                     \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, cxxBaseClassName ) {  \
+    auto p = __static_shim_ ## cxxClassName ## _ctr_w_mapping();            \
+    sV::AbstractApplication::ConstructableConfMapping::self()               \
+                .add_mappings<cxxBaseClassName>( name, p.second );          \
+    return p.first; }                                                       \
+static std::pair<goo::dict::Dictionary, goo::dict::DictionaryInjectionMap>  \
+    __static_shim_ ## cxxClassName ## _ctr_w_mapping()
+
 
 # endif  // H_STROMA_V_ABSTRACT_APPLICATION_H
 

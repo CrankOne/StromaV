@@ -283,25 +283,25 @@ AbstractApplication::_append_common_config( Config & ) {
                                                         injectionPair.second;
                 auto commonParameterPtr = _configuration.probe_parameter( commonPath );
                 if( !commonParameterPtr ) {
-                    goo::dict::Dictionary & targetSection = _configuration;
+                    goo::dict::Dictionary * targetSectionPtr = &_configuration;
                     // Create parameter by path "commonPath" of type
                     // concreteCfg[ownPath] with modifyed description:
                     std::size_t lDelim = commonPath.rfind( '.' );
                     if( std::string::npos != lDelim ) {
                         std::string sectPath = commonPath.substr(0, lDelim);
                         auto tSectPtr = _configuration.probe_subsection( sectPath );
-                        if( !tSectPtr ) {
-                            targetSection = *tSectPtr;
+                        if( tSectPtr ) {
+                            targetSectionPtr = tSectPtr;
                         } else {
                             _configuration.insertion_proxy()
                                 .bgn_sect( sectPath.c_str(), "" ).end_sect();
-                            targetSection = _configuration.subsection( sectPath );
+                            targetSectionPtr = &(_configuration.subsection( sectPath ));
                         }
                     }
                     if( !entry.transformation ) {
                         // If transformation is not defined, guess identity
                         // mapping and preserve parameter type.
-                        targetSection.insertion_proxy()
+                        targetSectionPtr->insertion_proxy()
                                 .insert_copy_of( concreteCfg.parameter(entry.path) );
                     } else {
                         // If transformation is defined and we're here it

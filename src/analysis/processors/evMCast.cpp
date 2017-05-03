@@ -132,7 +132,7 @@ EventMulticaster::_V_print_brief_summary( std::ostream & os ) const {
     // TODO: ... other stuff
 }
 
-StromaV_ANALYSIS_PROCESSOR_DEFINE( EventMulticaster, "multicast" ) {
+StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventMulticaster, "multicast" ) {
     goo::dict::Dictionary mCastPDict( "mutlicast",
         "This processor performs asynchroneous network multicasting of events "
         "received from analysis pipeline. Parameters are listed at "
@@ -145,11 +145,16 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE( EventMulticaster, "multicast" ) {
         .p<int>( "port",
             "Multicast port number.",
             30001 )
-        .p<size_t>("storageCapacity",
+        .p<size_t>("capacity",
             "Event to be stored. Defines the capacitance of last read events.",
             500)
         ;
-    return mCastPDict;
+        goo::dict::DictionaryInjectionMap injM;
+        injM( "address",        "analysis.processors.multicast.address" )
+            ( "port",           "analysis.processors.multicast.port" )
+            ( "capacity",       "analysis.processors.multicast.capacity" )
+            ;
+    return std::make_pair( mCastPDict, injM );
 }
 
 }  // namespace sV

@@ -89,14 +89,18 @@ public:
 
 }  // namespace sV
 
+/// Shortcut for define virtual ctr for event processing classes without common
+/// config mapping.
 # define StromaV_ANALYSIS_PROCESSOR_DEFINE( cxxClassName,                   \
                                             name )                          \
-StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR( sV::aux::iEventProcessor,        \
-                                           cxxClassName )                   \
-StromaV_DEFINE_CONSTRUCTABLE( sV::aux::iEventProcessor,                     \
-                        cxxClassName,                                       \
-                        name,                                               \
-                        StromaV_DEFAULT_CONSTRUCTOR_NAME( cxxClassName ) )
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::aux::iEventProcessor )
+
+
+/// Shortcut for define virtual ctr for event processing classes with common
+/// config mapping.
+# define StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( cxxClassName,             \
+                                                  name )                    \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::aux::iEventProcessor )
 
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_ANALYSIS_APPLICATION_BASE_H
