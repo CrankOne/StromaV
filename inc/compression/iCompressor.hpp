@@ -26,6 +26,9 @@
 # include "sV_config.h"
 
 # ifdef RPC_PROTOCOLS
+
+# include "app/abstract.hpp"
+
 # include <cstdlib>
 # include <stdint.h>
 
@@ -41,18 +44,30 @@ class iCompressor {
 private :
     const events::CompressionMethod _comprMethod;
 protected :
-    virtual size_t _V_compress_series( uint8_t *, size_t,
+    virtual size_t _V_compress_series( const uint8_t *, size_t,
                                        uint8_t *, size_t ) const = 0;
     iCompressor( events::CompressionMethod comprMethod );
     virtual ~iCompressor();
 public :
-    events::CompressionMethod compr_method() const {return _comprMethod;}
-    size_t compress_series( uint8_t * uncomprBuf, size_t lenUncomprBuf,
+    events::CompressionMethod compr_method() const { return _comprMethod; }
+    size_t compress_series( const uint8_t * uncomprBuf, size_t lenUncomprBuf,
                             uint8_t * comprBuf, size_t lenComprBuf )
                             const;
-};       // class iCompressor
+}; // class iCompressor
 
-}        // namespace sV
+} // namespace sV
+
+
+# define StromaV_COMPRESSOR_DEFINE( cxxClassName,               \
+                                    name )                      \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::iCompressor )
+
+
+# define StromaV_COMPRESSOR_DEFINE_MCONF( cxxClassName,             \
+                                    name )                          \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::iCompressor )
+
+
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_ICOMPRESSOR_H
 

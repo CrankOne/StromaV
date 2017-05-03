@@ -102,6 +102,20 @@ StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::aux::iEventProcessor )
                                                   name )                    \
 StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::aux::iEventProcessor )
 
+
+/// Shortcut for define virtual ctr for event reading classes without common
+/// config mapping.
+# define StromaV_EVENTS_SEQUENCE_DEFINE( cxxClassName,                      \
+                                            name )                          \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::aux::iEventSequence )
+
+
+/// Shortcut for define virtual ctr for event reading classes with common
+/// config mapping.
+# define StromaV_EVENTS_SEQUENCE_DEFINE_MCONF( cxxClassName,                \
+                                                  name )                    \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::aux::iEventSequence )
+
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_ANALYSIS_APPLICATION_BASE_H
 

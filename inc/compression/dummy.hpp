@@ -32,32 +32,32 @@
 # include "event.pb.h"
 
 namespace sV {
+namespace compression {
 
 class DummyCompressor : public iCompressor {
-    public:
-        DummyCompressor();
-        virtual ~DummyCompressor() {};
-    protected:
-        virtual size_t _V_compress_series( uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const override;
-    private:
+protected:
+    virtual size_t _V_compress_series(
+        const uint8_t * uncomprBuf, size_t lenUncomprBuf,
+        uint8_t * comprBuf, size_t ) const override;
+public:
+    DummyCompressor( const goo::dict::Dictionary & );
+    virtual ~DummyCompressor() {};
 };  // class DummyCompressor
 
 
 class DummyDecompressor : public iDecompressor {
-    public:
-        DummyDecompressor();
-        virtual ~DummyDecompressor() {};
-    protected:
-        virtual size_t _V_decompress_series( uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const override;
-    private:
-
+protected:
+    virtual size_t _V_decompress_series(
+        uint8_t * uncomprBuf, size_t lenUncomprBuf,
+        uint8_t * comprBuf, size_t ) const override;
+public:
+    DummyDecompressor( const goo::dict::Dictionary & );
+    virtual ~DummyDecompressor() {};
 };  // class DummyDecompressor
 
-}        // namespace sV
+}  // namespace compression
+}  // namespace sV
+
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
 

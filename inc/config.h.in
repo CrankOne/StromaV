@@ -70,5 +70,9 @@
 #   define safe_cast static_cast
 # endif
 
+#cmakedefine ZLIB_FOUND 1
+#cmakedefine BZIP2_FOUND 2
+#cmakedefine LIBLZMA_FOUND 3
+
 # endif  /* H_STROMA_V_CONFIG_H */
 

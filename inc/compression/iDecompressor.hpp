@@ -37,21 +37,31 @@ namespace events {
 }
 
 class iDecompressor {
-    public:
-        events::CompressionMethod compr_method() const {return _comprMethod;}
-        size_t decompress_series( uint8_t * uncomprBuf, size_t lenUncomprBuf,
-                                  uint8_t * comprBuf, size_t lenComprBuf )
-                                  const;
-    protected:
-        virtual size_t _V_decompress_series( uint8_t *, size_t,
-                                             uint8_t *, size_t) const = 0;
-        iDecompressor( events::CompressionMethod comprMethod);
-        virtual ~iDecompressor();
-    private:
-        const events::CompressionMethod _comprMethod;
+public:
+    events::CompressionMethod compr_method() const {return _comprMethod;}
+    size_t decompress_series(   uint8_t * uncomprBuf, size_t lenUncomprBuf,
+                                uint8_t * comprBuf, size_t lenComprBuf ) const;
+protected:
+    virtual size_t _V_decompress_series( uint8_t *, size_t,
+                                         uint8_t *, size_t) const = 0;
+    iDecompressor( events::CompressionMethod comprMethod);
+    virtual ~iDecompressor();
+private:
+    const events::CompressionMethod _comprMethod;
 };  // class iDecompressor
 
-}        // namespace sV
+} // namespace sV
+
+
+# define StromaV_DECOMPRESSOR_DEFINE(   cxxClassName,               \
+                                        name )                      \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::iDecompressor )
+
+
+# define StromaV_DECOMPRESSOR_DEFINE_MCONF( cxxClassName,               \
+                                    name )                              \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::iDecompressor )
+
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_IDECOMPRESSOR_H
 

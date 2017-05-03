@@ -94,6 +94,7 @@ message DeflatedBucketMetaInfo {
         UNCOMPRESSED = 0;
                 ZLIB = 1;
                  BZ2 = 2;
+                LZMA = 3;
     }
     CompressionMethod comprMethod = 1;
     // ...

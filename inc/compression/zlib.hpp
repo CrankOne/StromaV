@@ -20,27 +20,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+# ifndef H_STROMA_V_ZLIB_COMPRESSOR_H
+# define H_STROMA_V_ZLIB_COMPRESSOR_H
+
+# include "sV_config.h"
+
+# ifdef ZLIB_FOUND 
+
 # include "compression/iCompressor.hpp"
 
-# ifdef RPC_PROTOCOLS
+# include "zlib.h"
 
 namespace sV {
+namespace compression {
 
-iCompressor::iCompressor( events::CompressionMethod comprMethod ) :
-    _comprMethod(comprMethod) {
-}
+// TODO: move to hdr
+class ZLibCompressor : public iCompressor {
+private:
+    mutable z_stream _zstrm;
+protected:
+    virtual size_t _V_compress_series( const uint8_t *, size_t,
+                                       uint8_t *, size_t ) const override;
 
-iCompressor::~iCompressor() {
-}
+public:
+    ZLibCompressor( const goo::dict::Dictionary & );
 
-size_t iCompressor::compress_series(
-            const uint8_t * uncomprBuf, size_t lenUncomprBuf,
-            uint8_t * comprBuf, size_t lenComprBuf) const {
+    static void init_zlib_stram( z_stream & strm );
+};
 
-    return _V_compress_series( uncomprBuf, lenUncomprBuf, comprBuf,
-                    lenComprBuf);
-}
-
+}  // namespace compression
 }  // namespace sV
-# endif  // RPC_PROTOCOLS
+
+# endif  // ZLIB_FOUND
+
+# endif  // H_STROMA_V_ZLIB_COMPRESSOR_H
 

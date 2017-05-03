@@ -202,6 +202,8 @@ if( DOC_HTML )
     find_package( Doxygen REQUIRED )
 endif( DOC_HTML )
 
+# Detector selector micro-language may be generated if BISON/FLEX are
+# available
 if( DSuL )
     find_package(BISON REQUIRED)
     find_package(FLEX REQUIRED)
@@ -214,6 +216,11 @@ if( DSuL )
     ADD_FLEX_BISON_DEPENDENCY(DSuL_Lexer DSuL_Parser)
     #message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
 endif( DSuL )
+
+# Compression formats
+find_package( ZLIB )  # ZLIB_FOUND
+find_package( BZip2 )  # BZIP2_FOUND
+find_package( LibLZMA )  # LIBLZMA_FOUND
 
 #
 # SET-UP BUILD-TIME PARAMETERS
@@ -289,6 +296,7 @@ include_directories( "inc"
                      ${ROOT_INCLUDE_DIRS}
                      ${CMAKE_CURRENT_BINARY_DIR}/inc
                      ${yaml-cpp_INCLUDE_DIRS}
+                     $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
                      $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
@@ -466,6 +474,7 @@ file(GLOB_RECURSE StromaV_LIB_SOURCES src/*.c*)
 
 add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
+        $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_LIBRARIES}>
         $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
         $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
         $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>

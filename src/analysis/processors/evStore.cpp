@@ -68,7 +68,7 @@ EventsStore::_V_process_event( Event * uEvent ){
     return true;
 }
 
-StromaV_ANALYSIS_PROCESSOR_DEFINE( EventsStore, "eventsStore" ) {
+StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
     goo::dict::Dictionary evStorePDict( "eventsStore",
         "StromaV offers a kind of facility to store and retreive serialized "
         "data (usually physical events) based on Google Protocol Buffers. The "
@@ -89,7 +89,13 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE( EventsStore, "eventsStore" ) {
                         "Output file for serialized data.",
                         "/tmp/sV_latest.svbs" )
         ;
-    return evStorePDict;
+    goo::dict::DictionaryInjectionMap injM;
+        injM( "maxBucketSize_kB",       "analysis.processors.store.maxBucketSize_kB" )
+            ( "maxBucketSize_events",   "analysis.processors.store.maxBucketSize_events" )
+            ( "comression",             "analysis.processors.store.comression" )
+            ( "outFile" ,               "analysis.processors.store.outFile" )
+            ;
+    return std::make_pair( evStorePDict, injM );
 }
 
 # if 0

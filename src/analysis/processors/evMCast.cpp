@@ -149,7 +149,7 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventMulticaster, "multicast" ) {
             "Event to be stored. Defines the capacitance of last read events.",
             500)
         ;
-        goo::dict::DictionaryInjectionMap injM;
+    goo::dict::DictionaryInjectionMap injM;
         injM( "address",        "analysis.processors.multicast.address" )
             ( "port",           "analysis.processors.multicast.port" )
             ( "capacity",       "analysis.processors.multicast.capacity" )

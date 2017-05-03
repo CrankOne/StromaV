@@ -24,6 +24,7 @@
 # ifdef RPC_PROTOCOLS
 
 namespace sV {
+namespace compression {
 
 //
 // Compressor
@@ -32,11 +33,10 @@ namespace sV {
 //    typedef DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED UNCOMPRESSED;
 //}
 
-DummyCompressor::DummyCompressor() :
-    iCompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED) {
-}
+DummyCompressor::DummyCompressor( const goo::dict::Dictionary & ) :
+    iCompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED) { }
 
-size_t DummyCompressor::_V_compress_series( uint8_t * uncomprBuf,
+size_t DummyCompressor::_V_compress_series( const uint8_t * uncomprBuf,
             size_t lenUncomprBuf, uint8_t * comprBuf,
             size_t ) const {
     memcpy( comprBuf, uncomprBuf, lenUncomprBuf);
@@ -53,10 +53,9 @@ size_t DummyCompressor::_V_compress_series( uint8_t * uncomprBuf,
 //
 // Decompressor
 
-DummyDecompressor::DummyDecompressor() :
+DummyDecompressor::DummyDecompressor( const goo::dict::Dictionary & ) :
     iDecompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED)
-    {
-}
+    { }
 
 size_t DummyDecompressor::_V_decompress_series(uint8_t * uncomprBuf,
             size_t /*lenUncomprBuf*/, uint8_t * comprBuf,
@@ -71,6 +70,18 @@ size_t DummyDecompressor::_V_decompress_series(uint8_t * uncomprBuf,
     return lenComprBuf;
 }
 
+}  // namespace compression
 }  // namespace sV
+
+using sV::compression::DummyCompressor;
+StromaV_COMPRESSOR_DEFINE( DummyCompressor, "plain" ) {
+    return goo::dict::Dictionary( NULL, "" );
+}
+
+using sV::compression::DummyDecompressor;
+StromaV_DECOMPRESSOR_DEFINE( DummyDecompressor, "plain" ) {
+    return goo::dict::Dictionary( NULL, "" ); 
+}
+
 # endif  // RPC_PROTOCOLS
 
