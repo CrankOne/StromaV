@@ -31,6 +31,8 @@
 # include "iDecompressor.hpp"
 # include "event.pb.h"
 
+# include "ctrs_dict.hpp"
+
 namespace sV {
 namespace compression {
 
@@ -40,6 +42,7 @@ protected:
         const uint8_t * uncomprBuf, size_t lenUncomprBuf,
         uint8_t * comprBuf, size_t ) const override;
 public:
+    DummyCompressor() : iCompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED) {}
     DummyCompressor( const goo::dict::Dictionary & );
     virtual ~DummyCompressor() {};
 };  // class DummyCompressor
@@ -52,6 +55,9 @@ protected:
         uint8_t * comprBuf, size_t ) const override;
 public:
     DummyDecompressor( const goo::dict::Dictionary & );
+    DummyDecompressor( ) :
+        iDecompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED)
+        { }
     virtual ~DummyDecompressor() {};
 };  // class DummyDecompressor
 
