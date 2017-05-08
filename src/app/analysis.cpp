@@ -170,18 +170,13 @@ AnalysisApplication::_V_configure_concrete_app() {
     }
     if( !do_immediate_exit()
                 && app_option<std::string>("input-format") != "unset" ) {
-        /*_evSeq = sys::IndexOfConstructables::self().construct<sV::aux::iEventSequence>(
-                        app_option<std::string>("input-format"),
-                        TODO )();
-        */
+        _evSeq = generic_new<aux::iEventSequence>( app_option<std::string>("input-format") );
     }
     if( !do_immediate_exit() ) {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
-            /* TODO
-            AnalysisPipeline::push_back_processor( find_processor(*it)() );
-            */
+            AnalysisPipeline::push_back_processor( generic_new<aux::iEventProcessor>(*it) );
         }
     }
 }

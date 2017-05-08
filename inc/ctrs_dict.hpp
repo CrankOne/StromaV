@@ -111,7 +111,7 @@ public:
         }
     }
 
-    /// Looks for reader callback pointed out by string.
+    /// Looks for entry. Raises notFound on failure.
     template<typename ConstructableT> const EnumerableEntry<ConstructableT> &
     find( const std::string & );
 
@@ -169,7 +169,7 @@ IndexOfConstructables::find( const std::string & name ) {
         emraise( notFound, "Unable to find constructor for \"%s\" with base type %s.\n",
             name.c_str(), typeid(ConstructableT).name() );
     }
-    return it->second;
+    return *static_cast<IndexOfConstructables::EnumerableEntry<ConstructableT>*>(it->second);
 }
 
 template<typename ConstructableT> ConstructableT *

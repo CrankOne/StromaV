@@ -314,7 +314,25 @@ AbstractApplication::_append_common_config( Config & ) {
                         "added a common config entry." );
                     }
                 } else {
-                    _TODO_  // TODO: compare types for existing parameter
+                    // // compare types for existing parameter
+                    if( commonParameterPtr->target_type_info()
+                        != concreteCfg.parameter( entry.path ).target_type_info() ) {
+                        emraise( inconsistentConfig, "Type mismatch for VCtr "
+                        "configuration dictionaries. Common config already has "
+                        "parameter entry \"%s\" of type %s while the new mapping "
+                        "coming from \"%s\":%s attempted to push parameter with "
+                        "similar common path of type \"%s\" mapped to "
+                        "local configuration path \"%s\".",
+                            commonPath.c_str(), commonParameterPtr->target_type_info().name(),
+                            entryName.c_str(), mappings.baseName.c_str(),
+                            concreteCfg.parameter( entry.path ).target_type_info().name(),
+                            entry.path.c_str() );
+                    }
+                    sV_log3( "Type for existing common config entry \"%s\" "
+                        "matches to new one mapped withing vctr dict of "
+                        "\"%s\"[%s] <- `%s`. Good.\n",
+                        commonPath.c_str(), entryName.c_str(),
+                        entry.path.c_str(), mappings.baseName.c_str() );
                 }
             }
             # if 0

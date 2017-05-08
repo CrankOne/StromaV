@@ -75,7 +75,7 @@ public:
     };  // class ConfigPathInterpolator
 
     /// Class collecting configuration parameters mappings (from common config
-    /// to particular constructible classes). The utilizing usecase is uaually
+    /// to particular constructible classes). The utilizing usecase is actually
     /// restricted to only C++ applications, so we've made it a nested class.
     class ConstructableConfMapping {
     public:
@@ -90,13 +90,24 @@ public:
     protected:
         template<typename T> Mappings & _get_section( bool insertNonExisting=false );
     public:
+        /// Returns a singleton instance of this class.
         static ConstructableConfMapping & self();
 
+        /// Sets description for particular base type.
         template<typename T> void set_basetype_description( const std::string &, const std::string & );
 
+        /// Inserts new config mapping for particular virtual ctr.
         template<typename T> void add_mappings( const std::string &, const goo::dict::DictionaryInjectionMap & );
 
+        /// Returns config mapping dictionary.
         const std::map<std::type_index, Mappings> sections() const { return _sections; }
+
+        /// Produces own config dictionary according to mappings from common
+        /// one.
+        template<typename T> void own_conf_for(
+                        const std::string &,
+                        const goo::dict::Dictionary &,
+                        goo::dict::Dictionary & );
     };
 protected:
     std::map<std::string, std::string> _envVarsDocs;
@@ -196,8 +207,11 @@ public:
         return _appCfg->parameter(name.c_str()).as_list_of<T>();
     }
 
+    /// Returns reference to common config object.
     const Config & common_co() const { return _configuration; }
 
+    /// Returns value of "immediate exit" flag that is used during
+    /// configuration stage.
     bool do_immediate_exit() const { return _immediateExit; }
 
     /// Returns pointer to common boost::io_service instance
@@ -206,6 +220,20 @@ public:
 
     uint8_t ROOT_features() const { return _ROOTAppFeatures; }
 };  // AbstractApplication
+
+/// Constructs a new instance with its virtual ctr using common config
+/// and defined mappings.
+template<typename T> T *
+generic_new( const std::string & name ) {
+    const auto & vctrEntry = sV::sys::IndexOfConstructables::self().find<T>( name );
+    goo::dict::Dictionary ownCfg( vctrEntry.arguments );
+    AbstractApplication::ConstructableConfMapping::self()
+            .own_conf_for<T>( name, goo::app<AbstractApplication>().common_co(),
+                                    ownCfg );
+    // TODO: make dev option to dump ownCfg before sending it to the particular
+    // ctr.
+    return vctrEntry.constructor( ownCfg );
+}
 
 
 template<typename T>
@@ -255,6 +283,30 @@ AbstractApplication::ConstructableConfMapping::set_basetype_description(
     }
     mappings.baseDescription = baseDescription;
 }
+
+template<typename T> void
+AbstractApplication::ConstructableConfMapping::own_conf_for(
+                        const std::string & nm,
+                        const goo::dict::Dictionary & commonCfg,
+                        goo::dict::Dictionary & dest ) {
+    auto injsIt = _sections.find( typeid(T) );
+    if( _sections.end() == injsIt ) {
+        emraise( notFound, "Has no config options mappings for base type "
+            "\"%s\".", typeid(T).name() );
+    }
+    const Mappings & injs = injsIt->second;
+    auto injIt = injs.find( nm );
+    if( injs.end() == injIt ) {
+        emraise( notFound, "Has no config options mappings for \"%s\" "
+            "virtual constructor type of base \"%s\".",
+            nm.c_str(), typeid(T).name() );
+    }
+    const Injection & inj = injIt->second;
+
+    inj.inject_parameters( commonCfg, dest );
+}
+
+template<typename T> T * generic_new( const std::string & );
 
 }  // namespace sV
 

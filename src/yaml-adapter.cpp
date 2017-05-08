@@ -112,7 +112,7 @@ read_yaml_node_to_goo_list( goo::dict::iSingularParameter & genList,
             emraise( badParameter, "sV YAML config parser doesn't support "
                 "list entries other than scalar values." );
         }
-        genList.parse_argument( subNode.second.as<std::string>().c_str() );
+        genList.parse_argument( subNode.as<std::string>().c_str() );
     }
 }
 
