@@ -230,8 +230,14 @@ generic_new( const std::string & name ) {
     AbstractApplication::ConstructableConfMapping::self()
             .own_conf_for<T>( name, goo::app<AbstractApplication>().common_co(),
                                     ownCfg );
-    // TODO: make dev option to dump ownCfg before sending it to the particular
-    // ctr.
+    if( goo::app<AbstractApplication>().verbosity() > 2 ) {
+        sV_log3( "generic_new(): own config for \"%s\":\n", name.c_str() );
+        std::list<std::string> lst;
+        ownCfg.print_ASCII_tree( lst );
+        for( auto line : lst ) {
+            sV_log3( "    %s\n", line.c_str() );
+        }
+    }
     return vctrEntry.constructor( ownCfg );
 }
 

@@ -214,6 +214,8 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         sV_logw("Verbosity level %d was set.\n", (int) _verbosity);
     }
 
+    // TODO: acquire IO streams here!
+
     auto & ll = conf["load-module"].as_list_of<goo::filesystem::Path>();
     for( const goo::filesystem::Path & dlPath : ll ) {
         dlPath.interpolator( path_interpolator() );
@@ -578,6 +580,10 @@ AbstractApplication::_set_common_option( const std::string & path,
         .goo::dict::Dictionary::parameter( path.c_str() )
         .parse_argument( strVal.c_str() )
         ;
+    sV_log3( "Option \"%s\" overriden from command line with \"%s\".\n",
+        path.c_str(), _configuration
+            .goo::dict::Dictionary::parameter( path.c_str() )
+            .to_string().c_str() );
 }
 
 void
@@ -640,11 +646,14 @@ AbstractApplication::message( int8_t level, const std::string msg, bool noprefix
     if( level <= verbosity() ) {
         const char noprefixPrefix[] = "";
         const char * prefix = noprefix ? noprefixPrefix : _get_prefix_for_loglevel(level);
-        std::ostream * os = &(level > 0 ? ls() : es());
+        std::ostream * os;
+        if( level < 0 ) {
+            os = &(es());
+        } else {
+            os = &( ls_is_set() ? ls() : std::cout );
+        }
         *os << prefix << msg;
-        //if( level < 0 ) {
         os->flush();
-        //}
     }
 }
 
