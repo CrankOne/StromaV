@@ -29,14 +29,14 @@ namespace sV {
 namespace compression {
 
 void
-ZLibCompressor::init_zlib_stram( z_stream & strm ) {
+ZLibCompression::init_zlib_stream( z_stream & strm ) {
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
 }
 
-ZLibCompressor::ZLibCompressor( const goo::dict::Dictionary & parameters ) :
-        iCompressor( events::DeflatedBucketMetaInfo_CompressionMethod_ZLIB ) {
+ZLibCompression::ZLibCompression( const goo::dict::Dictionary & parameters ) :
+        iCompressor( "zlib" ) {
     int comprsnLvl;
     const std::string strComprLvl = parameters["level"].as<std::string>();
     if( "Z_DEFAULT_COMPRESSION" == strComprLvl ) {
@@ -51,7 +51,7 @@ ZLibCompressor::ZLibCompressor( const goo::dict::Dictionary & parameters ) :
         comprsnLvl = atoi( strComprLvl.c_str() );
     }
     int rc;
-    init_zlib_stram( _zstrm );
+    init_zlib_stream( _zstrm );
     rc = deflateInit( &_zstrm, comprsnLvl );
     if( rc != Z_OK ) {
         emraise( thirdParty, "Failed to initialize zlib stream for deflating. "
@@ -60,8 +60,13 @@ ZLibCompressor::ZLibCompressor( const goo::dict::Dictionary & parameters ) :
 }
 
 size_t
-ZLibCompressor::_V_compress_series( const uint8_t * src, size_t srcLen,
-                                    uint8_t * dst, size_t dstMaxLen ) const {
+ZLibCompression::_V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const {
+    return deflateBound( const_cast<z_stream *>(&_zstrm), n );
+}
+
+size_t
+ZLibCompression::_V_compress_series( const uint8_t * src, size_t srcLen,
+                                    uint8_t * dst, size_t dstMaxLen ) {
     int rc;
 
     if( deflateBound( &_zstrm, srcLen ) > dstMaxLen ) {
@@ -71,7 +76,7 @@ ZLibCompressor::_V_compress_series( const uint8_t * src, size_t srcLen,
     }
 
     _zstrm.avail_in = srcLen;
-    _zstrm.next_in = const_cast<uint8_t *>(src);
+    _zstrm.next_in = const_cast<uint8_t *>(src);  // gah, kludge
     _zstrm.avail_out = dstMaxLen;
     _zstrm.next_out = dst;
     rc = deflate( &_zstrm, Z_FINISH );
@@ -94,8 +99,8 @@ ZLibCompressor::_V_compress_series( const uint8_t * src, size_t srcLen,
 }  // namespace compression
 }  // namespace sV
 
-using sV::compression::ZLibCompressor;
-StromaV_COMPRESSOR_DEFINE_MCONF( ZLibCompressor, "zlib" ) {
+using sV::compression::ZLibCompression;
+StromaV_COMPRESSOR_DEFINE_MCONF( ZLibCompression, "zlib" ) {
     goo::dict::Dictionary zlibCmprssnDct( "zlib",
         "ZLib compressor algorithm with incapsulated reentrant stream "
         "instance and adjustible compression level." );
@@ -106,7 +111,7 @@ StromaV_COMPRESSOR_DEFINE_MCONF( ZLibCompressor, "zlib" ) {
             "Z_BEST_COMPRESSION [=9], Z_NO_COMPRESSION [=0].",
         "Z_DEFAULT_COMPRESSION");
     goo::dict::DictionaryInjectionMap injM;
-        injM( "level", "compressor.zlib.level" );
+        injM( "level", "compressors.zlib.level" );
     return std::make_pair( zlibCmprssnDct, injM ); 
 }
 

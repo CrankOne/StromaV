@@ -35,18 +35,19 @@
 namespace sV {
 namespace compression {
 
-// TODO: move to hdr
-class ZLibCompressor : public iCompressor {
+class ZLibCompression : public iCompressor {
 private:
-    mutable z_stream _zstrm;
+    z_stream _zstrm;
 protected:
     virtual size_t _V_compress_series( const uint8_t *, size_t,
-                                       uint8_t *, size_t ) const override;
+                                       uint8_t *, size_t ) override;
 
+    virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const override;
 public:
-    ZLibCompressor( const goo::dict::Dictionary & );
+    ZLibCompression( const goo::dict::Dictionary & );
 
-    static void init_zlib_stram( z_stream & strm );
+    /// A helper function, common to merely all ZLib routines.
+    static void init_zlib_stream( z_stream & strm );
 };
 
 }  // namespace compression

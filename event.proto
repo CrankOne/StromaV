@@ -90,20 +90,14 @@ message Bucket {
 }
 
 message DeflatedBucketMetaInfo {
-    enum CompressionMethod {
-        UNCOMPRESSED = 0;
-                ZLIB = 1;
-                 BZ2 = 2;
-                LZMA = 3;
-    }
-    CompressionMethod comprMethod = 1;
-    // ...
-    google.protobuf.Any suppInfo = 15;
+    google.protobuf.Any suppInfo = 1;
+    string compressionAlgo = 3;
+    google.protobuf.Any compressionParameters = 5;
 }
 
 message DeflatedBucket {
-    DeflatedBucketMetaInfo  metainfo = 1;
-    bytes                   deflatedContent = 2;
+    DeflatedBucketMetaInfo metainfo = 1;
+    bytes deflatedContent = 2;
 }
 
 // Misc

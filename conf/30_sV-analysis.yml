@@ -22,12 +22,13 @@
 ---
 
 analysis:
-    multicast:
-        capacity: 500
-        port: 30001
-        address: 239.255.0.1
-    store:
-        compression: plain
-        maxBucketSize_events: 1000
-        maxBucketSize_kB: 5120
+    processors:
+        multicast:
+            capacity: 500
+            port: 30001
+            address: 239.255.0.1
+        store:
+            compression: trivial
+            maxBucketSize_events: 1000
+            maxBucketSize_kB: 5120
 

@@ -45,7 +45,8 @@ namespace dprocessors {
  * This class uses \ref iBucketDispatcher interface to perform high-level
  * version of write-back caching.
  * */
-class EventsStore : public AnalysisPipeline::iEventProcessor {
+class EventsStore : public AnalysisPipeline::iEventProcessor,
+                    public sV::AbstractApplication::ASCII_Entry {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
@@ -53,6 +54,8 @@ protected:
     sV::iBucketDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
     std::fstream _file;
+
+    void _update_stat();
 public:
     EventsStore( const std::string & pn,
                  const std::string & outFileName,

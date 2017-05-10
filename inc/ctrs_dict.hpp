@@ -95,7 +95,7 @@ public:
     /// Returns whether or not any constructable was registered.
     static bool empty() { return !_self; }
 
-    /// Inserts reader callback.
+    /// Inserts ctr callback.
     template<typename ConstructableT> void add_constructor(
                 const std::string &, EnumerableEntry<ConstructableT> * );
 

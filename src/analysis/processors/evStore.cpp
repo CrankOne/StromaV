@@ -27,7 +27,6 @@
 
 # include "ctrs_dict.hpp"
 # include "buckets/compressed_bdsp.hpp"
-# include "compression/dummy.hpp"
 
 # include <goo_dict/parameters/path_parameter.hpp>
 
@@ -37,24 +36,22 @@ namespace dprocessors {
 EventsStore::EventsStore(   const std::string & pn,
                             const std::string & filename,
                             sV::iBucketDispatcher * bucketDispatcher) :
-                AnalysisPipeline::iEventProcessor( pn ) {
+                AnalysisPipeline::iEventProcessor( pn ),
+                ASCII_Entry( goo::aux::iApp::exists() ?
+                            &goo::app<AbstractApplication>() : nullptr, 1 ) {
     _file.open( filename, std::ios::out | std::ios::binary | std::ios::app );
     _bucketDispatcher = bucketDispatcher;
 }
 
 EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
                     iEventProcessor( "eventsStore" ),
+                    ASCII_Entry( goo::aux::iApp::exists() ?
+                            &goo::app<AbstractApplication>() : nullptr, 1 ),
                     _file(  dct["outFile"].as<goo::filesystem::Path>(),
                             std::ios::out | std::ios::binary | std::ios::app ) {
     const std::string compressionMethodName =
-                dct["compression-method"].as<std::string>();
-    const goo::dict::Dictionary & compressionParameters = 
-                goo::app<sV::AbstractApplication>()
-                .common_co()
-                .subsection( "compressors." + compressionMethodName );
-    iCompressor * cmprPtr = sV::sys::IndexOfConstructables::self().construct<iCompressor>(
-                compressionMethodName,
-                compressionParameters );
+                dct["compression"].as<std::string>();
+    iCompressor * cmprPtr = sV::generic_new<iCompressor>( compressionMethodName );
     _bucketDispatcher = new CompressedBucketDispatcher( cmprPtr, _file,
                 dct["maxBucketSize_kB"].as<uint32_t>(),
                 dct["maxBucketSize_events"].as<uint32_t>() );
@@ -65,7 +62,23 @@ EventsStore::~EventsStore() {}
 bool
 EventsStore::_V_process_event( Event * uEvent ){
     _bucketDispatcher->push_event( *(uEvent) );
+    _update_stat();
     return true;
+}
+
+void
+EventsStore::_update_stat() {
+    if( !can_acquire_display_buffer() ) return;
+    char ** lines = my_ascii_display_buffer();
+    assert( lines[0] && !]ines[1] );
+
+    size_t kbFilled = _bucketDispatcher->n_bytes()/1024;
+    snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
+            "Bucket: %.2f KB/event %zu / %zu events, %zu / %zu Kbytes",
+            ( _bucketDispatcher->n_events() ? double(kbFilled)/_bucketDispatcher->n_events() : 0 ),
+            _bucketDispatcher->n_events(), _bucketDispatcher->n_max_events(),
+            kbFilled, _bucketDispatcher->n_max_KB() );
+    // ...
 }
 
 StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
@@ -82,7 +95,7 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
         .p<uint32_t>("maxBucketSize_events",
                         "Maximum bucket capacity (number of enents). 0 disables "
                         "criterion.", 0)
-        .p<std::string>("comression",
+        .p<std::string>("compression",
                         "Algorithm name for compressing buckets.",
                         "bz2")
         .p<goo::filesystem::Path>("outFile",
@@ -92,7 +105,7 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
     goo::dict::DictionaryInjectionMap injM;
         injM( "maxBucketSize_kB",       "analysis.processors.store.maxBucketSize_kB" )
             ( "maxBucketSize_events",   "analysis.processors.store.maxBucketSize_events" )
-            ( "comression",             "analysis.processors.store.comression" )
+            ( "compression",            "analysis.processors.store.compression" )
             ( "outFile" ,               "analysis.processors.store.outFile" )
             ;
     return std::make_pair( evStorePDict, injM );
@@ -112,7 +125,7 @@ StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
         .p<uint32_t>("maxBucketSize_events",
                         "Maximum bucket capacity (number of enents). 0 --- "
                         "criterion not used.", 0)
-        .p<std::string>("comression",
+        .p<std::string>("compression",
                         "Algorithm name for compressing buckets.",
                         "bz2")
         .p<std::string>("outFile",

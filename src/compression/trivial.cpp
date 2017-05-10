@@ -20,7 +20,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "compression/dummy.hpp"
+
+# include "compression/trivial.hpp"
+
 # ifdef RPC_PROTOCOLS
 
 namespace sV {
@@ -29,58 +31,55 @@ namespace compression {
 //
 // Compressor
 
-//namespace events {
-//    typedef DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED UNCOMPRESSED;
-//}
-
-DummyCompressor::DummyCompressor( const goo::dict::Dictionary & ) :
-    iCompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED) { }
-
-size_t DummyCompressor::_V_compress_series( const uint8_t * uncomprBuf,
-            size_t lenUncomprBuf, uint8_t * comprBuf,
-            size_t ) const {
-    memcpy( comprBuf, uncomprBuf, lenUncomprBuf);
+size_t
+TrivialCompression::_V_compress_series(
+            const uint8_t * input, size_t inLen,
+            uint8_t * output, size_t ) {
+    assert( outMaxLen >= inLen );
+    memcpy( output, input, inLen );
     // _V_compress_series() should return real length of compressed series
     // (not lenComprBuf, because lenComprBuf is a allocated memory for
     // compressed data and real size of this compressed data could be
     // different).
     // Here it returns lenUncomprBuf, cause in fact DummyCompressor doesn't
     // compress series and in this case real length equal to lenUncomprBuf.
-    return lenUncomprBuf;
+    return inLen;
 }
 
 
 //
 // Decompressor
 
-DummyDecompressor::DummyDecompressor( const goo::dict::Dictionary & ) :
-    iDecompressor(events::DeflatedBucketMetaInfo_CompressionMethod_UNCOMPRESSED)
-    { }
-
-size_t DummyDecompressor::_V_decompress_series(uint8_t * uncomprBuf,
-            size_t /*lenUncomprBuf*/, uint8_t * comprBuf,
-            size_t lenComprBuf) const {
-    memcpy( uncomprBuf, comprBuf, lenComprBuf);
+size_t
+TrivialCompression::_V_decompress_series(
+            const uint8_t * input, size_t inLen,
+            uint8_t * output, size_t ) {
+    assert( outMaxLen >= inLen );
+    memcpy( output, input, inLen );
     // _V_decompress_series() should return real length of decompressed series
     // (not lenUncomprBuf, because lenUncomprBuf is a allocated memory for
     // decompressed data and real size of this decompressed data could be
     // different).
     // Here it returns lenComprBuf, cause in fact DummyDecompressor doesn't
     // decompress series and in this case real length equal to lenComprBuf.
-    return lenComprBuf;
+    return inLen;
 }
 
 }  // namespace compression
 }  // namespace sV
 
-using sV::compression::DummyCompressor;
-StromaV_COMPRESSOR_DEFINE( DummyCompressor, "plain" ) {
+namespace sV_internal_1 {
+using sV::compression::TrivialCompression;
+StromaV_COMPRESSOR_DEFINE( TrivialCompression, "trivial" ) {
     return goo::dict::Dictionary( NULL, "" );
 }
+}
 
-using sV::compression::DummyDecompressor;
-StromaV_DECOMPRESSOR_DEFINE( DummyDecompressor, "plain" ) {
+namespace sV_internal_2 {
+using sV::compression::TrivialCompression;
+StromaV_DECOMPRESSOR_DEFINE( TrivialCompression, "trivial" ) {
     return goo::dict::Dictionary( NULL, "" ); 
+}
 }
 
 # endif  // RPC_PROTOCOLS

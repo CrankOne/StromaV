@@ -46,27 +46,27 @@ private:
             ;
     std::ostream * _streamPtr;
 
-    events::DeflatedBucket _deflatedBucket;  // TODO: use arena?
+    events::DeflatedBucket * _deflatedBucketPtr;
 protected:
     virtual size_t _V_drop_bucket() override;
-    virtual size_t compress_bucket();
 
-    virtual uint8_t * alloc_buffer( const size_t size );
-    virtual void realloc_buffer( uint8_t *& buf, const size_t size );
-    virtual void clear_buffer( uint8_t *& buf );
-    virtual void set_metainfo();
+    virtual size_t _compress_bucket();
+    virtual uint8_t * _alloc_buffer( const size_t size );
+    virtual void _realloc_buffer( uint8_t *& buf, const size_t size );
+    virtual void _clear_buffer( uint8_t *& buf );
+    virtual void _set_metainfo();
 protected:
     CompressedBucketDispatcher( iCompressor * compressor,
                                 std::ostream * streamPtr,
                                 size_t nMaxKB, size_t nMaxEvents );
 public:
     CompressedBucketDispatcher( iCompressor * compressor,
-                            std::ostream & streamRef,
-                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+                                std::ostream & streamRef,
+                                size_t nMaxKB=0, size_t nMaxEvents=0 ) :
             CompressedBucketDispatcher( compressor, &streamRef, nMaxKB, nMaxEvents ) {}
 
     CompressedBucketDispatcher( iCompressor * compressor,
-                                    size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+                                size_t nMaxKB=0, size_t nMaxEvents=0 ) :
             CompressedBucketDispatcher( compressor, nullptr, nMaxKB, nMaxEvents ) {}
 
     virtual ~CompressedBucketDispatcher();

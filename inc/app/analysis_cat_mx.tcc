@@ -110,12 +110,9 @@ ThematicDirectoryStructure<HashKeyT, CategoryKeyT, CategorizedEntryT>::consider_
         auto itDir = _subdirs.find( dirKey );
         // if directory not found, create it inside our local root directory:
         if( _subdirs.end() == itDir ) {
-            # if 0
-            std::cout << "Directory doesn't exist: "
-                      << _V_get_category_name(dirKey)
-                      << "(" << (int) k << ":" << (int) dirKey << ")"
-                      << std::endl;
-            # endif
+            sV_log3( "%p detector catalogue: directory \"%s\" "
+                    "(cathegory=%0x:dirKey=%0x) doesn't exist.\n",
+                    this, _V_get_category_name(dirKey), (int) k, (int) dirKey );
             // check, if local root actually exists, and create it if not:
             if( !_tCategoryDir ) {
                 if( gFile && !_rootDirectoryName.empty() ) {
@@ -125,27 +122,40 @@ ThematicDirectoryStructure<HashKeyT, CategoryKeyT, CategorizedEntryT>::consider_
                     std::cout << "Root directory \"" << _rootDirectoryName << "\" created." << std::endl;
                     # endif
                 } else {
-                    emraise( badState, "Couldn't operate with directory \"%s\" since this name is empty, "
-                    "or no ROOT file is opened.", _rootDirectoryName.c_str() );
+                    emraise( badState, "Couldn't operate with directory \"%s\" "
+                        "since this name is empty, or no ROOT file is opened.",
+                        _rootDirectoryName.c_str() );
                 }
             }
+            TDirectory * newDir;
+            const char * dirName = _V_get_category_name( dirKey );
+            if( ! (newDir = _tCategoryDir->GetDirectory( dirName )) ) {
+                newDir = _tCategoryDir->mkdir( dirName );
+                if( !newDir ) {
+                    emraise( ioError, "ROOT was unable to create dir \"%s/%s\".",
+                        _rootDirectoryName.c_str(), dirName );
+                }
+            } else {
+                // This probably means that several detectors with different
+                // family numbers share the same "family name". That's ok for
+                // some cases (e.g. for "misc"). At this case we will try to
+                // locate already created dir and associate this number with
+                // it.
+                sV_logw( "TDirectory \"%s\" already exists. The entry "
+                    "family %0x will be dropped into it with other "
+                    "family(ies).\n", dirName, (int) dirKey );
+            }
             // create and register family directory:
-            auto insertionResut = _subdirs.emplace(
-                    dirKey,
-                    _tCategoryDir->mkdir( _V_get_category_name( dirKey ) )
-                );
+            auto insertionResut = _subdirs.emplace( dirKey, newDir );
             if( !insertionResut.second ) {
                 emraise( malformedArguments, "Couldn't create TDirectory \"%s\" inside \"%s\".",
-                            _V_get_category_name( dirKey ),
+                            dirName,
                             _rootDirectoryName.c_str()
                         );
             }
-            # if 0
-            std::cout << "Directory created: "
-                      << "(" << (int) k << ":" << (int) dirKey << ")"
-                      << _V_get_category_name(dirKey)
-                      << std::endl;
-            # endif
+            sV_log3( "%p detector catalogue: TDirectory \"%s\" "
+                    "association established with (cathegory=%0x:dirKey=%0x).\n",
+                    this, _V_get_category_name(dirKey), (int) k, (int) dirKey );
             itDir = insertionResut.first;
         }
         (*itDir).second->cd();

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
- * Author: Renat R. Dusaev <crank@qcrypt.org>
  * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ * Author: Renat R. Dusaev <crank@qcrypt.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -32,22 +32,49 @@
 
 namespace sV {
 
-namespace events {
-    typedef DeflatedBucketMetaInfo_CompressionMethod CompressionMethod;
-}
-
+/**@brief A compression algorithm interface for compression routine.
+ * @class iCompressor
+ *
+ * Various compression algorithms are used by sV for in-memory compression of
+ * data chunks. This class provides a generic interface that has to be
+ * implemented by specific algorithms.
+ *
+ * The common trait of the most of existing algorithms performing in-memory
+ * compression is that they use input buffer of known length to predict maximal
+ * length of output buffer. This trait has to be expressed with
+ * _V_dest_buffer_len() interfacing method.
+ *
+ * This interface class is complementary to iDecompressor.
+ * */
 class iDecompressor {
-public:
-    events::CompressionMethod compr_method() const {return _comprMethod;}
-    size_t decompress_series(   uint8_t * uncomprBuf, size_t lenUncomprBuf,
-                                uint8_t * comprBuf, size_t lenComprBuf ) const;
-protected:
-    virtual size_t _V_decompress_series( uint8_t *, size_t,
-                                         uint8_t *, size_t) const = 0;
-    iDecompressor( events::CompressionMethod comprMethod);
-    virtual ~iDecompressor();
 private:
-    const events::CompressionMethod _comprMethod;
+    const std::string _compressionAlgo;
+protected:
+    /// (IM) Has to perform the decompression using input bytes of length
+    /// inLen into the output buffer of maximal length outMaxLen. Has to return
+    /// number of bytes in output buffer that is occupied by decompressed data.
+    virtual size_t _V_decompress_series( const uint8_t * input, size_t inLen,
+                                         uint8_t * output, size_t outMaxLen ) = 0;
+
+    /// (IM) Has to return desired length of output buffer for decompressed
+    /// series basing on input buffer length.
+    virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t ) const = 0;
+public:
+    iDecompressor( const std::string & ca ) : _compressionAlgo( ca ) {}
+    virtual ~iDecompressor() {}
+
+    /// Returns string describing current compression algorithm.
+    const std::string & algorithm() const
+                { return _compressionAlgo; }
+
+    /// Returns desired length for output buffer.
+    size_t decompressed_dest_buffer_len( const uint8_t * inbf, size_t inLen ) const
+                { return _V_decompressed_dest_buffer_len( inbf, inLen ); }
+
+    /// Performs decompression of input series into output buffer.
+    size_t decompress_series( const uint8_t * input, size_t inLen,
+                              uint8_t * output, size_t outMaxLen ) {
+        return _V_decompress_series( input, inLen, output, outMaxLen ); }
 };  // class iDecompressor
 
 } // namespace sV

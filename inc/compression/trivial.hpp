@@ -20,27 +20,49 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "compression/iCompressor.hpp"
+# ifndef H_STROMA_V_DUMMYCOMPRESSOR_H
+# define H_STROMA_V_DUMMYCOMPRESSOR_H
+
+# include "sV_config.h"
 
 # ifdef RPC_PROTOCOLS
 
+# include "iCompressor.hpp"
+# include "iDecompressor.hpp"
+# include "event.pb.h"
+
+# include "ctrs_dict.hpp"
+
 namespace sV {
+namespace compression {
 
-iCompressor::iCompressor( events::CompressionMethod comprMethod ) :
-    _comprMethod(comprMethod) {
-}
+class TrivialCompression :  public iCompressor,
+                            public iDecompressor {
+protected:
+    virtual size_t _V_compress_series(
+            const uint8_t *, size_t,
+            uint8_t *, size_t ) override;
 
-iCompressor::~iCompressor() {
-}
+    virtual size_t _V_decompress_series(
+            const uint8_t *, size_t,
+            uint8_t *, size_t ) override;
 
-size_t iCompressor::compress_series(
-            const uint8_t * uncomprBuf, size_t lenUncomprBuf,
-            uint8_t * comprBuf, size_t lenComprBuf) const {
+    virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const override
+                { return n; }
+    virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t n ) const override
+                { return n; }
+public:
+    TrivialCompression() : iCompressor("trivial"),
+                           iDecompressor("trivial") {}
+    TrivialCompression( const goo::dict::Dictionary & ) :
+                            iCompressor("trivial"),
+                            iDecompressor("trivial") {}
+    virtual ~TrivialCompression() {};
+};  // class DummyCompressor
 
-    return _V_compress_series( uncomprBuf, lenUncomprBuf, comprBuf,
-                    lenComprBuf);
-}
-
+}  // namespace compression
 }  // namespace sV
+
 # endif  // RPC_PROTOCOLS
+# endif  // H_STROMA_V_DUMMYCOMPRESSOR_H
 
