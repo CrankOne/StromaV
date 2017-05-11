@@ -44,7 +44,9 @@ iBucketDispatcher::~iBucketDispatcher() {
 }
 
 size_t iBucketDispatcher::drop_bucket() {
-    return _V_drop_bucket();
+    size_t ret = _V_drop_bucket();
+    clear_bucket();
+    return ret;
 }
 
 void iBucketDispatcher::clear_bucket() {
@@ -79,7 +81,7 @@ void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
         std::cout << " events size: " << _currentBucket.events_size();
         std::cout << " max event size: "<< _nMaxEvents << std::endl;
         # endif
-        _V_drop_bucket();
+        drop_bucket();
         // _currentBucket.Clear();  // move this call to _V_drop_bucket() ?
         //                          // is it already moved?
     }

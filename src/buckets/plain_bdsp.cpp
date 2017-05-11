@@ -62,7 +62,6 @@ size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
     }
     //std::cout << "Drop size bytes: " << n_bytes() << std::endl;
     //std::cout << "Drop size events: " << n_events() << std::endl;
-    clear_bucket();
     return bucketSize;;
 }
 

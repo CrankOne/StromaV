@@ -63,7 +63,7 @@ CompressedBucketDispatcher::~CompressedBucketDispatcher() {
 size_t CompressedBucketDispatcher::_compress_bucket() {
     const size_t origSize = bucket().ByteSize();
     assert( _srcBuffer );
-    if( origSize ) {
+    if( !origSize ) {
         return 0;
     }
     // Realloc src buf if need:
@@ -108,7 +108,6 @@ size_t CompressedBucketDispatcher::_V_drop_bucket() {
             _deflatedBucketPtr->ByteSize(), _streamPtr );
     }
     _deflatedBucketPtr->Clear();
-
     return bucket().ByteSize();
 }
 
