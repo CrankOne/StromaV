@@ -24,7 +24,7 @@
 
 # ifdef RPC_PROTOCOLS
 
-# include <iostream>
+# include "goo_exception.hpp"
 
 namespace sV {
 
@@ -49,19 +49,17 @@ size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
         _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
         // Then write the bucket
         //std::cout << "Drop size before bucket bytes: " << bucketSize << std::endl;
-        if (!_currentBucket.SerializeToOstream(&_streamRef)) {
-            std::cerr << "Failed to serialize into stream." << std::endl;
-            return EXIT_FAILURE;
-        }
-        else {
+        if( !bucket().SerializeToOstream(&_streamRef) ) {
+            //std::cerr << "Failed to serialize into stream." << std::endl;
+            //return EXIT_FAILURE;
+            _TODO_  // TODO: emraise
         }
     }
     else {
-        std::cerr << "Stream for serialized output isn't good." << std::endl;
-        return EXIT_FAILURE;
+        //std::cerr << "Stream for serialized output isn't good." << std::endl;
+        //return EXIT_FAILURE;
+        _TODO_  // TODO: emraise
     }
-    //std::cout << "Drop size bytes: " << n_bytes() << std::endl;
-    //std::cout << "Drop size events: " << n_events() << std::endl;
     return bucketSize;;
 }
 

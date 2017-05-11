@@ -24,21 +24,23 @@
 
 # ifdef RPC_PROTOCOLS
 
+# include "app/mixins/protobuf.hpp"
+
 # include "event.pb.h"
+
 # include <iostream>
 // # include <fstream>
 
 namespace sV {
 
-iBucketDispatcher::iBucketDispatcher(
-        size_t nMaxKB,
-        size_t nMaxEvents ) :
-    _nMaxKB(nMaxKB),
-    _nMaxEvents(nMaxEvents) {
-};
+iBucketDispatcher::iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents ) :
+                            _nBytesMax(nMaxKB*1024), _nMaxEvents(nMaxEvents),
+                            _rawBucketPtr(
+                                google::protobuf::Arena::CreateMessage<events::Bucket>(
+                                            sV::mixins::PBEventApp::arena_ptr()) ) {}
 
 iBucketDispatcher::~iBucketDispatcher() {
-    if ( !is_bucket_empty() ) {
+    if( !is_bucket_empty() ) {
         drop_bucket();
     }
 }
@@ -50,12 +52,12 @@ size_t iBucketDispatcher::drop_bucket() {
 }
 
 void iBucketDispatcher::clear_bucket() {
-    _currentBucket.Clear();
+    _rawBucketPtr->Clear();
 }
 
 bool iBucketDispatcher::is_bucket_full() {
-    return ( (n_bytes() >= _nMaxKB*1024 && _nMaxKB != 0) ||
-         (n_events() >= _nMaxEvents && _nMaxEvents != 0) );
+    return ( (n_max_bytes()  != 0 && n_bytes()  >= n_max_bytes() )
+          || (n_max_events() != 0 && n_events() >= n_max_events()) );
 }
 
 bool iBucketDispatcher::is_bucket_empty() {
@@ -64,26 +66,9 @@ bool iBucketDispatcher::is_bucket_empty() {
 
 void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
     events::Event* event = bucket().add_events();
-    event->CopyFrom(reentrantEvent);
-
-    //  XXX
-    # if 0
-    std::cout << std::dec << "Bucket size: " << n_Bytes();
-    std::cout << " | events size: " << _currentBucket.events_size() << std::endl;
-    std::cout << " max size KB: " << _nMaxKB << std::endl;
-    # endif
+    event->CopyFrom( reentrantEvent );
     if ( is_bucket_full() ) {
-        //  XXX
-        # if 0
-        std::cout << "---Drop bucket---" << std::endl;
-        std::cout << " Bucket size: " << n_Bytes();
-        std::cout << " max size KB: " << _nMaxKB << std::endl;
-        std::cout << " events size: " << _currentBucket.events_size();
-        std::cout << " max event size: "<< _nMaxEvents << std::endl;
-        # endif
         drop_bucket();
-        // _currentBucket.Clear();  // move this call to _V_drop_bucket() ?
-        //                          // is it already moved?
     }
 }
 

@@ -64,7 +64,7 @@ class iEventPayloadProcessorBase;
  * The lifetime of data source and handlers are not maintained by instance of
  * this class.
  * */
-class AnalysisPipeline {
+class AnalysisPipeline : public sV::AbstractApplication::ASCII_Entry {
 public:
     typedef typename mixins::PBEventApp::UniEvent Event;
     typedef aux::iEventSequence iEventSequence;
@@ -77,8 +77,12 @@ protected:
     std::list<iEventProcessor *> _processorsChain;
 
 private:
-    std::set<void (*)()>         _invalidators;
+    std::set<void (*)()> _invalidators;
     std::set<void (*)(Event*)> _payloadPackers;
+
+    size_t _nEventsAcquired;
+    /// ASCII_Entry-related internal function.
+    void _update_stat();
 protected:
     void register_packing_functions( void(*invalidator)(),
                                      void(*packer)(Event*) );

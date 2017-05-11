@@ -39,7 +39,7 @@ EventsStore::EventsStore(   const std::string & pn,
                 AnalysisPipeline::iEventProcessor( pn ),
                 ASCII_Entry( goo::aux::iApp::exists() ?
                             &goo::app<AbstractApplication>() : nullptr, 1 ) {
-    _file.open( filename, std::ios::out | std::ios::binary | std::ios::app );
+    _file.open( filename, std::ios::out | std::ios::binary );
     _bucketDispatcher = bucketDispatcher;
 }
 
@@ -48,11 +48,11 @@ EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
                     ASCII_Entry( goo::aux::iApp::exists() ?
                             &goo::app<AbstractApplication>() : nullptr, 1 ),
                     _file(  dct["outFile"].as<goo::filesystem::Path>(),
-                            std::ios::out | std::ios::binary | std::ios::app ) {
+                            std::ios::out | std::ios::binary ) {
     const std::string compressionMethodName =
                 dct["compression"].as<std::string>();
-    iCompressor * cmprPtr = sV::generic_new<iCompressor>( compressionMethodName );
-    _bucketDispatcher = new CompressedBucketDispatcher( cmprPtr, _file,
+    iCompressor * compressorPtr = sV::generic_new<iCompressor>( compressionMethodName );
+    _bucketDispatcher = new CompressedBucketDispatcher( compressorPtr, _file,
                 dct["maxBucketSize_kB"].as<uint32_t>(),
                 dct["maxBucketSize_events"].as<uint32_t>() );
 }
@@ -70,15 +70,23 @@ void
 EventsStore::_update_stat() {
     if( !can_acquire_display_buffer() ) return;
     char ** lines = my_ascii_display_buffer();
-    assert( lines[0] && !]ines[1] );
+    assert( lines[0] && !lines[1] );
+
+    size_t rawL = static_cast<CompressedBucketDispatcher*>(_bucketDispatcher)->latest_dropped_raw_len(),
+           cmrsdL = static_cast<CompressedBucketDispatcher*>(_bucketDispatcher)->latest_dropped_compressed_len()
+           ;
+    char compressionStatStr[32] = "--";
+    if( rawL ) {
+        snprintf( compressionStatStr, sizeof(compressionStatStr),
+            "%.2f", double(cmrsdL)/rawL );
+    }
 
     size_t kbFilled = _bucketDispatcher->n_bytes()/1024;
     snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
-            "Bucket: %.2f KB/event %zu / %zu events, %zu / %zu Kbytes",
+            "Bucket: %.2f KB/event %zu / %zu events, %zu / %zu Kbytes / compression %s",
             ( _bucketDispatcher->n_events() ? double(kbFilled)/_bucketDispatcher->n_events() : 0 ),
             _bucketDispatcher->n_events(), _bucketDispatcher->n_max_events(),
-            kbFilled, _bucketDispatcher->n_max_KB() );
-    // ...
+            kbFilled, _bucketDispatcher->n_max_KB(), compressionStatStr );
 }
 
 StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {

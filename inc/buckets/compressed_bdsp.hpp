@@ -45,8 +45,11 @@ private:
             _dstBfSize
             ;
     std::ostream * _streamPtr;
-
     events::DeflatedBucket * _deflatedBucketPtr;
+
+    struct {
+        size_t rawLen, compressedLen;
+    } _latestDrop;
 protected:
     virtual size_t _V_drop_bucket() override;
 
@@ -56,24 +59,29 @@ protected:
     virtual void _clear_buffer( uint8_t *& buf );
     virtual void _set_metainfo();
 protected:
-    CompressedBucketDispatcher( iCompressor * compressor,
+    CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 std::ostream * streamPtr,
                                 size_t nMaxKB, size_t nMaxEvents );
 public:
-    CompressedBucketDispatcher( iCompressor * compressor,
+    CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 std::ostream & streamRef,
                                 size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedBucketDispatcher( compressor, &streamRef, nMaxKB, nMaxEvents ) {}
+            CompressedBucketDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents ) {}
 
-    CompressedBucketDispatcher( iCompressor * compressor,
+    CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedBucketDispatcher( compressor, nullptr, nMaxKB, nMaxEvents ) {}
+            CompressedBucketDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents ) {}
 
     virtual ~CompressedBucketDispatcher();
 
     void set_out_stream( std::ostream & strRef ) { _streamPtr = &strRef; }
     std::ostream * get_out_stream_ptr() { return _streamPtr; }
     bool stream_is_set() const { return !!_streamPtr; }
+
+    iCompressor & compressor() { return *_compressor; }
+
+    size_t latest_dropped_raw_len() const { return _latestDrop.rawLen; }
+    size_t latest_dropped_compressed_len() const { return _latestDrop.compressedLen; }
 };  // class CompressedBucketDispatcher
 
 }  //  namespace sV

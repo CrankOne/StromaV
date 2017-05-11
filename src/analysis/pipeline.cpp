@@ -26,7 +26,17 @@
 
 namespace sV {
 
-AnalysisPipeline::AnalysisPipeline() : _evSeq(nullptr) {}
+AnalysisPipeline::AnalysisPipeline() :
+            ASCII_Entry( goo::aux::iApp::exists() ?
+                        &goo::app<AbstractApplication>() : nullptr, 1 ),
+                _evSeq(nullptr),
+                _nEventsAcquired(0) {}
+
+void
+AnalysisPipeline::_update_stat() {
+    ++_nEventsAcquired;
+    // ...
+}
 
 void
 AnalysisPipeline::push_back_processor( iEventProcessor * proc ) {
@@ -77,6 +87,7 @@ AnalysisPipeline::_finalize_event( Event * evPtr ) {
     for( auto & nullate : _invalidators ) {
         nullate();
     }
+    _update_stat();
 }
 
 void

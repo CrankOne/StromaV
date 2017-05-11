@@ -56,25 +56,26 @@ namespace po = boost::program_options;
  * */
 class iBucketDispatcher {
 private:
-    size_t _nMaxKB;
+    size_t _nBytesMax;
     size_t _nMaxEvents;
 protected:
     virtual size_t _V_drop_bucket() = 0;
-    events::Bucket _currentBucket;  // TODO: use arena?
+    events::Bucket * _rawBucketPtr;
 public:
     typedef sV::events::Bucket Bucket;
 
     iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents );
     virtual ~iBucketDispatcher();
 
-    events::Bucket & bucket() { return _currentBucket; }
+    events::Bucket & bucket() { return *_rawBucketPtr; }
 
-    const events::Bucket & bucket() const { return _currentBucket; }
+    const events::Bucket & bucket() const { return *_rawBucketPtr; }
 
     virtual void push_event(const events::Event & reentrantEvent);
 
-    size_t n_max_KB() const {return _nMaxKB;};
-    size_t n_max_events() const {return _nMaxEvents;};
+    size_t n_max_KB() const { return _nBytesMax/1024; }
+    size_t n_max_bytes() const { return _nBytesMax; }
+    size_t n_max_events() const { return _nMaxEvents; }
 
     size_t n_bytes() const {
         return (size_t)(bucket().ByteSize());
