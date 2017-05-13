@@ -51,9 +51,11 @@ namespace sV {
  * This interface class is complementary to iDecompressor.
  * */
 class iCompressor {
+public:
+    typedef events::CompressedData_CompressionAlgorithm CompressionAlgo;
 private:
     /// String describing current compression algorithm.
-    const std::string _compressionAlgo;
+    const CompressionAlgo _compressionAlgo;
 protected:
     /// (IM) Has to perform the compression using input bytes of length
     /// inLen into the output buffer of maximal length outMaxLen. Has to return
@@ -64,14 +66,20 @@ protected:
     /// (IM) Has to return desired length of output buffer for compressed
     /// series basing on input buffer length.
     virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t ) const = 0;
+
+    /// (IM, opt) Has to set the compression parameters union for compressed
+    /// message field information. For other than sV's system algorithm, use
+    /// the `custom` field of the compression parameters field.
+    virtual void  _V_set_compression_info( events::CompressedData & ) = 0;
 public:
 
     /// Ctr. Receives the name of particular compression algorithm.
-    iCompressor( const std::string & algo ) : _compressionAlgo( algo ) {}
+    iCompressor( CompressionAlgo algo=events::CompressedData_CompressionAlgorithm_other ) :
+                    _compressionAlgo( algo ) {}
     virtual ~iCompressor() {}
 
     /// Returns string describing current compression algorithm.
-    const std::string & algorithm() const
+    CompressionAlgo algorithm() const
                 { return _compressionAlgo; }
 
     /// Returns desired length for output buffer.
@@ -82,6 +90,10 @@ public:
     size_t compress_series( const uint8_t * input, size_t inLen,
                             uint8_t * output, size_t outMaxLen ) {
         return _V_compress_series( input, inLen, output, outMaxLen ); }
+
+    void  set_compression_info( events::CompressedData & cdatRef ) {
+        _V_set_compression_info( cdatRef );
+    }
 }; // class iCompressor
 
 } // namespace sV

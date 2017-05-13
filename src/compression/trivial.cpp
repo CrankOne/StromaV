@@ -36,6 +36,7 @@ TrivialCompression::_V_compress_series(
             const uint8_t * input, size_t inLen,
             uint8_t * output, size_t outMaxLen ) {
     assert( outMaxLen >= inLen );
+    (void)(outMaxLen);
     memcpy( output, input, inLen );
     // _V_compress_series() should return real length of compressed series
     // (not lenComprBuf, because lenComprBuf is a allocated memory for
@@ -55,6 +56,7 @@ TrivialCompression::_V_decompress_series(
             const uint8_t * input, size_t inLen,
             uint8_t * output, size_t outMaxLen ) {
     assert( outMaxLen >= inLen );
+    (void)(outMaxLen);
     memcpy( output, input, inLen );
     // _V_decompress_series() should return real length of decompressed series
     // (not lenUncomprBuf, because lenUncomprBuf is a allocated memory for

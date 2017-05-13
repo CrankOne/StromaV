@@ -85,19 +85,56 @@ message MulticastMessage {
 // Basic storaging
 //
 
-message Bucket {
-    repeated Event events = 1;
+message BucketMetaInfo {
+    google.protobuf.Any suppInfo = 5;
 }
 
-message DeflatedBucketMetaInfo {
-    google.protobuf.Any suppInfo = 1;
-    string compressionAlgo = 3;
-    google.protobuf.Any compressionParameters = 5;
+message Bucket {
+    /// This field may be or may not be filled during to bucket dispatching
+    /// depending on whether compression is applied. This condition has to be
+    /// defined within utilizing code.
+    BucketMetaInfo metainfo = 1;
+    repeated Event events = 3;
+}
+
+message ZLib_Parameters {
+    uint32 level = 1;
+}
+
+message BZip2_Parameters {
+    // ...
+}
+
+message LZMA_Parameters {
+    // ...
+}
+
+message CompressedData {
+    enum CompressionAlgorithm {
+        plain = 0;
+        other = 1;
+        ZLIB = 2;
+        BZIP2 = 3;
+        LZMA = 4;
+    }
+    // Compression algorithm applied to bucket. 
+    CompressionAlgorithm compressionAlgo = 1;
+    // Compressed content itself.
+    bytes compressedContent = 5;
+    // Compression parameters.
+    oneof CompressionParameters {
+        ZLib_Parameters zlib = 7;
+        BZip2_Parameters bz2 = 9;
+        LZMA_Parameters lzma = 11;
+        google.protobuf.Any custom = 13;
+    }
 }
 
 message DeflatedBucket {
-    DeflatedBucketMetaInfo metainfo = 1;
-    bytes deflatedContent = 2;
+    /// When compression is applied, the compressed bucket data won't contain
+    /// the metainfo physically and this field will be set instead of it.
+    BucketMetaInfo metainfo = 1;
+    CompressedData data = 3;
 }
 
 // Misc

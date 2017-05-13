@@ -50,6 +50,9 @@ private:
     struct {
         size_t rawLen, compressedLen;
     } _latestDrop;
+
+    /// Controls whether to pack uncompressed metainfo.
+    bool _doPackMetaInfo2;
 protected:
     virtual size_t _V_drop_bucket() override;
 
@@ -61,7 +64,8 @@ protected:
 protected:
     CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 std::ostream * streamPtr,
-                                size_t nMaxKB, size_t nMaxEvents );
+                                size_t nMaxKB, size_t nMaxEvents,
+                                bool doPackMetainfo=true);
 public:
     CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 std::ostream & streamRef,
@@ -82,6 +86,9 @@ public:
 
     size_t latest_dropped_raw_len() const { return _latestDrop.rawLen; }
     size_t latest_dropped_compressed_len() const { return _latestDrop.compressedLen; }
+
+    virtual bool do_pack_metainfo() const override { return _doPackMetaInfo2; }
+    virtual void do_pack_metainfo( bool v ) override { _doPackMetaInfo2 = v; }
 };  // class CompressedBucketDispatcher
 
 }  //  namespace sV

@@ -51,12 +51,13 @@ protected:
                 { return n; }
     virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t n ) const override
                 { return n; }
+    virtual void  _V_set_compression_info( events::CompressedData & ) override {}
 public:
-    TrivialCompression() : iCompressor("trivial"),
-                           iDecompressor("trivial") {}
+    TrivialCompression() : iCompressor( events::CompressedData_CompressionAlgorithm_plain ),
+                           iDecompressor( events::CompressedData_CompressionAlgorithm_plain ) {}
     TrivialCompression( const goo::dict::Dictionary & ) :
-                            iCompressor("trivial"),
-                            iDecompressor("trivial") {}
+                            iCompressor( events::CompressedData_CompressionAlgorithm_plain ),
+                            iDecompressor( events::CompressedData_CompressionAlgorithm_plain ) {}
     virtual ~TrivialCompression() {};
 };  // class DummyCompressor
 

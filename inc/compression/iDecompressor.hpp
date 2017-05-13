@@ -47,8 +47,11 @@ namespace sV {
  * This interface class is complementary to iDecompressor.
  * */
 class iDecompressor {
+public:
+    typedef events::CompressedData_CompressionAlgorithm CompressionAlgo;
 private:
-    const std::string _compressionAlgo;
+    /// String describing current compression algorithm.
+    const CompressionAlgo _compressionAlgo;
 protected:
     /// (IM) Has to perform the decompression using input bytes of length
     /// inLen into the output buffer of maximal length outMaxLen. Has to return
@@ -60,11 +63,11 @@ protected:
     /// series basing on input buffer length.
     virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t ) const = 0;
 public:
-    iDecompressor( const std::string & ca ) : _compressionAlgo( ca ) {}
+    iDecompressor( CompressionAlgo ca ) : _compressionAlgo( ca ) {}
     virtual ~iDecompressor() {}
 
     /// Returns string describing current compression algorithm.
-    const std::string & algorithm() const
+    CompressionAlgo algorithm() const
                 { return _compressionAlgo; }
 
     /// Returns desired length for output buffer.

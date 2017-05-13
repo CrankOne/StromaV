@@ -38,11 +38,14 @@ namespace compression {
 class ZLibCompression : public iCompressor {
 private:
     z_stream _zstrm;
+    int8_t _zLvl;
 protected:
     virtual size_t _V_compress_series( const uint8_t *, size_t,
                                        uint8_t *, size_t ) override;
 
     virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const override;
+
+    virtual void  _V_set_compression_info( events::CompressedData & ) override;
 public:
     ZLibCompression( const goo::dict::Dictionary & );
 

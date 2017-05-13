@@ -36,23 +36,22 @@ ZLibCompression::init_zlib_stream( z_stream & strm ) {
 }
 
 ZLibCompression::ZLibCompression( const goo::dict::Dictionary & parameters ) :
-        iCompressor( "zlib" ) {
-    int comprsnLvl;
+        iCompressor( events::CompressedData_CompressionAlgorithm_ZLIB ) {
     const std::string strComprLvl = parameters["level"].as<std::string>();
     if( "Z_DEFAULT_COMPRESSION" == strComprLvl ) {
-        comprsnLvl = Z_DEFAULT_COMPRESSION;
+        _zLvl = Z_DEFAULT_COMPRESSION;
     } else if( "Z_BEST_SPEED" == strComprLvl ) {
-        comprsnLvl = Z_BEST_SPEED;
+        _zLvl = Z_BEST_SPEED;
     } else if( "Z_BEST_COMPRESSION" == strComprLvl ) {
-        comprsnLvl = Z_BEST_COMPRESSION;
+        _zLvl = Z_BEST_COMPRESSION;
     } else if( "Z_NO_COMPRESSION" == strComprLvl ) {
-        comprsnLvl = Z_NO_COMPRESSION;
+        _zLvl = Z_NO_COMPRESSION;
     } else {
-        comprsnLvl = atoi( strComprLvl.c_str() );
+        _zLvl = atoi( strComprLvl.c_str() );
     }
     int rc;
     init_zlib_stream( _zstrm );
-    rc = deflateInit( &_zstrm, comprsnLvl );
+    rc = deflateInit( &_zstrm, _zLvl );
     if( rc != Z_OK ) {
         emraise( thirdParty, "Failed to initialize zlib stream for deflating. "
             "Z_ERRNO code: %d.", rc );
@@ -94,6 +93,11 @@ ZLibCompression::_V_compress_series( const uint8_t * src, size_t srcLen,
             "deflateReset() Z_ERRNO code: %d.", rc );
     }
     return _zstrm.avail_out;
+}
+
+void
+ZLibCompression::_V_set_compression_info( events::CompressedData & cDatRef ) {
+    cDatRef.mutable_zlib()->set_level( _zLvl );
 }
 
 }  // namespace compression

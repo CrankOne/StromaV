@@ -33,11 +33,12 @@
 
 namespace sV {
 
-iBucketDispatcher::iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents ) :
-                            _nBytesMax(nMaxKB*1024), _nMaxEvents(nMaxEvents),
+iBucketDispatcher::iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackMetaInfo ) :
+                            _nBytesMax(nMaxKB*1024), _nMaxEvents(nMaxEvents), _doPackMetaInfo(doPackMetaInfo),
                             _rawBucketPtr(
                                 google::protobuf::Arena::CreateMessage<events::Bucket>(
-                                            sV::mixins::PBEventApp::arena_ptr()) ) {}
+                                            sV::mixins::PBEventApp::arena_ptr()) ),
+                            _miCollectorPtr(nullptr) {}
 
 iBucketDispatcher::~iBucketDispatcher() {
     if( !is_bucket_empty() ) {
@@ -46,8 +47,14 @@ iBucketDispatcher::~iBucketDispatcher() {
 }
 
 size_t iBucketDispatcher::drop_bucket() {
+    if( iBucketDispatcher::do_pack_metainfo() && is_metainfo_collector_set() ) {
+        metainfo_collector().pack_metainfo( *bucket().mutable_metainfo() );
+    }
     size_t ret = _V_drop_bucket();
     clear_bucket();
+    if( is_metainfo_collector_set() ) {
+        metainfo_collector().clear();
+    }
     return ret;
 }
 
@@ -64,12 +71,39 @@ bool iBucketDispatcher::is_bucket_empty() {
     return ( n_bytes() ?  false : true );
 }
 
-void iBucketDispatcher::push_event(const events::Event & reentrantEvent) {
+void iBucketDispatcher::push_event(const events::Event & eve) {
     events::Event* event = bucket().add_events();
-    event->CopyFrom( reentrantEvent );
+    event->CopyFrom( eve );
+    if( is_metainfo_collector_set() ) {
+        metainfo_collector().consider_event( eve );
+    }
     if ( is_bucket_full() ) {
         drop_bucket();
     }
+}
+
+void
+iBucketDispatcher::metainfo_collector( iAbstractBucketMetaInfoCollector & micPtr ) {
+    if( _miCollectorPtr ) {
+        _miCollectorPtr->clear();
+    }
+    _miCollectorPtr = &micPtr;
+}
+
+const iAbstractBucketMetaInfoCollector &
+iBucketDispatcher::metainfo_collector() const {
+    if( !_miCollectorPtr ) {
+        emraise( uninitialized, "Metainfo collector is not set for bucket "
+            "dispatcher %p while instance was required.", this );
+    }
+    return *_miCollectorPtr;
+}
+
+iAbstractBucketMetaInfoCollector &
+iBucketDispatcher::metainfo_collector() {
+    const iBucketDispatcher * cthis = this;
+    const iAbstractBucketMetaInfoCollector & cref = cthis->metainfo_collector();
+    return const_cast<iAbstractBucketMetaInfoCollector &>(cref);
 }
 
 }  //  namespace sV

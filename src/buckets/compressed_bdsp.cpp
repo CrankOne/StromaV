@@ -35,8 +35,9 @@ CompressedBucketDispatcher::CompressedBucketDispatcher(
                 iCompressor * compressorPtr,
                 std::ostream * streamPtr,
                 size_t nMaxKB,
-                size_t nMaxEvents ) :
-                                    iBucketDispatcher( nMaxKB, nMaxEvents ),
+                size_t nMaxEvents,
+                bool doPackMetainfo ) :
+                                    iBucketDispatcher( nMaxKB, nMaxEvents, false ),
                                     _compressor( compressorPtr ),
                                     _srcBuffer( nullptr ), _dstBuffer( nullptr ),
                                     _srcBfSize(0), _dstBfSize(0),
@@ -44,7 +45,8 @@ CompressedBucketDispatcher::CompressedBucketDispatcher(
                                     _deflatedBucketPtr(
                                         google::protobuf::Arena::CreateMessage<events::DeflatedBucket>(
                                             sV::mixins::PBEventApp::arena_ptr()) ),
-                                    _latestDrop{0, 0} {
+                                    _latestDrop{0, 0},
+                                    _doPackMetaInfo2(doPackMetainfo) {
     assert(_deflatedBucketPtr);
 }
 
@@ -85,14 +87,17 @@ size_t CompressedBucketDispatcher::_compress_bucket() {
     _latestDrop.compressedLen = _compressor->compress_series(
                 _srcBuffer,     _latestDrop.rawLen,
                 _dstBuffer,     _dstBfSize );
-    _deflatedBucketPtr->set_deflatedcontent( _dstBuffer, _latestDrop.compressedLen );
+    _deflatedBucketPtr->mutable_data()->set_compressedcontent( _dstBuffer, _latestDrop.compressedLen );
     return _latestDrop.compressedLen;
 }
 
 void CompressedBucketDispatcher::_set_metainfo() {
-    _deflatedBucketPtr->mutable_metainfo()->set_compressionalgo(
+    _deflatedBucketPtr->mutable_data()->set_compressionalgo(
             _compressor->algorithm() );
-    // TODO optional other meta!
+    _compressor->set_compression_info( *(_deflatedBucketPtr->mutable_data()) );
+    if( is_metainfo_collector_set() ) {
+        metainfo_collector().pack_metainfo( *(_deflatedBucketPtr->mutable_metainfo()) );
+    }
 }
 
 size_t CompressedBucketDispatcher::_V_drop_bucket() {

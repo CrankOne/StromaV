@@ -33,17 +33,13 @@
 namespace sV {
 
 class PlainStreamBucketDispatcher : public iBucketDispatcher {
-
-    public:
-        PlainStreamBucketDispatcher( std::ostream & streamRef,
-                size_t nMaxKB, size_t nMaxEvents );
-        virtual ~PlainStreamBucketDispatcher();
-
-    protected:
-        virtual size_t _V_drop_bucket() override;
-        std::ostream & _streamRef;
-    private:
-
+protected:
+    virtual size_t _V_drop_bucket() override;
+    std::ostream & _streamRef;
+public:
+    PlainStreamBucketDispatcher( std::ostream & streamRef,
+                                 size_t nMaxKB, size_t nMaxEvents );
+    virtual ~PlainStreamBucketDispatcher();
 };  // class PlainStreamBucketDispatcher
 
 }  //  namespace sV
