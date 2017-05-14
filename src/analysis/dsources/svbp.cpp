@@ -24,32 +24,72 @@
 
 namespace sV {
 
+BucketReader::BucketReader( events::Bucket * reentrantBucketPtr ) :
+            iEventSequence( 0x0 ),
+            _cBucket( reentrantBucketPtr ),
+            _currentEvent(0) {
+    assert(_cBucket);
+}
+
+events::Bucket &
+BucketReader::bucket() {
+    assert( _cBucket );
+    return *_cBucket;
+}
+
+const events::Bucket &
+BucketReader::bucket() const {
+    assert( _cBucket );
+    return *_cBucket;
+}
+
 bool
-BucketsStreamReader::_V_is_good() {
-    _TODO_  // TODO
+BucketReader::_V_is_good() {
+    return (int) _currentEvent < bucket().events_size();
 }
 
 void
-BucketsStreamReader::_V_next_event( Event *& ) {
-    _TODO_  // TODO
+BucketReader::_V_next_event( Event *& ePtr ) {
+    ePtr = &(::sV::mixins::PBEventApp::c_event());
+    ePtr->Clear();
+    ePtr->CopyFrom( bucket().events(_currentEvent) );
+    ++_currentEvent;
 }
 
-BucketsStreamReader::Event *
-BucketsStreamReader::_V_initialize_reading() {
-    _TODO_  // TODO
+BucketReader::Event *
+BucketReader::_V_initialize_reading() {
+    Event * eventPtr;
+    _V_next_event( eventPtr );
+    return eventPtr;
 }
 
 void
-BucketsStreamReader::_V_finalize_reading() {
-    _TODO_  // TODO
+BucketReader::_V_finalize_reading() {
+    _cBucket->Clear();
 }
 
 void
-BucketsStreamReader::_V_print_brief_summary( std::ostream & ) const {
-    _TODO_  // TODO
+BucketReader::read_nth_event( Event *& evPtr, size_t evNo ) const {
+    if( evNo >= bucket().events_size() ) {
+        emraise( overflow, "Attempt of reading %zu-th event from bucket of %d "
+            "events.", evNo, bucket().events_size() );
+    }
+    if( !ePtr ) {
+        ePtr = &(::sV::mixins::PBEventApp::c_event());
+    }
+    ePtr->Clear();
+    ePtr->CopyFrom( bucket().events(_currentEvent) );
+}
+
+size_t
+BucketReader::n_events() const {
+    return bucket().events_size();
 }
 
 # if 0
+//void
+//BucketReader::_V_print_brief_summary( std::ostream & ) const {}
+
 BucketsFileReader::BucketsFileReader(
             const std::list<goo::filesystem::Path> & filenames,
             size_t maxEvents,

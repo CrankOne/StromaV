@@ -30,35 +30,68 @@
 # include "analysis/pipeline.hpp"
 # include "utils.h"
 
+# include <goo_mixins/iterable.tcc>
+
 # include <fstream>
 
 namespace sV {
 
-/// Performs basic reading from events bucket.
-class BucketsReader : public sV::aux::iEventSequence,
-                      public sV::AbstractApplication::ASCII_Entry {
+template<typename DereferencedTypeT,
+         typename IteratorAssociatedDataT,
+         typename IteratorSymT,
+         typename OffsetT>
+class RandomIterable
+
+/**@brief Performs basic reading from events bucket.
+ * @class BucketReader
+ *
+ * Provides basic implementation for reading events from bucket.
+ */
+class BucketReader : public virtual sV::aux::iEventSequence,
+                     public RandomIterable<
+                            sV::AnalysisPipeline::Event,
+                            // ...
+                        > {
 public:
     typedef sV::aux::iEventSequence Parent;
     typedef typename sV::AnalysisPipeline::Event Event;
 private:
     events::Bucket * _cBucket;
+    size_t _currentEvent;
 protected:
     virtual bool _V_is_good() override;
     virtual void _V_next_event( Event *& ) override;
     virtual Event * _V_initialize_reading() override;
     virtual void _V_finalize_reading() override;
-    virtual void _V_print_brief_summary( std::ostream & ) const override;
 public:
-    BucketsReader( events::Bucket * reentrantBucketPtr );
+    /// Ctr. Accepts a ptr to reentrant bucket message instance.
+    BucketReader( events::Bucket * reentrantBucketPtr );
 
+    /// Returns reference to current bucket.
     events::Bucket & bucket();
 
+    /// (const) Returns reference to current bucket.
     const events::Bucket & bucket() const;
 
-    const events::BucketMetaInfo & meta_info() const;
+    /// Returns number of events in a bucket.
+    virtual size_t n_events() const;
+
+    /// Method reading n-th event from bucket (for future RA usage).
+    virtual void read_nth_event( Event *&, size_t evNo ) const;
 };
 
 
+/**@brief A bucket reader with metadata.
+ * @class RABucketReader
+ *
+ * This class introduces access to buckets metadata.
+ */
+template<typename MDat>
+class RABucketReader : public BucketReader {
+};
+
+
+# if 0
 /// Manages compressed buckets.
 class CompressedBucketsStreamReader : public BucketsStreamReader {
 private:
@@ -70,7 +103,8 @@ private:
 
 
 /// Steeres buckets file reading.
-class BucketsFileReader : public CompressedBucketsStreamReader {
+class BucketsFileReader : public CompressedBucketsStreamReader,
+                          public sV::AbstractApplication::ASCII_Entry {
 private:
     std::vector<goo::filesystem::Path> _filenames;
     std::ifstream _file;
@@ -82,6 +116,7 @@ public:
                        bool enableProgressbar=false );
     virtual ~BucketsFileReader();
 };  // class BucketsFileReader
+# endif
 
 }  // namespace sV
 
