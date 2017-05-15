@@ -36,28 +36,57 @@
 
 namespace sV {
 
-template<typename DereferencedTypeT,
-         typename IteratorAssociatedDataT,
-         typename IteratorSymT,
-         typename OffsetT>
-class RandomIterable
+namespace buckets {
+
+namespace aux {
+
+struct BucketEventID {
+    events::Bucket * authorityPtr;
+    size_t nEvent;
+
+    BucketEventID( events::Bucket * bPtr, size_t nEve=0 ) :
+                                        authorityPtr(bPtr), nEvent(nEve) {}
+
+    BucketEventID & operator++() {
+        ++nEvent;
+        return *this;
+    }
+};
+
+template<typename EventT>
+class _BucketIterator : public goo::iterators::Iterator<
+                                    goo::iterators::BaseBidirIterator,
+                                    goo::iterators::BaseOutputIterator,
+                                    goo::iterators::DirectionComparableIterator,
+                                    _BucketIterator<EventT>,
+                                    BucketEventID, EventT, size_t> {
+private:
+    BucketEventID _sym;
+public:
+    _BucketIterator( events::Bucket * bPtr, size_t nEve=0 ) :
+                _sym( bPtr, nEve ) {}
+
+    BucketEventID & sym() { return _sym; }
+    const BucketEventID & sym() const { return _sym; }
+};
+
+}  // namespace ::sV::buckets::aux
+
+typedef aux::_BucketIterator<const events::Event *> ConstBucketIterator;
+typedef aux::_BucketIterator<events::Event *> BucketIterator;
 
 /**@brief Performs basic reading from events bucket.
  * @class BucketReader
  *
  * Provides basic implementation for reading events from bucket.
  */
-class BucketReader : public virtual sV::aux::iEventSequence,
-                     public RandomIterable<
-                            sV::AnalysisPipeline::Event,
-                            // ...
-                        > {
+class BucketReader : public virtual sV::aux::iEventSequence {
 public:
     typedef sV::aux::iEventSequence Parent;
     typedef typename sV::AnalysisPipeline::Event Event;
 private:
     events::Bucket * _cBucket;
-    size_t _currentEvent;
+    ConstBucketIterator _it;
 protected:
     virtual bool _V_is_good() override;
     virtual void _V_next_event( Event *& ) override;
@@ -76,18 +105,42 @@ public:
     /// Returns number of events in a bucket.
     virtual size_t n_events() const;
 
-    /// Method reading n-th event from bucket (for future RA usage).
-    virtual void read_nth_event( Event *&, size_t evNo ) const;
-};
+    /// Returns iterator pointing to first event.
+    ConstBucketIterator begin() const {
+        return ConstBucketIterator( _cBucket );
+    }
+
+    /// Returns iterator pointing to the end of events.
+    ConstBucketIterator end() const {
+        return ConstBucketIterator( _cBucket, bucket().events_size() );
+    }
+
+    /// Event getter operator.
+    const events::Event & operator[](size_t n) {
+        return _cBucket->events(n);
+    }
+};  // BucketReader
 
 
 /**@brief A bucket reader with metadata.
- * @class RABucketReader
+ * @class MDatBucketReader
  *
- * This class introduces access to buckets metadata.
+ * This class introduces access to buckets metadata. The purpose is to pack the
+ * metadata unpacking code into template interface method.
  */
 template<typename MDat>
-class RABucketReader : public BucketReader {
+class MDatBucketReader : public BucketReader {
+protected:
+    virtual const MDat & _V_metadata() const {
+        if( bucket().has_metainfo() ) {
+            emraise( notFound, "Bucket carries no metadata." );
+        }
+        return bucket().metainfo();
+    }
+public:
+    virtual const MDat & metadata() const {
+        return _V_metadata();
+    }
 };
 
 
@@ -117,6 +170,8 @@ public:
     virtual ~BucketsFileReader();
 };  // class BucketsFileReader
 # endif
+
+}  // namespace ::sV::buckets
 
 }  // namespace sV
 

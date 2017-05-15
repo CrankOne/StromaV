@@ -24,10 +24,12 @@
 
 namespace sV {
 
+namespace buckets {
+
 BucketReader::BucketReader( events::Bucket * reentrantBucketPtr ) :
             iEventSequence( 0x0 ),
             _cBucket( reentrantBucketPtr ),
-            _currentEvent(0) {
+            _it( reentrantBucketPtr ) {
     assert(_cBucket);
 }
 
@@ -45,15 +47,15 @@ BucketReader::bucket() const {
 
 bool
 BucketReader::_V_is_good() {
-    return (int) _currentEvent < bucket().events_size();
+    return _it.sym().nEvent < (size_t) bucket().events_size();
 }
 
 void
 BucketReader::_V_next_event( Event *& ePtr ) {
     ePtr = &(::sV::mixins::PBEventApp::c_event());
     ePtr->Clear();
-    ePtr->CopyFrom( bucket().events(_currentEvent) );
-    ++_currentEvent;
+    ePtr->CopyFrom( bucket().events( _it.sym().nEvent ) );
+    ++_it;
 }
 
 BucketReader::Event *
@@ -66,19 +68,7 @@ BucketReader::_V_initialize_reading() {
 void
 BucketReader::_V_finalize_reading() {
     _cBucket->Clear();
-}
-
-void
-BucketReader::read_nth_event( Event *& evPtr, size_t evNo ) const {
-    if( evNo >= bucket().events_size() ) {
-        emraise( overflow, "Attempt of reading %zu-th event from bucket of %d "
-            "events.", evNo, bucket().events_size() );
-    }
-    if( !ePtr ) {
-        ePtr = &(::sV::mixins::PBEventApp::c_event());
-    }
-    ePtr->Clear();
-    ePtr->CopyFrom( bucket().events(_currentEvent) );
+    _it.sym().nEvent = 0;
 }
 
 size_t
@@ -109,6 +99,8 @@ BucketsFileReader::BucketsFileReader(
     }
 }
 # endif
+
+}  // namespace ::sV::buckets
 
 }  // namespace sV
 
