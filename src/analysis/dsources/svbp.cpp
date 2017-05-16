@@ -30,18 +30,14 @@ BucketReader::BucketReader( events::Bucket * reentrantBucketPtr ) :
             iEventSequence( 0x0 ),
             _cBucket( reentrantBucketPtr ),
             _it( reentrantBucketPtr ) {
-    assert(_cBucket);
-}
-
-events::Bucket &
-BucketReader::bucket() {
-    assert( _cBucket );
-    return *_cBucket;
 }
 
 const events::Bucket &
-BucketReader::bucket() const {
-    assert( _cBucket );
+BucketReader::_V_bucket() const {
+    if( !_cBucket ) {
+        emraise( badState, "Bucket pointer was not set for reading handle %p.",
+            this );
+    }
     return *_cBucket;
 }
 
@@ -67,13 +63,113 @@ BucketReader::_V_initialize_reading() {
 
 void
 BucketReader::_V_finalize_reading() {
-    _cBucket->Clear();
     _it.sym().nEvent = 0;
 }
 
 size_t
 BucketReader::n_events() const {
+    if( !is_bucket_set() ) {
+        return 0;
+    }
     return bucket().events_size();
+}
+
+//
+//
+//
+
+MetaInfoBucketReader::MetaInfoBucketReader( events::Bucket * bucketPtr ) :
+                                                iEventSequence( 0x0 ),
+                                                BucketReader( bucketPtr ) {}
+
+//
+//
+//
+
+CompressedBucketReader::CompressedBucketReader(
+                events::DeflatedBucket * dfltdBcktPtr,
+                events::Bucket * bucketPtr,
+                const Decompressors * decompressors ) :
+                        iEventSequence( 0x0 ),
+                        MetaInfoBucketReader( bucketPtr ),
+                        _dfltdBucketPtr( dfltdBcktPtr ),
+                        _decompressedBucketValid( false ),
+                        _decompressors( decompressors )
+{}
+
+const events::DeflatedBucket &
+CompressedBucketReader::deflated_bucket() const {
+    if( !_dfltdBucketPtr ) {
+        emraise( badState, "Deflated bucket pointer was not set for "
+            "reading handle %p.", this );
+    }
+    return *_dfltdBucketPtr;
+}
+
+const events::BucketMetaInfo &
+CompressedBucketReader::_V_metainfo() const {
+    return deflated_bucket().metainfo();
+}
+
+const iDecompressor *
+CompressedBucketReader::_decompressor( iDecompressor::CompressionAlgo algo ) const {
+    auto it = _decompressors->find( algo );
+    if( _decompressors->end() == it ) {
+        emraise( notFound, "Has no decompressor referenced by code %d.",
+                (int) algo );
+    }
+    return it->second;
+}
+
+void
+CompressedBucketReader::_decompress_bucket() const {
+    const iDecompressor * dcmprPtr = _decompressor(
+                                    _dfltdBucketPtr->data().compressionalgo() );
+    size_t decompressedLength;  // provisioned
+    _dcmBuffer.reserve(
+            decompressedLength = dcmprPtr->decompressed_dest_buffer_len(
+                (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
+                _dfltdBucketPtr->data().compressedcontent().size()
+            ) );
+    _dcmBuffer.resize(
+        dcmprPtr->decompress_series(
+            (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
+            _dfltdBucketPtr->data().compressedcontent().size(),
+            _dcmBuffer.data(),
+            _dcmBuffer.capacity() )
+        );
+    if( decompressedLength < _dcmBuffer.size() ) {
+        emraise( badState, "Decompressed length was erroneousle predicted: "
+                "%zu (provisioned) < %zu (real).",
+                decompressedLength, _dcmBuffer.size() );
+    }
+    if( ! const_cast<CompressedBucketReader *>(this)
+                ->_mutable_bucket_ptr()
+                ->ParseFromArray( _dcmBuffer.data(), _dcmBuffer.size() ) ) {
+        emraise( thirdParty, "Protobuf failed to parse decompressed data of "
+            "size %zu.", _dcmBuffer.size() );
+    }
+    _decompressedBucketValid = true;
+}
+
+const events::Bucket &
+CompressedBucketReader::_V_bucket() const  {
+    if( !is_decompressed_bucket_valid() ) {
+        const_cast<CompressedBucketReader *>(this)->_decompress_bucket();
+    }
+    return BucketReader::_V_bucket();
+}
+
+void
+CompressedBucketReader::set_bucket_ptr( events::Bucket * ptr ) {
+    invalidate_decompressed_bucket_cache();
+    MetaInfoBucketReader::set_bucket_ptr( ptr );
+}
+
+void
+CompressedBucketReader::set_deflated_bucket_ptr( events::DeflatedBucket * dfltBctPtr ) {
+    invalidate_decompressed_bucket_cache();
+    _dfltdBucketPtr = dfltBctPtr;
 }
 
 # if 0

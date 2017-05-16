@@ -41,11 +41,11 @@ class TrivialCompression :  public iCompressor,
 protected:
     virtual size_t _V_compress_series(
             const uint8_t *, size_t,
-            uint8_t *, size_t ) override;
+            uint8_t *, size_t ) const override;
 
     virtual size_t _V_decompress_series(
             const uint8_t *, size_t,
-            uint8_t *, size_t ) override;
+            uint8_t *, size_t ) const override;
 
     virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const override
                 { return n; }

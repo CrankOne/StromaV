@@ -65,7 +65,7 @@ ZLibCompression::_V_compressed_dest_buffer_len( const uint8_t *, size_t n ) cons
 
 size_t
 ZLibCompression::_V_compress_series( const uint8_t * src, size_t srcLen,
-                                    uint8_t * dst, size_t dstMaxLen ) {
+                                    uint8_t * dst, size_t dstMaxLen ) const {
     int rc;
 
     if( deflateBound( &_zstrm, srcLen ) > dstMaxLen ) {

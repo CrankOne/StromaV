@@ -61,7 +61,7 @@ protected:
     /// inLen into the output buffer of maximal length outMaxLen. Has to return
     /// number of bytes in output buffer that is occupied by compressed data.
     virtual size_t _V_compress_series( const uint8_t * input, size_t inLen,
-                                       uint8_t * output, size_t outMaxLen ) = 0;
+                                       uint8_t * output, size_t outMaxLen ) const = 0;
 
     /// (IM) Has to return desired length of output buffer for compressed
     /// series basing on input buffer length.

@@ -55,16 +55,16 @@ public:
     virtual ~iAbstractBucketMetaInfoCollector() {}
 
     /// Returns number of considered events.
-    size_t n_events() const { return _nEvents; }
+    virtual size_t n_events() const { return _nEvents; }
 
     /// Considers an event and appends metainformation.
-    void consider_event( const events::Event & eve ) {
+    virtual void consider_event( const events::Event & eve ) {
         ++_nEvents;
         _V_consider_event( eve );
     }
 
     /// Clears accumulated meta information.
-    void clear() {
+    virtual void clear() {
         _nEvents = 0;
         _V_clear();
     }

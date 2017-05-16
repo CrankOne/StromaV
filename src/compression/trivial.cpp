@@ -34,7 +34,7 @@ namespace compression {
 size_t
 TrivialCompression::_V_compress_series(
             const uint8_t * input, size_t inLen,
-            uint8_t * output, size_t outMaxLen ) {
+            uint8_t * output, size_t outMaxLen ) const {
     assert( outMaxLen >= inLen );
     (void)(outMaxLen);
     memcpy( output, input, inLen );
@@ -54,7 +54,7 @@ TrivialCompression::_V_compress_series(
 size_t
 TrivialCompression::_V_decompress_series(
             const uint8_t * input, size_t inLen,
-            uint8_t * output, size_t outMaxLen ) {
+            uint8_t * output, size_t outMaxLen ) const {
     assert( outMaxLen >= inLen );
     (void)(outMaxLen);
     memcpy( output, input, inLen );
