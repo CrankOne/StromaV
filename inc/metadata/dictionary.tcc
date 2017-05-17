@@ -29,7 +29,7 @@
 namespace sV {
 
 /**@class MetadataDictionary
- * @brief Index of metadata constructors.
+ * @brief Index of metadata constructors (virtual constructor factory).
  *
  * Implementation of particular metadata interface object is not possible
  * without knowledge of event identification internals, but one could guess
@@ -43,6 +43,8 @@ namespace sV {
  *
  * This class also provides a special template method for querying the metadata
  * type instances by their C++ type.
+ *
+ * @ingroup mdat
  * */
 template<typename EventIDT>
 class MetadataDictionary {

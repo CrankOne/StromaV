@@ -29,6 +29,7 @@
 
 # include "analysis/pipeline.hpp"
 # include "compression/iDecompressor.hpp"
+# include "buckets/iBucketDispatcher.hpp"
 # include "utils.h"
 
 # include <goo_mixins/iterable.tcc>
@@ -43,6 +44,8 @@ namespace buckets {
  * @class BucketReader
  *
  * Provides basic implementation for reading events from bucket.
+ *
+ * @ingroup analysis
  */
 class BucketReader : public virtual sV::aux::iEventSequence {
 public:
@@ -131,27 +134,57 @@ public:
 };  // BucketReader
 
 
-/**@brief A bucket reader with metadata.
- * @class MetaInfoBucketReader
+/**@brief A bucket reader with supplementary information acq. shortcuts.
+ * @class SuppInfoBucketReader
  *
- * This class introduces access to buckets metadata. The purpose is to pack the
- * metadata unpacking code into template interface method.
+ * This class introduces access to buckets metadata. Keeps metadata handling
+ * code.
+ *
+ * @ingroup analysis
  */
-class MetaInfoBucketReader : public BucketReader {
+class SuppInfoBucketReader : public BucketReader {
 public:
-    typedef events::BucketMetaInfo BMInfo;
+    struct MetaInfoCache {
+        std::string name;
+        iAbstractBucketMetaInfoCollector * collectorPtr;
+        uint16_t positionInMetaInfo;  // set to USHRT_MAX when invalid.
+    };
+private:
+    /// Indicates whether _miCache is valid for current bucket.
+    mutable bool _cacheValid;
+    /// Keeps RTTI mappings for suppInfo.
+    mutable std::unordered_map<std::type_index, MetaInfoCache> _miCache;
 protected:
-    virtual const BMInfo & _V_metainfo() const {
-        if( bucket().has_metainfo() ) {
-            emraise( notFound, "Bucket carries no meta info." );
-        }
-        return bucket().metainfo();
-    }
-public:
-    MetaInfoBucketReader( events::Bucket * bucketPtr );
+    /// Shall return bucket's metainfo hdr. May be overriden by descendants in
+    /// case the metainfo shall not be obtained from bucket itself.
+    virtual const events::BucketMetaInfo & _metainfo( uint16_t ) const;
 
-    virtual const BMInfo & metainfo() const {
-        return _V_metainfo();
+    /// Invalidates supp. info caches
+    void invalidate_supp_info_caches() const;
+
+    /// Will use metainfo() method to set up internal caches ready for various
+    /// supp_info acquizition.
+    virtual void _recache_supp_info();
+
+    /// Has to return C++ RTTI type hash for given supp info data type.
+    virtual std::type_index _V_get_collector_type_hash( const std::string & ) = 0;
+
+    /// Has to allocate new cache entry with set name and collector ptr fields.
+    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) = 0;
+public:
+    SuppInfoBucketReader( events::Bucket * bucketPtr );
+
+    /// Writes the content of supp info of target type to destination by
+    /// reference and returns true. Returns false if no supp info of this type
+    /// available in current bucket.
+    template<typename T> bool supp_info( T & dest ) const {
+        auto it = _miCache.find( typeid(T) );
+        if( _miCache.end() == it
+         || it->second.positionInMetaInfo == USHRT_MAX ) {
+            return false;
+        }
+        it->second.collectorPtr->unpack_suppinfo(
+                    _metainfo( it->second.positionInMetaInfo ).suppinfo() );
     }
 };
 
@@ -161,8 +194,10 @@ public:
  * A class incapsulating decompression for buckets compressed inside the
  * DeflatedBucket data structure. Will automatically apply decompression
  * for data when bucket will be necessary.
+ *
+ * @ingroup analysis
  */
-class CompressedBucketReader : public MetaInfoBucketReader {
+class CompressedBucketReader : public SuppInfoBucketReader {
 public:
     typedef std::unordered_map<int, const iDecompressor *>
             Decompressors;
@@ -186,7 +221,7 @@ private:
 protected:
     /// Overrides default metainfo getter to obtain compressed metainfo instead
     /// of raw.
-    virtual const events::BucketMetaInfo & _V_metainfo() const override;
+    virtual const events::BucketMetaInfo & _metainfo( uint16_t ) const override;
 
     /// Look-up for required decompression algorithm.
     virtual const iDecompressor * _decompressor( iDecompressor::CompressionAlgo ) const;
@@ -225,12 +260,7 @@ public:
         { _decompressedBucketValid = false; }
 };
 
-
 class BucketStreamReader : public CompressedBucketReader {
-public:
-    struct StreamReadingBucketID {
-        // ...
-    };
 private:
     std::istream * _iStreamPtr;
 protected:

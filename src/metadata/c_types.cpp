@@ -24,6 +24,29 @@
 
 # include <climits>
 
+/**@defgroup mdat Metadata
+ * @brief Support for fast dedicated metadata structures on the top of
+ * accessible statistics.
+ *
+ * The common purpose of the metadata structures is to provide access for
+ * various generic frequently-needed information about experimental or
+ * modelled statistics. It may include, for example, number of accumulated
+ * events, presense of particular detectors in event or various user-defined
+ * information like tags or comments.
+ *
+ * The StromaV library provides a set of template classes implementing base
+ * framework for managing user-defined metadata structures.
+ *
+ * For defining new metadata type and data sources one may consider to start
+ * with MetadataTypeTraits class template class.
+ *
+ * \see MetadataTypeTraits
+ * \see md-test-common.hpp
+ * \see md-test-common.cpp
+ * \see md-test1.cpp
+ * \see md-test2.cpp
+ */
+
 static std::unordered_set<sV_MetadataTypeIndex> * _static_mdTypeIds = nullptr;
 
 sV_MetadataTypeIndex

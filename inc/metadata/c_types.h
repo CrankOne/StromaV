@@ -33,6 +33,8 @@ typedef uint16_t sV_MetadataTypeIndex;
  * This structure is rather a wrapper for certain metadata type. It keeps the
  * numerical index and arbitrary payload that has to be accessed by routines
  * matching certain type.
+ *
+ * @ingroup mdat
  * */
 typedef struct sV_Metadata {
     /** Type indexes is dynamic. Do not store them in files! */

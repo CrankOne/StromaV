@@ -43,7 +43,38 @@ template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITDis
 template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITEventQueryableStore;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITRangeQueryableStore;
 template<typename EventIDT, typename MetadataT, typename SourceIDT> struct ITSetQueryableStore;
-/**???
+
+/**@class MetadataTypeTraits
+ * @brief Struct summing up the type traits related to particular metadata.
+ *
+ * The MetadataTypeTraits class provides a helper shortcut for metadata
+ * definitions.
+ * In order to use it user code has to parameterize this class and then use
+ * its scoped type definitions as interfaces.
+ *
+ * For example, lets consider a metadata type referencing n-th word
+ * inside a text by position of its first character and last character both
+ * encapsulated in `std::pair<size_t, size_t>`.
+ *
+ * @snippet md-test1.cpp Defining metadata traits
+ *
+ * The `MetadataTraits` type definition now refers to scope where all the needed
+ * interfacing classes are defined. One may further refer to these nested
+ * definitions to shorten the parent class names for descendants:
+ *
+ * @snippet md-test1.cpp Using the scoped metadata interface
+ *
+ * Explanatory examples may be found in unit tests.
+ *
+ * @see md-test-common.hpp
+ * @see md-test-common.cpp
+ * @see md-test1.cpp
+ * @see md-test2.cpp
+ *
+ * @ingroup mdat
+ */
+
+/*
  * Generic MetadataTypeTraits<> template used for sectioned source.
  */
 template<typename EventIDT,
@@ -56,22 +87,35 @@ public:
                    "Class with SourceIDT=void has explicit specialization." );
     # endif
     /* Basic types */
-    typedef EventIDT EventID;
-    typedef MetadataT Metadata;
-    typedef SourceIDT SourceID;
+    typedef EventIDT EventID;  ///< Event identifier type
+    typedef MetadataT Metadata;  ///< Source-related metadata type
+    typedef SourceIDT SourceID;  ///< Source identifier (for sectioned sources)
     /* Induced types */
+    /// Metadata factory type (vctr)
     typedef MetadataDictionary<EventID> TypesDictionary;
-    typedef iTCachedMetadataType<EventID, Metadata, SourceID>    iMetadataType;
+    /// Required interface for metadata type
+    typedef iTCachedMetadataType<EventID, Metadata, SourceID>   iMetadataType;
+    /// Required interface for sectional event source type
     typedef iSectionalEventSource<EventID, Metadata, SourceID>  iEventSource;
     /* Induced store interfaces */
+    /// Range event identifier pair (from, to) type used for ranged reading
     typedef aux::RangeReadingMarkupEntry<EventID, Metadata, SourceID>
             SubrangeMarkup;
+    /// Basic metadata store interface type (querying interface), see \ref ITMetadataStore
     typedef ITMetadataStore<EventID, Metadata, SourceID>            iMetadataStore;
+    /// See \ref ITDisposableSourceManager
     typedef ITDisposableSourceManager<EventID, Metadata, SourceID>  iDisposableSourceManager;
+    /// See \ref ITEventQueryableStore
     typedef ITEventQueryableStore<EventID, Metadata, SourceID>      iEventQueryableStore;
+    /// See \ref ITRangeQueryableStore
     typedef ITRangeQueryableStore<EventID, Metadata, SourceID>      iRangeQueryableStore;
+    /// See \ref ITSetQueryableStore
     typedef ITSetQueryableStore<EventID, Metadata, SourceID>        iSetQueryableStore;
 
+    /// A helper macro defining common types deduced from template parameters.
+    /// May be used at the public section of class declarations. This macro
+    /// has to be used for sectioned sources. For bulk sources use
+    /// sV_METADATA_IMPORT_BULK_TRAITS.
     # define sV_METADATA_IMPORT_SECT_TRAITS( EIDT, MDTT, SIDT )             \
     /* Basic types */                                                       \
     typedef EIDT EventID;                                                   \
@@ -123,7 +167,7 @@ template<typename EventIDT,
          typename SourceIDT>
 MetadataTypeIndex MetadataTypeTraits<EventIDT, MetadataT, SourceIDT>::_typeIndex = 0;
 
-/**???
+/*
  * Partial MetadataTypeTraits<> template used for bulk source.
  */
 template<typename EventIDT,
@@ -136,6 +180,10 @@ public:
     typedef iBulkEventSource<EventID, Metadata> iEventSource;
     typedef iTMetadataType<EventID, Metadata> iMetadataType;
 
+    /// A helper macro defining common types deduced from template parameters.
+    /// May be used at the public section of class declarations. This macro
+    /// has to be used for bulk sources. For sectioned sources use
+    /// sV_METADATA_IMPORT_SECT_TRAITS.
     # define sV_METADATA_IMPORT_BULK_TRAITS( EIDT, MDTT )                   \
     /* Basic types */                                                       \
     typedef EIDT EventID;                                                   \

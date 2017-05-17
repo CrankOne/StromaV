@@ -86,14 +86,20 @@ message MulticastMessage {
 //
 
 message BucketMetaInfo {
-    google.protobuf.Any suppInfo = 5;
+    string metaInfoType = 1;
+    google.protobuf.Any suppInfo = 5;  // usually contains CommonBucketDescriptor
+}
+
+message CommonBucketDescriptor {
+    bytes sha256hash = 1;
+    uint64 nEvents = 3;
 }
 
 message Bucket {
     /// This field may be or may not be filled during to bucket dispatching
     /// depending on whether compression is applied. This condition has to be
     /// defined within utilizing code.
-    BucketMetaInfo metainfo = 1;
+    repeated BucketMetaInfo metainfo = 1;
     repeated Event events = 3;
 }
 
@@ -133,7 +139,7 @@ message CompressedData {
 message DeflatedBucket {
     /// When compression is applied, the compressed bucket data won't contain
     /// the metainfo physically and this field will be set instead of it.
-    BucketMetaInfo metainfo = 1;
+    repeated BucketMetaInfo metainfo = 1;
     CompressedData data = 3;
 }
 

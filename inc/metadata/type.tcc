@@ -43,6 +43,8 @@ namespace sV {
  * This is a "template singletone" --- object of each particular template
  * specification has to be instantiated only once for each parent metadata
  * dictionary.
+ *
+ * @ingroup mdat
  * */
 template<typename EventIDT,
         typename SpecificMetadataT>

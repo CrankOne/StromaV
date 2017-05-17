@@ -44,6 +44,9 @@ namespace sV {
  * multiple source instances of the same type.
  *
  * Adjoint metadata template base class is called iTMetadataType.
+ *
+ * @ingroup analysis
+ * @ingroup mdat
  * */
 template<typename EventIDT,
          typename SpecificMetadataT>

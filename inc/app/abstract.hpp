@@ -53,7 +53,7 @@ namespace sV {
 /**@class AbstractApplication
  * @brief Abstract application class constituing logging streams
  * and configuration/run entry points.
- * @ingroup Application
+ * @ingroup app
  */
 class AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
                             public sV::aux::ASCII_Display {
@@ -223,6 +223,7 @@ public:
 
 /// Constructs a new instance with its virtual ctr using common config
 /// and defined mappings.
+/// @ingroup app
 template<typename T> T *
 generic_new( const std::string & name ) {
     const auto & vctrEntry = sV::sys::IndexOfConstructables::self().find<T>( name );
@@ -335,6 +336,8 @@ AbstractApplication::ConstructableConfMapping::own_conf_for(
  * will be appended with this mapping object while dictionary will be forwarded
  * to \ref IndexOfConstructables singleton index as usual for
  * \ref StromaV_DEFINE_STD_CONSTRUCTABLE.
+ *
+ * @ingroup app
  * */
 # define StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF(    cxxClassName,           \
                                                     name,                   \

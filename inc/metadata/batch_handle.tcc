@@ -44,6 +44,7 @@ namespace aux {
  * to it via the `batch_handle()` method of corresponding metadata type.
  *
  * @see IRandomAccessEventStream
+ * @ingroup mdat
  */
 template<typename EventIDT,
          typename MetadataT,

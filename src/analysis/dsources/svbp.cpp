@@ -78,9 +78,37 @@ BucketReader::n_events() const {
 //
 //
 
-MetaInfoBucketReader::MetaInfoBucketReader( events::Bucket * bucketPtr ) :
+SuppInfoBucketReader::SuppInfoBucketReader( events::Bucket * bucketPtr ) :
                                                 iEventSequence( 0x0 ),
                                                 BucketReader( bucketPtr ) {}
+
+void
+SuppInfoBucketReader::invalidate_supp_info_caches() const {
+    _cacheValid = false;
+    for( auto & p : _miCache ) {
+        p.second.positionInMetaInfo = USHRT_MAX;
+    }
+}
+
+const events::BucketMetaInfo &
+SuppInfoBucketReader::_metainfo( uint16_t n ) const {
+    return bucket().metainfo( n );
+}
+
+void
+SuppInfoBucketReader::_recache_supp_info() {
+    for( int i = 0; i < bucket().metainfo_size(); ++i ) {
+        const events::BucketMetaInfo & miRef = _metainfo( i );
+        std::type_index tIdx = _V_get_collector_type_hash( miRef.metainfotype() );
+        auto cacheEntryIt = _miCache.find( tIdx );
+        if( _miCache.end() == cacheEntryIt ) {
+            cacheEntryIt = _miCache.emplace( tIdx,
+                        _V_new_cache_entry( miRef.metainfotype() ) ).first;
+        }
+        MetaInfoCache & micRef = cacheEntryIt->second;
+        micRef.positionInMetaInfo = i;
+    }
+}
 
 //
 //
@@ -91,7 +119,7 @@ CompressedBucketReader::CompressedBucketReader(
                 events::Bucket * bucketPtr,
                 const Decompressors * decompressors ) :
                         iEventSequence( 0x0 ),
-                        MetaInfoBucketReader( bucketPtr ),
+                        SuppInfoBucketReader( bucketPtr ),
                         _dfltdBucketPtr( dfltdBcktPtr ),
                         _decompressedBucketValid( false ),
                         _decompressors( decompressors )
@@ -107,8 +135,8 @@ CompressedBucketReader::deflated_bucket() const {
 }
 
 const events::BucketMetaInfo &
-CompressedBucketReader::_V_metainfo() const {
-    return deflated_bucket().metainfo();
+CompressedBucketReader::_metainfo( uint16_t n ) const {
+    return deflated_bucket().metainfo( n );
 }
 
 const iDecompressor *
@@ -163,7 +191,8 @@ CompressedBucketReader::_V_bucket() const  {
 void
 CompressedBucketReader::set_bucket_ptr( events::Bucket * ptr ) {
     invalidate_decompressed_bucket_cache();
-    MetaInfoBucketReader::set_bucket_ptr( ptr );
+    invalidate_supp_info_caches();
+    SuppInfoBucketReader::set_bucket_ptr( ptr );
 }
 
 void

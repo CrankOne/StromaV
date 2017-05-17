@@ -52,6 +52,9 @@ class BatchEventsHandle;
  * iBulkEventSource<...> was designed.
  *
  * Adjoint metadata template base class is called iTCachedMetadataType.
+ *
+ * @ingroup analysis
+ * @ingroup mdat
  * */
 template<typename EventIDT,
          typename SpecificMetadataT,

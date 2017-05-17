@@ -70,6 +70,7 @@ Rage, rage against the dying of the light.)";
 //
 // Metadata types
 
+//! [Defining metadata traits]
 // A first "EventID" type describes word position just by the order.
 typedef size_t EventID;
 // Corresponding metadata type is just an index [word no] -> [wordBgn wordEnd].
@@ -77,6 +78,7 @@ typedef std::unordered_map<EventID, std::pair<size_t, size_t> > Metadata;
 // Since we have only one source instances, we do not need the sourceID type
 // and can here define the traits type:
 typedef sV::MetadataTypeTraits<EventID, Metadata> MetadataTraits;
+//! [Defining metadata traits]
 
 //
 // Defining the routines:
@@ -183,6 +185,7 @@ public:
 
 // - metadata type implementation describing necessary routines of how
 //   metadata has to be applied:
+//! [Using the scoped metadata interface]
 class MetadataType : public MetadataTraits::iMetadataType {
 protected:
     SpecificMetadata & _V_acquire_metadata(
@@ -190,6 +193,7 @@ protected:
 public:
     MetadataType() : MetadataTraits::iMetadataType("Testing1") {}
 };  // MetadataType
+//! [Using the scoped metadata interface]
 
 // Implementation of metadata getting method.
 MetadataType::SpecificMetadata &

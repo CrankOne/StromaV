@@ -38,16 +38,18 @@
 # include <yaml.h>
 
 /**@defgroup app Appplications
- * @brief General infrastructure of applications.
+ * @brief General OO infrastructure for applications.
  *
- * The abstract application classes provides a facility to store information
+ * The abstract application descendants provide a facility to store information
  * about supported algorithms, detector systems, logging, configurations and
  * so on.
  *
- * In sV library the most basic class is the sV::AbstractApplication
- * defining the major configuration facility. The library provides a few of
- * subclasses implementing additional functionality to be integrated with
- * ROOT or Geant4 or for functional needs like alignment or pipeline-like
+ * In sV library the most basic class is the sV::AbstractApplication.
+ * It defines the major configuration facility.
+ *
+ * The library provides a few of subclasses implementing additional
+ * functionality for integration with ROOT or (and) Geant4 frameworks as well
+ * as extra definitions for functional needs like alignment or pipeline-like
  * event analysis of experimental/modelled data.
  * */
 

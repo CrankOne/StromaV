@@ -38,6 +38,9 @@ namespace sV {
  *
  * This struct is a pure interface.
  *
+ * @ingroup analysis
+ * @ingroup mdat
+ *
  * @see iEventSequence
  */
 template<typename EventIDT>
@@ -61,6 +64,9 @@ namespace aux {
  *
  * User code has to define particular metadata application routines.
  * @see IRandomAccessEventStream
+ *
+ * @ingroup analysis
+ * @ingroup mdat
  * */
 template<typename EventIDT,
          typename MetadataT>

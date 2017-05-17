@@ -59,6 +59,9 @@ namespace mixins {
  * human-readable messages and can be considered as a useful aspect at some
  * applications there is also an interface methods for printing and parsing
  * IDs.
+ * 
+ * @ingroup analysis
+ * @ingroup mdat
  * */
 template<typename SourceIDT>
 class iIdentifiableEventSource : virtual public aux::iEventSequence {

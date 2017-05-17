@@ -46,6 +46,8 @@ class BatchEventsHandle;
  * This class implements common (re)caching logic for physical data source(s)
  * keeping metadata and events. This is a top-level interface, mostly
  * interesting for practiacal usage.
+ *
+ * @ingroup mdat
  */
 template<typename EventIDT,
          typename MetadataT,
@@ -242,6 +244,8 @@ iTCachedMetadataType<EventIDT,
  * given data source at the associated storage and obtain reference to
  * valid instance, if possible. If look-up is not succeeded the method has to
  * construct new instance (and append the associated storage, if has).
+ *
+ * @ingroup mdat
  * */
 template<typename EventIDT,
          typename MetadataT,

@@ -63,6 +63,8 @@ class iEventPayloadProcessorBase;
  *
  * The lifetime of data source and handlers are not maintained by instance of
  * this class.
+ *
+ * @ingroup analysis
  * */
 class AnalysisPipeline : public sV::AbstractApplication::ASCII_Entry {
 public:
@@ -120,6 +122,8 @@ namespace aux {
 /**@class AnalysisApplication::iEventSequence
  *
  * Data format reader object representation.
+ *
+ * @ingroup analysis
  * */
 class iEventSequence {
 public:
@@ -180,6 +184,8 @@ public:
 /**@class AnalysisApplication::iEventProcessor
  *
  * Event processing handler class interface. This class claims the basic logic.
+ *
+ * @ingroup analysis
  * */
 class iEventProcessor {
 public:
@@ -229,6 +235,8 @@ protected:
  * concrete data payload instances inside event messages. Since gprotobuf3
  * does not provide any extension/inheritance mechanics, we have to implement
  * some helper code here.
+ *
+ * @ingroup analysis
  * */
 template<typename EventClassT,
          typename PayloadT>

@@ -50,6 +50,8 @@ namespace aux {
  * Metadata type describes how to utilize the metadata and can be referred with
  * string exprassion (metadata type name). This trait describes its major
  * interfacing logic.
+ *
+ * @ingroup mdat
  * */
 class iMetadataTypeBase {
 private:
@@ -76,7 +78,12 @@ public:
     template<typename EventIDT> friend class sV::MetadataDictionary;
 };  // class iMetadataTypeBase
 
-
+/**@class iTemplatedEventIDMetadataType
+ *
+ * Interim metadata templated type supporting event identification.
+ *
+ * @ingroup mdat
+ */
 template<typename EventIDT>
 class iTemplatedEventIDMetadataType : public iMetadataTypeBase {
 public:

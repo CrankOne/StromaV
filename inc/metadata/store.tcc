@@ -41,6 +41,7 @@ namespace aux {
 /// Aux struct describing interval of events that can be read from a particular
 /// sectioned source. Optionally, can refer to metadata and existing source
 /// instance (otherwise, these fields are set to null).
+/// @ingroup mdat
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
@@ -52,6 +53,10 @@ struct RangeReadingMarkupEntry {
 };
 
 }  // namespace aux
+
+/** \addtogroup mdat 
+ * @{
+ */
 
 /**@class ITMetadataStore
  * @brief Interface to entities storing metadata of specific type, performing
@@ -91,6 +96,13 @@ struct ITMetadataStore {
 };  // class ITMetadataStore
 
 
+/**@class ITDisposableSourceManager
+ * @brief A template interface mixin defining methods for retaining source
+ * instances.
+ *
+ * Adds source instances management methods to basic metadata store interface.
+ * Has to be used as a mixin.
+ * */
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
@@ -110,6 +122,14 @@ struct ITDisposableSourceManager : virtual public ITMetadataStore<EventIDT,
     virtual void free_source( iEventSource * srcPtr ) = 0;
 };  // class iSectionalSourceManager
 
+
+/**@class ITEventQueryableStore
+ * @brief A template interface mixin defining methods for querying source
+ *        identifier by event ID.
+ *
+ * This interface declares a pure abstract method for source ID lookup by
+ * given event ID.
+ * */
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
@@ -123,6 +143,14 @@ struct ITEventQueryableStore : virtual public ITMetadataStore<EventIDT,
     virtual bool source_id_for( const EventID &, SourceID & ) const = 0;
 };
 
+
+/**@class ITRangeQueryableStore
+ * @brief A template interface mixin defining methods for querying set of
+ *        source identifiers by event IDs range.
+ *
+ * This interface declares a pure abstract method for source IDs lookup by
+ * given range of event ID.
+ * */
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
@@ -139,6 +167,14 @@ struct ITRangeQueryableStore : virtual public ITMetadataStore<EventIDT,
                                 std::list<SubrangeMarkup> & ) const = 0;
 };  // class iRangeQueryableStore
 
+
+/**@class ITSetQueryableStore
+ * @brief A template interface mixin defining methods for querying set of
+ *        source identifiers by list of arbitrary event IDs.
+ *
+ * This interface declares a pure abstract method for source IDs lookup by
+ * given set of event ID (given in random order).
+ * */
 template<typename EventIDT,
          typename MetadataT,
          typename SourceIDT>
@@ -153,6 +189,8 @@ struct ITSetQueryableStore : virtual public ITMetadataStore<EventIDT,
                                 const std::list<EventID> &,
                                 std::list<SubrangeMarkup> & ) const = 0;
 };  // class iRangeQueryableStore
+
+/** @} */
 
 }  // namespace sV
 

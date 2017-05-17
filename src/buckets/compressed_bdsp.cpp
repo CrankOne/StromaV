@@ -95,8 +95,12 @@ void CompressedBucketDispatcher::_set_metainfo() {
     _deflatedBucketPtr->mutable_data()->set_compressionalgo(
             _compressor->algorithm() );
     _compressor->set_compression_info( *(_deflatedBucketPtr->mutable_data()) );
-    if( is_metainfo_collector_set() ) {
-        metainfo_collector().pack_metainfo( *(_deflatedBucketPtr->mutable_metainfo()) );
+    if( are_metainfo_collectors_set() && do_pack_metainfo() ) {
+        for( auto & mic : metainfo_collectors() ) {
+            events::BucketMetaInfo * bmiPtr = _deflatedBucketPtr->add_metainfo();
+            bmiPtr->set_metainfotype( mic.first );
+            mic.second->pack_suppinfo( bmiPtr->mutable_suppinfo() );
+        }
     }
 }
 

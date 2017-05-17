@@ -28,86 +28,111 @@
 # ifdef RPC_PROTOCOLS
 
 # include "uevent.hpp"
-# include <boost/program_options.hpp>
+
+# include <goo_dict/dict.hpp>
+
+# include <openssl/sha.h>
+
+# include <unordered_map>
 
 namespace sV {
 
 /// An abstract interfacing base for bucket metainformation collector.
 class iAbstractBucketMetaInfoCollector {
-private:
-    size_t _nEvents;
 protected:
-    /// Has to perform consideration of an event.
+    /// (IM) Has to perform consideration of an event.
     virtual void _V_consider_event( const events::Event & ) = 0;
-    /// Has to clear accumulated metainformation.
+
+    /// (IM) Has to clear accumulated metainformation.
     virtual void _V_clear() = 0;
-    /// This method has to pack accumulated metainformation to bucket message.
-    /// The source is not specified for this base class for the sake of
-    /// generality.
-    virtual void _V_pack_metainfo( events::BucketMetaInfo & ) = 0;
-    /// This method has to obtain accumulated metainformation from bucket message.
-    /// The destination is not specified for this base class for the sake of
-    /// generality.
-    virtual void _V_unpack_metainfo( const events::BucketMetaInfo & ) = 0;
+
+    /// (IM) This method has to pack accumulated metainformation to bucket
+    /// message. The source is not specified for this base class for the sake
+    /// of generality.
+    virtual void _V_pack_suppinfo( ::google::protobuf::Any* ) = 0;
+
+    /// (IM) This method has to obtain accumulated metainformation from bucket
+    /// message. The destination is not specified for this base class for the
+    /// sake of generality.
+    virtual void _V_unpack_suppinfo( const ::google::protobuf::Any & ) = 0;
 public:
-    iAbstractBucketMetaInfoCollector() : _nEvents(0) {}
+    iAbstractBucketMetaInfoCollector() {}
 
     virtual ~iAbstractBucketMetaInfoCollector() {}
 
-    /// Returns number of considered events.
-    virtual size_t n_events() const { return _nEvents; }
-
     /// Considers an event and appends metainformation.
-    virtual void consider_event( const events::Event & eve ) {
-        ++_nEvents;
-        _V_consider_event( eve );
-    }
+    virtual void consider_event( const events::Event & eve )
+        { _V_consider_event( eve ); }
 
     /// Clears accumulated meta information.
-    virtual void clear() {
-        _nEvents = 0;
-        _V_clear();
-    }
+    virtual void clear() { _V_clear(); }
 
     /// Packs accumulated metainformation to bucket message.
-    void pack_metainfo( events::BucketMetaInfo & miMsgRef )
-        { _V_pack_metainfo( miMsgRef ); }
+    void pack_suppinfo( ::google::protobuf::Any * destPtr )
+        { _V_pack_suppinfo( destPtr ); }
 
     /// Obtains accumulated metainformation from bucket message.
-    void unpack_metainfo( const events::BucketMetaInfo & miMsgCRef )
-        { _V_unpack_metainfo( miMsgCRef ); }
+    void unpack_suppinfo( const ::google::protobuf::Any & srcPtr )
+        { _V_unpack_suppinfo( srcPtr ); }
 };
 
 /// Provides a somewhat standard implementation for (un)packing bucket metainfo.
 /// The _V_consider_event() and _V_clear() is still has to be implemented.
 template<typename T>
-class ITBucketMetaInfoCollector : public iAbstractBucketMetaInfoCollector {
+class ITBucketSuppInfoCollector : public iAbstractBucketMetaInfoCollector {
 private:
     T * _miPtr;
 protected:
-    virtual void _V_set_bucket_meta_info( const T & mi, events::BucketMetaInfo & msg ) {
-        msg.mutable_suppinfo()->PackFrom( mi );
+    /// Packs internal message of specific type into protobyf's Any field
+    /// referred by given ptr.
+    virtual void _V_pack_suppinfo( ::google::protobuf::Any* miMsgRef ) override {
+        miMsgRef->PackFrom( *_my_supp_info_ptr() );
     }
-    virtual void _V_get_bucket_meta_info( const events::BucketMetaInfo & msg, T & mi ) {
-        msg.suppinfo().UnpackTo( &mi );
+
+    /// Uses internal message of specific type as destination to unpack from
+    /// protobyf's Any field referred by given ptr.
+    virtual void _V_unpack_suppinfo( const ::google::protobuf::Any & miMsgRef ) override {
+        miMsgRef.UnpackTo( _my_supp_info_ptr() );
     }
-    virtual void _V_pack_metainfo( events::BucketMetaInfo & miMsgRef ) override {
-        set_bucket_meta_info( *_miPtr, miMsgRef );
-    }
-    virtual void _V_unpack_metainfo( const events::BucketMetaInfo & miMsgRef ) override {
-        get_bucket_meta_info( miMsgRef, *_miPtr );
-    }
+
+    /// May be used by descendants to perform invasive operations with supp
+    /// info message data.
+    virtual T * _my_supp_info_ptr() { return _miPtr; }
 public:
     /// Ctr. The pointer of reentrant metainfo instance is supposed to be
     /// allocated using arena.
-    ITBucketMetaInfoCollector( T * miPtr ) : _miPtr(miPtr) {}
-
-    void set_bucket_meta_info( const T & cDat, events::BucketMetaInfo & msgRef )
-        { _V_set_bucket_meta_info( cDat, msgRef ); }
-
-    void get_bucket_meta_info( const events::BucketMetaInfo & msgCRef, T & cDatRef )
-        { _V_get_bucket_meta_info( msgCRef, cDatRef ); }
+    ITBucketSuppInfoCollector( T * miPtr ) : _miPtr(miPtr) {}
 };
+
+/**@class CommonBucketDescription
+ * @brief Performs accumulation of events number stored in a bucket and unique
+ *        SHA256 hash of bucket content.
+ *
+ * A generic supp info collector. One may wish to insert this collector
+ * instance to bucket dispatcher chains to provide basic buckets
+ * identifiaction and integrity checks using SHA256 digests.
+ */
+class CommonBucketDescription :
+            public ITBucketSuppInfoCollector<events::CommonBucketDescriptor> {
+public:
+    typedef ITBucketSuppInfoCollector<events::CommonBucketDescriptor> Parent;
+private:
+    uint8_t _hash[SHA256_DIGEST_LENGTH];
+    size_t _nEvents;
+protected:
+    /// Increases events counter.
+    virtual void _V_consider_event( const events::Event & ) override;
+
+    /// Clears hash function and events counter.
+    virtual void _V_clear() override;
+
+    /// Computes hash.
+    virtual void _V_pack_suppinfo( ::google::protobuf::Any* miMsgRef ) override;
+public:
+    CommonBucketDescription( events::CommonBucketDescriptor * );
+    CommonBucketDescription( const goo::dict::Dictionary & );
+};
+
 
 /**@class iBucketDispatcher
  * @brief Helper event accumulation class.
@@ -130,53 +155,101 @@ public:
  * destructor will be invoked.
  * */
 class iBucketDispatcher {
+public:
+    typedef std::unordered_map<std::string, iAbstractBucketMetaInfoCollector *>
+        CollectorsMap;
+
+    typedef events::Bucket Bucket;
 private:
+    /// Upper data size limit for accumulation (in bytes)
     size_t _nBytesMax;
+    /// Upper size limit for accumulation (in number of events)
     size_t _nMaxEvents;
+    /// Whether to append supp information to dropped bucket
     bool _doPackMetaInfo;
 protected:
+    /// (IM) Shall define how to perform "drop"
     virtual size_t _V_drop_bucket() = 0;
+
+    /// Buffering bucket instance
     events::Bucket * _rawBucketPtr;
-    iAbstractBucketMetaInfoCollector * _miCollectorPtr;
 
-    iAbstractBucketMetaInfoCollector & metainfo_collector();
+    /// Supp info collectors associated with this dispatcher instance
+    CollectorsMap _miCollectors;
+
+    /// Returns mutable container of associated collectors
+    CollectorsMap & metainfo_collectors();
+
+    /// Will check if append supp info flag is set and will perform the
+    /// appending.
+    void _append_suppinfo_if_need();
 public:
-    typedef sV::events::Bucket Bucket;
-
     /// Ctr getting drop criteria. When doPackMetaInfo is set and metainfo
     /// collector is provided, the dropping method will automatically invoke
     /// pack_metainfo() method of internal metainfo collector prior to
     /// _V_drop_bucket().
     iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackMetaInfo=true );
+
     virtual ~iBucketDispatcher();
 
-    events::Bucket & bucket() { return *_rawBucketPtr; }
+    /// Returns current buffering bucket instance
+    virtual events::Bucket & bucket() { return *_rawBucketPtr; }
 
-    const events::Bucket & bucket() const { return *_rawBucketPtr; }
+    /// Returns current buffering bucket instance (const getter)
+    virtual const events::Bucket & bucket() const { return *_rawBucketPtr; }
 
+    /// Performs consideration of event. Upon one of the above criteria is
+    /// reached, invokes drop_bucket().
     virtual void push_event(const events::Event & );
 
+    /// Returns size limit (in kBs)
     size_t n_max_KB() const { return _nBytesMax/1024; }
+
+    /// Returns size limit (in bytes)
     size_t n_max_bytes() const { return _nBytesMax; }
+
+    /// Returns size limit (in events)
     size_t n_max_events() const { return _nMaxEvents; }
 
+    /// Returns current size (in bytes)
     size_t n_bytes() const {
         return (size_t)(bucket().ByteSize());
     };
+
+    /// Returns current size (in events)
     size_t n_events() const {
         return (size_t)(bucket().events_size());
     };
 
+    /// Returns true when one of the size limits is reached
     virtual bool is_bucket_full();
+
+    /// Returns true if no events had been considered after last drop (or
+    /// instance creation)
     virtual bool is_bucket_empty();
-    size_t drop_bucket();
+
+    /// Performs dropping procedure (usually defined by subclasses) if bucket
+    /// is not empty.
+    virtual size_t drop_bucket();
+
+    /// Clears current state of an instance
     virtual void clear_bucket();
 
-    virtual bool do_pack_metainfo() const { return _doPackMetaInfo; }
+    /// Whether to append supplementary information to dropped bucket
+    virtual bool do_pack_metainfo() const { return !! _doPackMetaInfo; }
+
+    /// Sets the supplementary information flag
     virtual void do_pack_metainfo( bool v ) { _doPackMetaInfo = v; }
-    bool is_metainfo_collector_set() const { return _miCollectorPtr; }
-    void metainfo_collector( iAbstractBucketMetaInfoCollector & micPtr );
-    const iAbstractBucketMetaInfoCollector & metainfo_collector() const;
+
+    /// Returns true if there are supp info collectors associated with an
+    /// instance
+    bool are_metainfo_collectors_set() const { return !metainfo_collectors().empty(); }
+
+    /// Associates the collectors with an instance
+    void metainfo_collectors( CollectorsMap & micPtr );
+
+    /// Returns supp info collectors index associated with this instance
+    const CollectorsMap & metainfo_collectors() const;
 };  // class iBucketDispatcher
 
 }  //  namespace sV

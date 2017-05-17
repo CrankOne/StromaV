@@ -60,6 +60,8 @@ namespace sys {
  *  - The `IndexOfConstructables` indexes multiple abstract product classes
  * available in running applications. The set of abstract products may be
  * extended at run time.
+ *
+ * @ingroup app
  * */
 class IndexOfConstructables {
 public:
@@ -211,6 +213,8 @@ void print_constructables_reference( std::ostream & os ) {
  *        for short.
  * 
  * Utilizing this macro is optional.
+ *
+ * @ingroup app
  **/
 # define StromaV_DEFAULT_CONSTRUCTOR_NAME( cxxClassName )                   \
                         __static_construct_ ## cxxClassName
@@ -223,6 +227,8 @@ void print_constructables_reference( std::ostream & os ) {
  * as a static routine.
  *
  * Utilizing this macro is optional.
+ *
+ * @ingroup app
  **/
 # define StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR( cxxBaseClassName,       \
                                                     cxxClassName )          \
@@ -246,6 +252,8 @@ static cxxBaseClassName * StromaV_DEFAULT_CONSTRUCTOR_NAME(cxxClassName) (  \
  * always be located in the implementation source file.
  *
  * Utilizing this macro is optional.
+ *
+ * @ingroup app
  **/
 # define StromaV_DEFINE_CONSTRUCTABLE(  cxxBaseClass,   \
                                         cxxClassName,   \
@@ -265,6 +273,8 @@ goo::dict::Dictionary __static_assemble_config_ ## cxxClassName ()
  *        \ref StromaV_IMPLEMENT_DEFAULT_CONSTRUCTOR_FOR .
  *
  * This macro is designed to even more abbreviate virtual ctr definition.
+ *
+ * @ingroup app
  * */
 # define StromaV_DEFINE_STD_CONSTRUCTABLE(  cxxClassName,                   \
                                             name,                           \
