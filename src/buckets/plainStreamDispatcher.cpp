@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "buckets/plain_bdsp.hpp"
+# include "buckets/plainStreamDispatcher.hpp"
 
 # ifdef RPC_PROTOCOLS
 
@@ -28,39 +28,29 @@
 
 namespace sV {
 
-PlainStreamBucketDispatcher::PlainStreamBucketDispatcher(
+PlainStreamDispatcher::PlainStreamDispatcher(
         std::ostream & streamRef,
         size_t nMaxKB = 16,
         size_t nMaxEvents = 0 ) :
-    iBucketDispatcher( nMaxKB,
+    iDispatcher( nMaxKB,
                        nMaxEvents ),
     _streamRef(streamRef) {
 }
 
-PlainStreamBucketDispatcher::~PlainStreamBucketDispatcher() {
+PlainStreamDispatcher::~PlainStreamDispatcher() {
     drop_bucket();
 }
 
-size_t PlainStreamBucketDispatcher::_V_drop_bucket() {
+size_t PlainStreamDispatcher::_V_drop_bucket() {
 
     size_t bucketSize = n_bytes();
-    if ( _streamRef.good() ) {
-        // Write size of the bucket to be dropped into output file
-        _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
-        // Then write the bucket
-        //std::cout << "Drop size before bucket bytes: " << bucketSize << std::endl;
-        if( !bucket().SerializeToOstream(&_streamRef) ) {
-            //std::cerr << "Failed to serialize into stream." << std::endl;
-            //return EXIT_FAILURE;
-            _TODO_  // TODO: emraise
-        }
+    // Write size of the bucket to be dropped into output file
+    _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
+    // Then write the bucket
+    if( !bucket().SerializeToOstream(&_streamRef) ) {
+        emraise( ioError, "Failed to serialize into stream." );
     }
-    else {
-        //std::cerr << "Stream for serialized output isn't good." << std::endl;
-        //return EXIT_FAILURE;
-        _TODO_  // TODO: emraise
-    }
-    return bucketSize;;
+    return bucketSize;
 }
 
 }  // namespace sV

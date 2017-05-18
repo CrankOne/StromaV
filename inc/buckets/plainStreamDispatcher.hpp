@@ -27,22 +27,24 @@
 
 # ifdef RPC_PROTOCOLS
 
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iDispatcher.hpp"
 # include <ostream>
 
 namespace sV {
+namespace buckets {
 
-class PlainStreamBucketDispatcher : public iBucketDispatcher {
+class PlainStreamDispatcher : public iDispatcher {
 protected:
     virtual size_t _V_drop_bucket() override;
     std::ostream & _streamRef;
 public:
-    PlainStreamBucketDispatcher( std::ostream & streamRef,
+    PlainStreamDispatcher( std::ostream & streamRef,
                                  size_t nMaxKB, size_t nMaxEvents );
-    virtual ~PlainStreamBucketDispatcher();
-};  // class PlainStreamBucketDispatcher
+    virtual ~PlainStreamDispatcher();
+};  // class PlainStreamDispatcher
 
-}  //  namespace sV
+}  // namespace ::sV::buckets
+}  // namespace sV
 
 # endif  //  RPC_PROTOCLS
 # endif  //  H_STROMA_V_PLAIN_STREAM_BUCKET_DISPATCHER_H

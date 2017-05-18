@@ -26,7 +26,7 @@
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
 # include "ctrs_dict.hpp"
-# include "buckets/compressed_bdsp.hpp"
+# include "buckets/compressedDispatcher.hpp"
 
 # include <goo_dict/parameters/path_parameter.hpp>
 
@@ -35,7 +35,7 @@ namespace dprocessors {
 
 EventsStore::EventsStore(   const std::string & pn,
                             const std::string & filename,
-                            sV::iBucketDispatcher * bucketDispatcher) :
+                            buckets::iBundlingDispatcher * bucketDispatcher) :
                 AnalysisPipeline::iEventProcessor( pn ),
                 ASCII_Entry( goo::aux::iApp::exists() ?
                             &goo::app<AbstractApplication>() : nullptr, 1 ) {
@@ -52,7 +52,7 @@ EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
     const std::string compressionMethodName =
                 dct["compression"].as<std::string>();
     iCompressor * compressorPtr = sV::generic_new<iCompressor>( compressionMethodName );
-    _bucketDispatcher = new CompressedBucketDispatcher( compressorPtr, _file,
+    _bucketDispatcher = new buckets::CompressedDispatcher( compressorPtr, _file,
                 dct["maxBucketSize_kB"].as<uint32_t>(),
                 dct["maxBucketSize_events"].as<uint32_t>() );
 }
@@ -72,8 +72,10 @@ EventsStore::_update_stat() {
     char ** lines = my_ascii_display_buffer();
     assert( lines[0] && !lines[1] );
 
-    size_t rawL = static_cast<CompressedBucketDispatcher*>(_bucketDispatcher)->latest_dropped_raw_len(),
-           cmrsdL = static_cast<CompressedBucketDispatcher*>(_bucketDispatcher)->latest_dropped_compressed_len()
+    size_t rawL = static_cast<buckets::CompressedDispatcher*>(_bucketDispatcher)
+                                                ->latest_dropped_raw_len(),
+           cmrsdL = static_cast<buckets::CompressedDispatcher*>(_bucketDispatcher)
+                                                ->latest_dropped_compressed_len()
            ;
     char compressionStatStr[32] = "--";
     if( rawL ) {

@@ -20,46 +20,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iBundlingDispatcher.hpp"
 
 # ifdef RPC_PROTOCOLS
 
 # include "app/mixins/protobuf.hpp"
 
-# include "event.pb.h"
-
-# include <iostream>
-// # include <fstream>
-
 namespace sV {
+namespace buckets {
 
-CommonBucketDescription::CommonBucketDescription( events::CommonBucketDescriptor * rmsgPtr ) :
+ChecksumsCollector::ChecksumsCollector( events::CommonBucketDescriptor * rmsgPtr ) :
                 Parent(rmsgPtr) {
     clear();
 }
 
-CommonBucketDescription::CommonBucketDescription(
-            const goo::dict::Dictionary & ) : CommonBucketDescription(
+ChecksumsCollector::ChecksumsCollector(
+            const goo::dict::Dictionary & ) : ChecksumsCollector(
                 google::protobuf::Arena::CreateMessage<events::CommonBucketDescriptor>(
                         sV::mixins::PBEventApp::arena_ptr()
                     )
                 ) {}
 
 void
-CommonBucketDescription::_V_consider_event( const events::Event & ) {
+ChecksumsCollector::_V_consider_event( const events::Event & ) {
     ++_nEvents;
 }
 
 void
-CommonBucketDescription::_V_clear() {
+ChecksumsCollector::_V_clear() {
     bzero( _hash, SHA256_DIGEST_LENGTH );
     _nEvents = 0;
 }
 
 void
-CommonBucketDescription::_V_pack_suppinfo(
+ChecksumsCollector::_V_pack_suppinfo(
                 ::google::protobuf::Any* miMsgRef,
-                const iBucketDispatcher & ibdsp ) {
+                const iBundlingDispatcher & ibdsp ) {
     _my_supp_info_ptr()->set_nevents( _nEvents );
     _TODO_  // TODO: need entire bucket data to calculate hash
     _my_supp_info_ptr()->set_sha256hash( _hash, SHA256_DIGEST_LENGTH );
@@ -67,23 +63,13 @@ CommonBucketDescription::_V_pack_suppinfo(
 }
 
 //
-// iBucketDispatcher
-///////////////////
+//
+//
 
-iBucketDispatcher::iBucketDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackMetaInfo ) :
-                            _nBytesMax(nMaxKB*1024), _nMaxEvents(nMaxEvents), _doPackMetaInfo(doPackMetaInfo),
-                            _rawBucketPtr(
-                                google::protobuf::Arena::CreateMessage<events::Bucket>(
-                                            sV::mixins::PBEventApp::arena_ptr()) ) {}
-
-iBucketDispatcher::~iBucketDispatcher() {
-    if( !is_bucket_empty() ) {
-        drop_bucket();
-    }
-}
+//
 
 void
-iBucketDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
+iBundlingDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
     for( auto cp : metainfo_collectors() ) {
         ::sV::events::BucketInfoEntry * entryPtr = bInfo.add_entries();
         entryPtr->set_infotype( cp.first );
@@ -93,44 +79,26 @@ iBucketDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
 }
 
 size_t
-iBucketDispatcher::drop_bucket() {
-    if( iBucketDispatcher::do_pack_metainfo()
+iBundlingDispatcher::drop_bucket() {
+    if( iBundlingDispatcher::do_pack_metainfo()
      && are_metainfo_collectors_set() ) {
         _append_suppinfo( *(bucket().mutable_info()) );
     }
-    size_t ret = _V_drop_bucket();
-    clear_bucket();
-    return ret;
+    return iDispatcher::drop_bucket();
 }
 
-void iBucketDispatcher::clear_bucket() {
-    _rawBucketPtr->Clear();
-}
-
-bool iBucketDispatcher::is_bucket_full() {
-    return ( (n_max_bytes()  != 0 && n_bytes()  >= n_max_bytes() )
-          || (n_max_events() != 0 && n_events() >= n_max_events()) );
-}
-
-bool iBucketDispatcher::is_bucket_empty() {
-    return ( n_bytes() ?  false : true );
-}
-
-void iBucketDispatcher::push_event(const events::Event & eve) {
-    events::Event* event = bucket().add_events();
-    event->CopyFrom( eve );
+void
+iBundlingDispatcher::push_event(const events::Event & eve) {
     if( are_metainfo_collectors_set() ) {
         for( auto cp : metainfo_collectors() ) {
             cp.second->consider_event( eve );
         }
     }
-    if ( is_bucket_full() ) {
-        drop_bucket();
-    }
+    iDispatcher::push_event( eve );
 }
 
 void
-iBucketDispatcher::metainfo_collectors( iBucketDispatcher::CollectorsMap & mics ) {
+iBundlingDispatcher::metainfo_collectors( CollectorsMap & mics ) {
     for( auto cp : metainfo_collectors() ) {
         cp.second->clear();
     }
@@ -138,19 +106,21 @@ iBucketDispatcher::metainfo_collectors( iBucketDispatcher::CollectorsMap & mics 
     _miCollectors = mics;
 }
 
-const iBucketDispatcher::CollectorsMap &
-iBucketDispatcher::metainfo_collectors() const {
+const iBundlingDispatcher::CollectorsMap &
+iBundlingDispatcher::metainfo_collectors() const {
     return _miCollectors;
 }
 
-iBucketDispatcher::CollectorsMap &
-iBucketDispatcher::metainfo_collectors() {
-    const iBucketDispatcher * cthis = this;
+iBundlingDispatcher::CollectorsMap &
+iBundlingDispatcher::metainfo_collectors() {
+    const iBundlingDispatcher * cthis = this;
     const CollectorsMap & cref = cthis->metainfo_collectors();
     return const_cast<CollectorsMap &>(cref);
 }
 
+}  // namespace ::sV::buckets
 }  //  namespace sV
 
 # endif  //  RPC_PROTOCOLS
+
 

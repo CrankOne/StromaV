@@ -27,14 +27,15 @@
 
 # ifdef RPC_PROTOCOLS
 
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iBundlingDispatcher.hpp"
 # include "compression/iCompressor.hpp"
 
 # include <ostream>
 
 namespace sV {
+namespace buckets {
 
-class CompressedBucketDispatcher : public iBucketDispatcher {
+class CompressedDispatcher : public iBundlingDispatcher {
 private:
     iCompressor * _compressor;
     uint8_t * _srcBuffer,
@@ -62,21 +63,21 @@ protected:
     virtual void _clear_buffer( uint8_t *& buf );
     //virtual void _set_metainfo();
 protected:
-    CompressedBucketDispatcher( iCompressor * compressorPtr,
+    CompressedDispatcher( iCompressor * compressorPtr,
                                 std::ostream * streamPtr,
                                 size_t nMaxKB, size_t nMaxEvents,
                                 bool doPackMetainfo=true);
 public:
-    CompressedBucketDispatcher( iCompressor * compressorPtr,
+    CompressedDispatcher( iCompressor * compressorPtr,
                                 std::ostream & streamRef,
                                 size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedBucketDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents ) {}
+            CompressedDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents ) {}
 
-    CompressedBucketDispatcher( iCompressor * compressorPtr,
+    CompressedDispatcher( iCompressor * compressorPtr,
                                 size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedBucketDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents ) {}
+            CompressedDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents ) {}
 
-    virtual ~CompressedBucketDispatcher();
+    virtual ~CompressedDispatcher();
 
     void set_out_stream( std::ostream & strRef ) { _streamPtr = &strRef; }
     std::ostream * get_out_stream_ptr() { return _streamPtr; }
@@ -89,9 +90,10 @@ public:
 
     virtual bool do_pack_metainfo() const override { return _doPackMetaInfo2; }
     virtual void do_pack_metainfo( bool v ) override { _doPackMetaInfo2 = v; }
-};  // class CompressedBucketDispatcher
+};  // class CompressedDispatcher
 
-}  //  namespace sV
+}  // namespace ::sV::buckets
+}  // namespace sV
 
 # endif  //  RPC_PROTOCLS
 # endif  //  H_STROMA_V_COMPR_BUCKET_DISPATCHER_H

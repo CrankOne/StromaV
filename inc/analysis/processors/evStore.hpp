@@ -30,7 +30,7 @@
 
 # include "app/analysis.hpp"
 # include "uevent.hpp"
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iBundlingDispatcher.hpp"
 
 # include <goo_dict/dict.hpp>
 
@@ -42,7 +42,7 @@ namespace dprocessors {
 /**@class EventsStore
  * @brief Pipeline handler performing saving of the events to file.
  *
- * This class uses \ref iBucketDispatcher interface to perform high-level
+ * This class uses \ref iBundlingDispatcher interface to perform high-level
  * version of write-back caching.
  * */
 class EventsStore : public AnalysisPipeline::iEventProcessor,
@@ -51,7 +51,7 @@ public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
 protected:
-    sV::iBucketDispatcher * _bucketDispatcher;
+    buckets::iBundlingDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
     std::fstream _file;
 
@@ -59,7 +59,7 @@ protected:
 public:
     EventsStore( const std::string & pn,
                  const std::string & outFileName,
-              sV::iBucketDispatcher * bucketDispatcher );
+                buckets::iBundlingDispatcher * bucketDispatcher );
     EventsStore( const goo::dict::Dictionary & );
     virtual ~EventsStore();
 

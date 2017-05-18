@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-# include "buckets/compressed_bdsp.hpp"
+# include "buckets/compressedDispatcher.hpp"
 
 # ifdef RPC_PROTOCOLS
 
@@ -30,14 +30,15 @@
 # include <iostream>
 
 namespace sV {
+namespace buckets {
 
-CompressedBucketDispatcher::CompressedBucketDispatcher(
+CompressedDispatcher::CompressedDispatcher(
                 iCompressor * compressorPtr,
                 std::ostream * streamPtr,
                 size_t nMaxKB,
                 size_t nMaxEvents,
                 bool doPackMetainfo ) :
-                                    iBucketDispatcher( nMaxKB, nMaxEvents, false ),
+                                    iBundlingDispatcher( nMaxKB, nMaxEvents, false ),
                                     _compressor( compressorPtr ),
                                     _srcBuffer( nullptr ), _dstBuffer( nullptr ),
                                     _srcBfSize(0), _dstBfSize(0),
@@ -53,7 +54,7 @@ CompressedBucketDispatcher::CompressedBucketDispatcher(
 //_srcBuffer = alloc_buffer( _srcBfSize = 1024*nMaxKB );
 //_dstBuffer = alloc_buffer( _dstBfSize = 1024*nMaxKB );
 
-CompressedBucketDispatcher::~CompressedBucketDispatcher() {
+CompressedDispatcher::~CompressedDispatcher() {
     drop_bucket();
     if( _srcBuffer ) {
         _clear_buffer( _srcBuffer );
@@ -63,7 +64,7 @@ CompressedBucketDispatcher::~CompressedBucketDispatcher() {
     }
 }
 
-size_t CompressedBucketDispatcher::_compress_bucket() {
+size_t CompressedDispatcher::_compress_bucket() {
     _latestDrop.rawLen = bucket().ByteSize();
     if( !_latestDrop.rawLen ) {
         return 0;
@@ -92,7 +93,7 @@ size_t CompressedBucketDispatcher::_compress_bucket() {
 }
 
 # if 0
-void CompressedBucketDispatcher::_set_metainfo() {
+void CompressedDispatcher::_set_metainfo() {
     _deflatedBucketPtr->mutable_data()->set_compressionalgo(
             _compressor->algorithm() );
     _compressor->set_compression_info( *(_deflatedBucketPtr->mutable_data()) );
@@ -106,7 +107,7 @@ void CompressedBucketDispatcher::_set_metainfo() {
 }
 # endif
 
-size_t CompressedBucketDispatcher::_V_drop_bucket() {
+size_t CompressedDispatcher::_V_drop_bucket() {
     _compress_bucket();
     //_set_metainfo();
     // Write size of the bucket to be dropped into output file
@@ -123,22 +124,24 @@ size_t CompressedBucketDispatcher::_V_drop_bucket() {
 }
 
 uint8_t *
-CompressedBucketDispatcher::_alloc_buffer( const size_t size ) {
+CompressedDispatcher::_alloc_buffer( const size_t size ) {
     return new uint8_t [size];
 }
 
 void
-CompressedBucketDispatcher::_realloc_buffer( uint8_t *& buf,
+CompressedDispatcher::_realloc_buffer( uint8_t *& buf,
                                             const size_t size) {
     _clear_buffer( buf );
     buf = _alloc_buffer( size );
 }
 
-void CompressedBucketDispatcher::_clear_buffer( uint8_t *& buf ) {
+void CompressedDispatcher::_clear_buffer( uint8_t *& buf ) {
     delete [] buf;
     buf = nullptr;
 }
 
+}  // namespace ::sV::buckets
 }  // namespace sV
+
 # endif  // RPC_PROTOCOLS
 

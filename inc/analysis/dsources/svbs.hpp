@@ -29,7 +29,7 @@
 
 # include "analysis/pipeline.hpp"
 # include "compression/iDecompressor.hpp"
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iBundlingDispatcher.hpp"
 # include "utils.h"
 
 # include <goo_mixins/iterable.tcc>
@@ -146,7 +146,7 @@ class SuppInfoBucketReader : public BucketReader {
 public:
     struct MetaInfoCache {
         std::string name;
-        iAbstractBucketMetaInfoCollector * collectorPtr;
+        buckets::iAbstractInfoCollector * collectorPtr;
         uint16_t positionInMetaInfo;  // set to USHRT_MAX when invalid.
     };
 private:
