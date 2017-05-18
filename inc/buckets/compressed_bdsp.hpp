@@ -60,7 +60,7 @@ protected:
     virtual uint8_t * _alloc_buffer( const size_t size );
     virtual void _realloc_buffer( uint8_t *& buf, const size_t size );
     virtual void _clear_buffer( uint8_t *& buf );
-    virtual void _set_metainfo();
+    //virtual void _set_metainfo();
 protected:
     CompressedBucketDispatcher( iCompressor * compressorPtr,
                                 std::ostream * streamPtr,

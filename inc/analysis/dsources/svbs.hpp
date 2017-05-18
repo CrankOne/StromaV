@@ -157,7 +157,7 @@ private:
 protected:
     /// Shall return bucket's metainfo hdr. May be overriden by descendants in
     /// case the metainfo shall not be obtained from bucket itself.
-    virtual const events::BucketMetaInfo & _metainfo( uint16_t ) const;
+    virtual const events::BucketInfoEntry & _metainfo( uint16_t ) const;
 
     /// Invalidates supp. info caches
     void invalidate_supp_info_caches() const;
@@ -221,7 +221,7 @@ private:
 protected:
     /// Overrides default metainfo getter to obtain compressed metainfo instead
     /// of raw.
-    virtual const events::BucketMetaInfo & _metainfo( uint16_t ) const override;
+    virtual const events::BucketInfoEntry & _metainfo( uint16_t ) const override;
 
     /// Look-up for required decompression algorithm.
     virtual const iDecompressor * _decompressor( iDecompressor::CompressionAlgo ) const;

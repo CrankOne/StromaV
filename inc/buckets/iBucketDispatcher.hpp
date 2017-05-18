@@ -37,6 +37,8 @@
 
 namespace sV {
 
+class iBucketDispatcher;
+
 /// An abstract interfacing base for bucket metainformation collector.
 class iAbstractBucketMetaInfoCollector {
 protected:
@@ -49,7 +51,8 @@ protected:
     /// (IM) This method has to pack accumulated metainformation to bucket
     /// message. The source is not specified for this base class for the sake
     /// of generality.
-    virtual void _V_pack_suppinfo( ::google::protobuf::Any* ) = 0;
+    virtual void _V_pack_suppinfo( ::google::protobuf::Any*,
+                                   const iBucketDispatcher & ) = 0;
 
     /// (IM) This method has to obtain accumulated metainformation from bucket
     /// message. The destination is not specified for this base class for the
@@ -68,8 +71,9 @@ public:
     virtual void clear() { _V_clear(); }
 
     /// Packs accumulated metainformation to bucket message.
-    void pack_suppinfo( ::google::protobuf::Any * destPtr )
-        { _V_pack_suppinfo( destPtr ); }
+    void pack_suppinfo( ::google::protobuf::Any * destPtr,
+                        const iBucketDispatcher & ibdsp )
+        { _V_pack_suppinfo( destPtr, ibdsp ); }
 
     /// Obtains accumulated metainformation from bucket message.
     void unpack_suppinfo( const ::google::protobuf::Any & srcPtr )
@@ -85,7 +89,9 @@ private:
 protected:
     /// Packs internal message of specific type into protobyf's Any field
     /// referred by given ptr.
-    virtual void _V_pack_suppinfo( ::google::protobuf::Any* miMsgRef ) override {
+    virtual void _V_pack_suppinfo(
+                        ::google::protobuf::Any* miMsgRef,
+                        const iBucketDispatcher & ) override {
         miMsgRef->PackFrom( *_my_supp_info_ptr() );
     }
 
@@ -127,7 +133,9 @@ protected:
     virtual void _V_clear() override;
 
     /// Computes hash.
-    virtual void _V_pack_suppinfo( ::google::protobuf::Any* miMsgRef ) override;
+    virtual void _V_pack_suppinfo(
+                ::google::protobuf::Any* miMsgRef,
+                const iBucketDispatcher & ) override;
 public:
     CommonBucketDescription( events::CommonBucketDescriptor * );
     CommonBucketDescription( const goo::dict::Dictionary & );
@@ -180,9 +188,8 @@ protected:
     /// Returns mutable container of associated collectors
     CollectorsMap & metainfo_collectors();
 
-    /// Will check if append supp info flag is set and will perform the
-    /// appending.
-    void _append_suppinfo_if_need();
+    /// Will append supp info from all associated collectors.
+    void _append_suppinfo( events::BucketInfo & );
 public:
     /// Ctr getting drop criteria. When doPackMetaInfo is set and metainfo
     /// collector is provided, the dropping method will automatically invoke

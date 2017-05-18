@@ -91,6 +91,7 @@ size_t CompressedBucketDispatcher::_compress_bucket() {
     return _latestDrop.compressedLen;
 }
 
+# if 0
 void CompressedBucketDispatcher::_set_metainfo() {
     _deflatedBucketPtr->mutable_data()->set_compressionalgo(
             _compressor->algorithm() );
@@ -103,10 +104,11 @@ void CompressedBucketDispatcher::_set_metainfo() {
         }
     }
 }
+# endif
 
 size_t CompressedBucketDispatcher::_V_drop_bucket() {
     _compress_bucket();
-    _set_metainfo();
+    //_set_metainfo();
     // Write size of the bucket to be dropped into output file
     size_t deflatedBucketSize = _deflatedBucketPtr->ByteSize();
     _streamPtr->write((char*)(&deflatedBucketSize), sizeof(uint32_t));

@@ -90,20 +90,20 @@ SuppInfoBucketReader::invalidate_supp_info_caches() const {
     }
 }
 
-const events::BucketMetaInfo &
+const events::BucketInfoEntry &
 SuppInfoBucketReader::_metainfo( uint16_t n ) const {
-    return bucket().metainfo( n );
+    return bucket().info().entries( n );
 }
 
 void
 SuppInfoBucketReader::_recache_supp_info() {
-    for( int i = 0; i < bucket().metainfo_size(); ++i ) {
-        const events::BucketMetaInfo & miRef = _metainfo( i );
-        std::type_index tIdx = _V_get_collector_type_hash( miRef.metainfotype() );
+    for( int i = 0; i < bucket().info().entries_size(); ++i ) {
+        const events::BucketInfoEntry & miRef = _metainfo( i );
+        std::type_index tIdx = _V_get_collector_type_hash( miRef.infotype() );
         auto cacheEntryIt = _miCache.find( tIdx );
         if( _miCache.end() == cacheEntryIt ) {
             cacheEntryIt = _miCache.emplace( tIdx,
-                        _V_new_cache_entry( miRef.metainfotype() ) ).first;
+                        _V_new_cache_entry( miRef.infotype() ) ).first;
         }
         MetaInfoCache & micRef = cacheEntryIt->second;
         micRef.positionInMetaInfo = i;
@@ -134,9 +134,9 @@ CompressedBucketReader::deflated_bucket() const {
     return *_dfltdBucketPtr;
 }
 
-const events::BucketMetaInfo &
+const events::BucketInfoEntry &
 CompressedBucketReader::_metainfo( uint16_t n ) const {
-    return deflated_bucket().metainfo( n );
+    return deflated_bucket().info().entries( n );
 }
 
 const iDecompressor *

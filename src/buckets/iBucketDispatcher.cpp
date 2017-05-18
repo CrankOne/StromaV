@@ -46,7 +46,7 @@ CommonBucketDescription::CommonBucketDescription(
                 ) {}
 
 void
-CommonBucketDescription::_V_consider_event( const events::Event & eve ) {
+CommonBucketDescription::_V_consider_event( const events::Event & ) {
     ++_nEvents;
 }
 
@@ -57,11 +57,13 @@ CommonBucketDescription::_V_clear() {
 }
 
 void
-CommonBucketDescription::_V_pack_suppinfo( ::google::protobuf::Any* miMsgRef ) {
+CommonBucketDescription::_V_pack_suppinfo(
+                ::google::protobuf::Any* miMsgRef,
+                const iBucketDispatcher & ibdsp ) {
     _my_supp_info_ptr()->set_nevents( _nEvents );
     _TODO_  // TODO: need entire bucket data to calculate hash
     _my_supp_info_ptr()->set_sha256hash( _hash, SHA256_DIGEST_LENGTH );
-    Parent::_V_pack_suppinfo( miMsgRef );
+    Parent::_V_pack_suppinfo( miMsgRef, ibdsp );
 }
 
 //
@@ -81,20 +83,21 @@ iBucketDispatcher::~iBucketDispatcher() {
 }
 
 void
-iBucketDispatcher::_append_suppinfo_if_need() {
-    if( iBucketDispatcher::do_pack_metainfo() && are_metainfo_collectors_set() ) {
-        for( auto cp : metainfo_collectors() ) {
-            ::sV::events::BucketMetaInfo * miPtr = bucket().add_metainfo();
-            miPtr->set_metainfotype( cp.first );
-            cp.second->pack_suppinfo( miPtr->mutable_suppinfo() );
-            cp.second->clear();
-        }
+iBucketDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
+    for( auto cp : metainfo_collectors() ) {
+        ::sV::events::BucketInfoEntry * entryPtr = bInfo.add_entries();
+        entryPtr->set_infotype( cp.first );
+        cp.second->pack_suppinfo( entryPtr->mutable_suppinfo(), *this );
+        cp.second->clear();
     }
 }
 
 size_t
 iBucketDispatcher::drop_bucket() {
-    iBucketDispatcher::_append_suppinfo_if_need();
+    if( iBucketDispatcher::do_pack_metainfo()
+     && are_metainfo_collectors_set() ) {
+        _append_suppinfo( *(bucket().mutable_info()) );
+    }
     size_t ret = _V_drop_bucket();
     clear_bucket();
     return ret;
