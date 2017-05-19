@@ -126,7 +126,7 @@ CompressedBucketReader::CompressedBucketReader(
 {}
 
 const events::DeflatedBucket &
-CompressedBucketReader::deflated_bucket() const {
+CompressedBucketReader::compressed_bucket() const {
     if( !_dfltdBucketPtr ) {
         emraise( badState, "Deflated bucket pointer was not set for "
             "reading handle %p.", this );
@@ -136,7 +136,7 @@ CompressedBucketReader::deflated_bucket() const {
 
 const events::BucketInfoEntry &
 CompressedBucketReader::_metainfo( uint16_t n ) const {
-    return deflated_bucket().info().entries( n );
+    return compressed_bucket().info().entries( n );
 }
 
 const iDecompressor *
@@ -196,7 +196,7 @@ CompressedBucketReader::set_bucket_ptr( events::Bucket * ptr ) {
 }
 
 void
-CompressedBucketReader::set_deflated_bucket_ptr( events::DeflatedBucket * dfltBctPtr ) {
+CompressedBucketReader::set_compressed_bucket_ptr( events::DeflatedBucket * dfltBctPtr ) {
     invalidate_decompressed_bucket_cache();
     _dfltdBucketPtr = dfltBctPtr;
 }

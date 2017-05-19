@@ -31,27 +31,30 @@
 
 # include <openssl/sha.h>
 
+# include <memory>
+
 namespace sV {
 namespace buckets {
 
 class iBundlingDispatcher;
 
-/// An abstract interfacing base for bucket metainformation collector.
+/// An abstract interfacing base for bucket supplementary information collector.
+/// @ingroup buckets
 class iAbstractInfoCollector {
 protected:
     /// (IM) Has to perform consideration of an event.
     virtual void _V_consider_event( const events::Event & ) = 0;
 
-    /// (IM) Has to clear accumulated metainformation.
+    /// (IM) Has to clear accumulated supp information.
     virtual void _V_clear() = 0;
 
-    /// (IM) This method has to pack accumulated metainformation to bucket
+    /// (IM) This method has to pack accumulated supp information to bucket
     /// message. The source is not specified for this base class for the sake
     /// of generality.
     virtual void _V_pack_suppinfo( ::google::protobuf::Any*,
                                    const iBundlingDispatcher & ) = 0;
 
-    /// (IM) This method has to obtain accumulated metainformation from bucket
+    /// (IM) This method has to obtain accumulated supp information from bucket
     /// message. The destination is not specified for this base class for the
     /// sake of generality.
     virtual void _V_unpack_suppinfo( const ::google::protobuf::Any & ) = 0;
@@ -60,25 +63,26 @@ public:
 
     virtual ~iAbstractInfoCollector() {}
 
-    /// Considers an event and appends metainformation.
+    /// Considers an event and appends supp information.
     virtual void consider_event( const events::Event & eve )
         { _V_consider_event( eve ); }
 
-    /// Clears accumulated meta information.
+    /// Clears accumulated supp information.
     virtual void clear() { _V_clear(); }
 
-    /// Packs accumulated metainformation to bucket message.
+    /// Packs accumulated supp information to bucket message.
     void pack_suppinfo( ::google::protobuf::Any * destPtr,
                         const iBundlingDispatcher & ibdsp )
         { _V_pack_suppinfo( destPtr, ibdsp ); }
 
-    /// Obtains accumulated metainformation from bucket message.
+    /// Obtains accumulated supp information from bucket message.
     void unpack_suppinfo( const ::google::protobuf::Any & srcPtr )
         { _V_unpack_suppinfo( srcPtr ); }
 };
 
-/// Provides a somewhat standard implementation for (un)packing bucket metainfo.
-/// The _V_consider_event() and _V_clear() is still has to be implemented.
+/// Provides a somewhat standard implementation for (un)packing bucket supp 
+/// info. The _V_consider_event() and _V_clear() is still has to be implemented.
+/// @ingroup buckets
 template<typename T>
 class ITBucketSuppInfoCollector : public iAbstractInfoCollector {
 private:
@@ -102,7 +106,7 @@ protected:
     /// info message data.
     virtual T * _my_supp_info_ptr() { return _miPtr; }
 public:
-    /// Ctr. The pointer of reentrant metainfo instance is supposed to be
+    /// Ctr. The pointer of reentrant supp info instance is supposed to be
     /// allocated using arena.
     ITBucketSuppInfoCollector( T * miPtr ) : _miPtr(miPtr) {}
 };
@@ -114,6 +118,8 @@ public:
  * A generic supp info collector. One may wish to insert this collector
  * instance to bucket dispatcher chains to provide basic buckets
  * identifiaction and integrity checks using SHA256 digests.
+ *
+ * @ingroup buckets
  */
 class ChecksumsCollector :
             public ITBucketSuppInfoCollector<events::CommonBucketDescriptor> {
@@ -139,24 +145,33 @@ public:
 };  // class ChecksumsCollector
 
 
+/**@class iBundlingDispatcher
+ * @brief A buket dispatcher appending supplementary information.
+ *
+ * This class provides methods and supplementary structure fot packing the
+ * additional information into the bucket `info` field. The information
+ * collectors have to inherit the iAbstractInfoCollector interface.
+ *
+ * @ingroup buckets
+ * */
 class iBundlingDispatcher : public iDispatcher {
 public:
     typedef std::unordered_map<std::string, iAbstractInfoCollector *>
         CollectorsMap;
 private:
     /// Whether to append supp information to dropped bucket
-    bool _doPackMetaInfo;
+    bool _doPackSuppInfo;
 protected:
     /// Supp info collectors associated with this dispatcher instance
     CollectorsMap _miCollectors;
 
     /// Returns mutable container of associated collectors
-    CollectorsMap & metainfo_collectors();
+    CollectorsMap & suppinfo_collectors();
 
     /// Will append supp info from all associated collectors.
     void _append_suppinfo( events::BucketInfo & );
 public:
-    iBundlingDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackMetaInfo=true );
+    iBundlingDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackSuppInfo=true );
 
     /// (overriden) Additionally, performs invokations of associated collectors.
     virtual void push_event(const events::Event & ) override;
@@ -165,20 +180,20 @@ public:
     virtual size_t drop_bucket() override;
 
     /// Whether to append supplementary information to dropped bucket
-    virtual bool do_pack_metainfo() const { return !! _doPackMetaInfo; }
+    virtual bool do_pack_suppinfo() const { return !! _doPackSuppInfo; }
 
     /// Sets the supplementary information flag
-    virtual void do_pack_metainfo( bool v ) { _doPackMetaInfo = v; }
+    virtual void do_pack_suppinfo( bool v ) { _doPackSuppInfo = v; }
 
     /// Returns true if there are supp info collectors associated with an
     /// instance
-    bool are_metainfo_collectors_set() const { return !metainfo_collectors().empty(); }
+    bool are_suppinfo_collectors_set() const { return !suppinfo_collectors().empty(); }
 
     /// Associates the collectors with an instance
-    void metainfo_collectors( CollectorsMap & micPtr );
+    void suppinfo_collectors( CollectorsMap & micPtr );
 
     /// Returns supp info collectors index associated with this instance
-    const CollectorsMap & metainfo_collectors() const;
+    const CollectorsMap & suppinfo_collectors() const;
 };  // class iBundlingDispatcher
 
 }  // namespace ::sV::buckets

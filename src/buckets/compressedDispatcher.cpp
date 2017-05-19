@@ -37,17 +37,15 @@ CompressedDispatcher::CompressedDispatcher(
                 std::ostream * streamPtr,
                 size_t nMaxKB,
                 size_t nMaxEvents,
-                bool doPackMetainfo ) :
-                                    iBundlingDispatcher( nMaxKB, nMaxEvents, false ),
+                bool doPackSuppinfo ) :
+                                    Parent( nMaxKB, nMaxEvents, false ),
                                     _compressor( compressorPtr ),
-                                    _srcBuffer( nullptr ), _dstBuffer( nullptr ),
-                                    _srcBfSize(0), _dstBfSize(0),
                                     _streamPtr( streamPtr ),
                                     _deflatedBucketPtr(
                                         google::protobuf::Arena::CreateMessage<events::DeflatedBucket>(
                                             sV::mixins::PBEventApp::arena_ptr()) ),
                                     _latestDrop{0, 0},
-                                    _doPackMetaInfo2(doPackMetainfo) {
+                                    _doPackSuppInfo2(doPackSuppinfo) {
     assert(_deflatedBucketPtr);
 }
 
@@ -56,12 +54,6 @@ CompressedDispatcher::CompressedDispatcher(
 
 CompressedDispatcher::~CompressedDispatcher() {
     drop_bucket();
-    if( _srcBuffer ) {
-        _clear_buffer( _srcBuffer );
-    }
-    if( _dstBuffer ) {
-        _clear_buffer( _dstBuffer );
-    }
 }
 
 size_t CompressedDispatcher::_compress_bucket() {
@@ -70,46 +62,26 @@ size_t CompressedDispatcher::_compress_bucket() {
         return 0;
     }
     // Realloc src buf if need:
-    if( _latestDrop.rawLen > _srcBfSize ) {
-        _realloc_buffer( _srcBuffer, _latestDrop.rawLen );
-        _srcBfSize = _latestDrop.rawLen;
-    }
-    bucket().SerializeToArray( _srcBuffer, _latestDrop.rawLen );
+    _raw_buffer_alloc( _latestDrop.rawLen );
+    bucket().SerializeToArray( raw_buffer_data(), _latestDrop.rawLen );
     const size_t desiredOutSize =
-            _compressor->compressed_dest_buffer_len( _srcBuffer, _latestDrop.rawLen );
+            _compressor->compressed_dest_buffer_len( raw_buffer_data(), _latestDrop.rawLen );
     if( !desiredOutSize ) {
         emraise( badState, "Compressor instance ordered 0 length output "
             "buffer for %zu input bytes.", _latestDrop.rawLen );
     }
-    if( desiredOutSize > _dstBfSize ) {
-        _realloc_buffer( _dstBuffer, desiredOutSize );
-        _dstBfSize = desiredOutSize;
-    }
+    _compressed_buffer_alloc( desiredOutSize );
     _latestDrop.compressedLen = _compressor->compress_series(
-                _srcBuffer,     _latestDrop.rawLen,
-                _dstBuffer,     _dstBfSize );
-    _deflatedBucketPtr->mutable_data()->set_compressedcontent( _dstBuffer, _latestDrop.compressedLen );
+                raw_buffer_data(),          _latestDrop.rawLen,
+                compressed_buffer_data(),   compressed_buffer_length() );
+    _deflatedBucketPtr->mutable_data()->set_compressedcontent(
+                        compressed_buffer_data(), _latestDrop.compressedLen );
     return _latestDrop.compressedLen;
 }
 
-# if 0
-void CompressedDispatcher::_set_metainfo() {
-    _deflatedBucketPtr->mutable_data()->set_compressionalgo(
-            _compressor->algorithm() );
-    _compressor->set_compression_info( *(_deflatedBucketPtr->mutable_data()) );
-    if( are_metainfo_collectors_set() && do_pack_metainfo() ) {
-        for( auto & mic : metainfo_collectors() ) {
-            events::BucketMetaInfo * bmiPtr = _deflatedBucketPtr->add_metainfo();
-            bmiPtr->set_metainfotype( mic.first );
-            mic.second->pack_suppinfo( bmiPtr->mutable_suppinfo() );
-        }
-    }
-}
-# endif
-
 size_t CompressedDispatcher::_V_drop_bucket() {
     _compress_bucket();
-    //_set_metainfo();
+    _append_suppinfo( *(_deflatedBucketPtr->mutable_info()) );
     // Write size of the bucket to be dropped into output file
     size_t deflatedBucketSize = _deflatedBucketPtr->ByteSize();
     _streamPtr->write((char*)(&deflatedBucketSize), sizeof(uint32_t));
@@ -123,21 +95,14 @@ size_t CompressedDispatcher::_V_drop_bucket() {
     return bucket().ByteSize();
 }
 
-uint8_t *
-CompressedDispatcher::_alloc_buffer( const size_t size ) {
-    return new uint8_t [size];
+void
+CompressedDispatcher::_compressed_buffer_alloc( size_t nBytes ) {
+    _compressedBuffer.resize( nBytes );
 }
 
 void
-CompressedDispatcher::_realloc_buffer( uint8_t *& buf,
-                                            const size_t size) {
-    _clear_buffer( buf );
-    buf = _alloc_buffer( size );
-}
-
-void CompressedDispatcher::_clear_buffer( uint8_t *& buf ) {
-    delete [] buf;
-    buf = nullptr;
+CompressedDispatcher::_compressed_buffer_free() {
+    _compressedBuffer.clear();
 }
 
 }  // namespace ::sV::buckets

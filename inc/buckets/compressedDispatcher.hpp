@@ -27,7 +27,7 @@
 
 # ifdef RPC_PROTOCOLS
 
-# include "buckets/iBundlingDispatcher.hpp"
+# include "buckets/iTPlainBufferDispatcher.tcc"
 # include "compression/iCompressor.hpp"
 
 # include <ostream>
@@ -35,16 +35,12 @@
 namespace sV {
 namespace buckets {
 
-class CompressedDispatcher : public iBundlingDispatcher {
+class CompressedDispatcher : public iTPlainBufferDispatcher<std::allocator> {
+public:
+    typedef iTPlainBufferDispatcher<std::allocator> Parent;
 private:
     iCompressor * _compressor;
-    uint8_t * _srcBuffer,
-            * _dstBuffer
-            ;
-
-    size_t  _srcBfSize,
-            _dstBfSize
-            ;
+    Parent::Buffer _compressedBuffer;
     std::ostream * _streamPtr;
     events::DeflatedBucket * _deflatedBucketPtr;
 
@@ -52,21 +48,24 @@ private:
         size_t rawLen, compressedLen;
     } _latestDrop;
 
-    /// Controls whether to pack uncompressed metainfo.
-    bool _doPackMetaInfo2;
+    /// Controls whether to pack uncompressed supp info.
+    bool _doPackSuppInfo2;
 protected:
+    virtual void _compressed_buffer_alloc( size_t nBytes );
+    virtual void _compressed_buffer_free();
+
+    virtual uint8_t * compressed_buffer_data() {
+        return _compressedBuffer.data();
+    }
+
     virtual size_t _V_drop_bucket() override;
 
     virtual size_t _compress_bucket();
-    virtual uint8_t * _alloc_buffer( const size_t size );
-    virtual void _realloc_buffer( uint8_t *& buf, const size_t size );
-    virtual void _clear_buffer( uint8_t *& buf );
-    //virtual void _set_metainfo();
 protected:
     CompressedDispatcher( iCompressor * compressorPtr,
                                 std::ostream * streamPtr,
                                 size_t nMaxKB, size_t nMaxEvents,
-                                bool doPackMetainfo=true);
+                                bool doPackSuppinfo=true);
 public:
     CompressedDispatcher( iCompressor * compressorPtr,
                                 std::ostream & streamRef,
@@ -88,8 +87,13 @@ public:
     size_t latest_dropped_raw_len() const { return _latestDrop.rawLen; }
     size_t latest_dropped_compressed_len() const { return _latestDrop.compressedLen; }
 
-    virtual bool do_pack_metainfo() const override { return _doPackMetaInfo2; }
-    virtual void do_pack_metainfo( bool v ) override { _doPackMetaInfo2 = v; }
+    virtual bool do_pack_suppinfo() const override { return _doPackSuppInfo2; }
+    virtual void do_pack_suppinfo( bool v ) override { _doPackSuppInfo2 = v; }
+
+    size_t compressed_buffer_length() const { return _compressedBuffer.size(); }
+    virtual const uint8_t * compressed_buffer_data() const {
+        return _compressedBuffer.data();
+    }
 };  // class CompressedDispatcher
 
 }  // namespace ::sV::buckets

@@ -185,6 +185,7 @@ public:
         }
         it->second.collectorPtr->unpack_suppinfo(
                     _metainfo( it->second.positionInMetaInfo ).suppinfo() );
+        return true;
     }
 };
 
@@ -193,7 +194,7 @@ public:
  *
  * A class incapsulating decompression for buckets compressed inside the
  * DeflatedBucket data structure. Will automatically apply decompression
- * for data when bucket will be necessary.
+ * for data when bucket instance will be necessary to acquire.
  *
  * @ingroup analysis
  */
@@ -230,21 +231,21 @@ protected:
     /// data as bucket.
     virtual void _decompress_bucket() const;
 
-    /// For descendants --- mutable deflated bucket getter. Do not forget to
+    /// For descendants --- mutable compressed bucket getter. Do not forget to
     /// mark current decompressed bucket as invalid with
     /// invalidate_decompressed_bucket_cache() after making changes.
-    events::DeflatedBucket * _mutable_deflated_bucket_ptr()
+    events::DeflatedBucket * _mutable_compressed_bucket_ptr()
                                                     { return _dfltdBucketPtr; }
 public:
     CompressedBucketReader( events::DeflatedBucket *,
                             events::Bucket *,
                             const Decompressors * );
 
-    /// Returns reference to associated deflated bucket isntance.
-    const events::DeflatedBucket & deflated_bucket() const;
+    /// Returns reference to associated compressed bucket isntance.
+    const events::DeflatedBucket & compressed_bucket() const;
 
     /// Returns true when bucket pointer was associated with this handle.
-    virtual bool is_deflated_bucket_set() const { return _dfltdBucketPtr; }
+    virtual bool is_compressed_bucket_set() const { return _dfltdBucketPtr; }
 
     /// _decompressedBucketValid getter.
     bool is_decompressed_bucket_valid() const { return _decompressedBucketValid; }
@@ -252,25 +253,124 @@ public:
     /// Marks bucket cache as invalid before forwarding invokation to parent.
     virtual void set_bucket_ptr( events::Bucket * ptr );
 
-    /// Sets deflated bucket pointer to handle the provided instance.
-    virtual void set_deflated_bucket_ptr( events::DeflatedBucket * );
+    /// Sets compressed bucket pointer to handle the provided instance.
+    virtual void set_compressed_bucket_ptr( events::DeflatedBucket * );
 
     /// Marks decompressed bucket cache as invalid.
     void invalidate_decompressed_bucket_cache()
         { _decompressedBucketValid = false; }
 };
 
+
+/**@class BucketStreamReader
+ * @brief A class wrapping std::istream providing compressed bucket reading
+ *        interface.
+ * */
+template<typename BucketIDT,
+         typename BucketKeyInfoT>
 class BucketStreamReader : public CompressedBucketReader {
+public:
+    typedef BucketIDT BucketID;
+    typedef BucketKeyInfoT BucketKeyInfo;
+    typedef std::unordered_multimap<BucketID, std::istream::streampos> OffsetsMap;
 private:
+    /// Cache keeping physical offsets of buckets with certain ID.
+    OffsetsMap _offsetsMap;
+
+    /// Iterator pointing to current entry in offsets cache.
+    typename OffsetsMap::iterator _cBucketIt;
+
+    /// Pointer to stream.
     std::istream * _iStreamPtr;
+
+    /// Internal buffer for reading byte sequence.
+    std::vector<uint8_t> _readingBuffer;
+
+    BucketKeyInfoT * _bucketKeyInfoMsg;
 protected:
+    /// Adds new bucket position entry to cache.
+    void _emplace_bucket_offset( const BucketID &, std::istream::streampos );  // TODO
+
+    /// Performs iterating of the entire stream from the beginning collecting
+    /// physical offsets for each bucket. Performance heavy, need for
+    /// random-access routines only.
+    void _build_offsets_map();
+
+    /// Performs reading of next bucket.
     virtual void _V_acquire_next_bucket();
+
+    /// Returns true if there are buckets in the associated stream.
     virtual bool _V_buckets_available() const;
+
+    /// Returns true if there are events in current bucket. Causes current
+    /// compressed bucket to be decompressed.
     virtual bool _V_events_available() const;
 public:
-    
+    /// Generic ctr.
+    BucketStreamReader( events::DeflatedBucket *,
+                        events::Bucket *,
+                        BucketKeyInfoT *,
+                        const Decompressors *,
+                        std::istream * is=nullptr );
+
+    ~BucketStreamReader();
+
+    /// Returns true, if stream is set for this instance.
+    bool is_stream_set() const { return _iStreamPtr; }
+
+    /// Associates the stream with this instance. Causes re-caching of offsets
+    /// map if it was not provided.
+    void set_stream( std::istream &, const OffsetsMap & );
+
+    const OffsetsMap & offsets_map() const;
+
+    /// Prints human-readable excerpt of buckets available in the stream.
+    void dump_offsets_map( std::ostream & );
 };
 
+// BucketStreamReader
+////////////////////
+
+template<typename BucketIDT,
+         typename BucketKeyInfoT>
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::BucketStreamReader(
+                        events::DeflatedBucket * dfltBcktPtr,
+                        events::Bucket * bcktPtr,
+                        BucketKeyInfoT * keyMsgPtr,
+                        const Decompressors * dcmprssrsMap,
+                        std::istream * is ) :
+        CompressedBucketReader(dfltBcktPtr, bcktPtr, dcmprssrsMap),
+        _iStreamPtr(is),
+        _bucketKeyInfoMsg(keyMsgPtr) {}
+
+
+template<typename BucketIDT, typename BucketKeyInfoT> void
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map() {
+    if( !is_stream_set() ) {
+        emraise( badArchitect, "Stream is not associated with reader "
+            "instance %p.", this );
+    }
+
+    offsets_map().clear();
+
+    uint32_t bucketSize, nBucket;
+    _iStreamPtr->seekg( 0, _iStreamPtr->beg );
+    while( *_iStreamPtr ) {
+        _iStreamPtr->read( (char*)(&bucketSize), sizeof(uint32_t) );
+        std::istream::streampos cBucketOffset = _iStreamPtr->tellg();
+        _readingBuffer.resize(bucketSize);
+        _iStreamPtr->read( (char*) _readingBuffer.data(), bucketSize );
+        compressed_bucket().ParseFromArray( _readingBuffer.data(), bucketSize );
+        if( ! supp_info( *_bucketKeyInfoMsg ) ) {
+            sV_logw( "Bucket %zu of stream %p has no supp info of type %s that "
+                     "was expected for bucket key type %s.\n",
+                nBucket, _iStreamPtr,
+                _bucketKeyInfoMsg->GetTypeName().c_str(),
+                typeid(BucketID).name() );
+        }
+        _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
+    }
+}
 
 }  // namespace ::sV::buckets
 

@@ -26,6 +26,8 @@
 
 # include "app/mixins/protobuf.hpp"
 
+# include "buckets/iTPlainBufferDispatcher.tcc"
+
 namespace sV {
 namespace buckets {
 
@@ -57,7 +59,10 @@ ChecksumsCollector::_V_pack_suppinfo(
                 ::google::protobuf::Any* miMsgRef,
                 const iBundlingDispatcher & ibdsp ) {
     _my_supp_info_ptr()->set_nevents( _nEvents );
-    _TODO_  // TODO: need entire bucket data to calculate hash
+    const IPlainBufferDispatcher & ipbdsp = dynamic_cast<const IPlainBufferDispatcher &>(ibdsp);
+
+    SHA256( ipbdsp.raw_buffer_data(), ipbdsp.raw_buffer_length(), _hash );
+
     _my_supp_info_ptr()->set_sha256hash( _hash, SHA256_DIGEST_LENGTH );
     Parent::_V_pack_suppinfo( miMsgRef, ibdsp );
 }
@@ -68,9 +73,14 @@ ChecksumsCollector::_V_pack_suppinfo(
 
 //
 
+iBundlingDispatcher::iBundlingDispatcher(   size_t nMaxKB, size_t nMaxEvents,
+                                            bool doPackSuppInfo ) :
+            iDispatcher( nMaxKB, nMaxEvents ),
+            _doPackSuppInfo(doPackSuppInfo) { }
+
 void
 iBundlingDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
-    for( auto cp : metainfo_collectors() ) {
+    for( auto cp : suppinfo_collectors() ) {
         ::sV::events::BucketInfoEntry * entryPtr = bInfo.add_entries();
         entryPtr->set_infotype( cp.first );
         cp.second->pack_suppinfo( entryPtr->mutable_suppinfo(), *this );
@@ -80,8 +90,8 @@ iBundlingDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
 
 size_t
 iBundlingDispatcher::drop_bucket() {
-    if( iBundlingDispatcher::do_pack_metainfo()
-     && are_metainfo_collectors_set() ) {
+    if( iBundlingDispatcher::do_pack_suppinfo()
+     && are_suppinfo_collectors_set() ) {
         _append_suppinfo( *(bucket().mutable_info()) );
     }
     return iDispatcher::drop_bucket();
@@ -89,8 +99,8 @@ iBundlingDispatcher::drop_bucket() {
 
 void
 iBundlingDispatcher::push_event(const events::Event & eve) {
-    if( are_metainfo_collectors_set() ) {
-        for( auto cp : metainfo_collectors() ) {
+    if( are_suppinfo_collectors_set() ) {
+        for( auto cp : suppinfo_collectors() ) {
             cp.second->consider_event( eve );
         }
     }
@@ -98,23 +108,23 @@ iBundlingDispatcher::push_event(const events::Event & eve) {
 }
 
 void
-iBundlingDispatcher::metainfo_collectors( CollectorsMap & mics ) {
-    for( auto cp : metainfo_collectors() ) {
+iBundlingDispatcher::suppinfo_collectors( CollectorsMap & mics ) {
+    for( auto cp : suppinfo_collectors() ) {
         cp.second->clear();
     }
-    metainfo_collectors().clear();
+    suppinfo_collectors().clear();
     _miCollectors = mics;
 }
 
 const iBundlingDispatcher::CollectorsMap &
-iBundlingDispatcher::metainfo_collectors() const {
+iBundlingDispatcher::suppinfo_collectors() const {
     return _miCollectors;
 }
 
 iBundlingDispatcher::CollectorsMap &
-iBundlingDispatcher::metainfo_collectors() {
+iBundlingDispatcher::suppinfo_collectors() {
     const iBundlingDispatcher * cthis = this;
-    const CollectorsMap & cref = cthis->metainfo_collectors();
+    const CollectorsMap & cref = cthis->suppinfo_collectors();
     return const_cast<CollectorsMap &>(cref);
 }
 

@@ -27,6 +27,7 @@
 # include "goo_exception.hpp"
 
 namespace sV {
+namespace buckets {
 
 PlainStreamDispatcher::PlainStreamDispatcher(
         std::ostream & streamRef,
@@ -53,6 +54,8 @@ size_t PlainStreamDispatcher::_V_drop_bucket() {
     return bucketSize;
 }
 
+}  // namespace ::sV::buckets
 }  // namespace sV
+
 # endif  // RPC_PROTOCOLS
 
