@@ -459,6 +459,68 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket() {
 
 }  // namespace sV
 
+//
+//
+//
+
+namespace sV {
+namespace aux {
+
+struct SHA256BucketHash {
+    uint32_t hash[8];
+    friend std::ostream & operator<<(std::ostream& stream, const SHA256BucketHash &);
+};
+
+}  // namespace ::sV::aux
+}  // namespace sV
+
+
+//
+// Template specialization for SHA256 hash used as map key
+namespace std {
+template<>
+struct hash<::sV::aux::SHA256BucketHash> {
+    /// Implements murmur3 hash function around SHA256 with hardcoded seed.
+    size_t operator()( const ::sV::aux::SHA256BucketHash & sha256 ) const;
+};
+template<>
+struct equal_to<::sV::aux::SHA256BucketHash> {
+    /// Performs direct comparison.
+    size_t operator()( const ::sV::aux::SHA256BucketHash & sha256l,
+                       const ::sV::aux::SHA256BucketHash & sha256r ) const;
+};
+}  // namespace std
+
+namespace sV {
+/**@class Buckets
+ * @brief Compressed buckets streaming handle available as sV events source.
+ *
+ * Offers a wrapper built around multiple STL streams providing random access
+ * to serialized deflated buckets and their supplementary info indexed
+ * by SHA256 hash.
+ *
+ * TODO: At this level of abstraction we still have no implications about event
+ *       ID, isn't it?
+ * */
+class Buckets : public buckets::BucketStreamReader<
+                                aux::SHA256BucketHash,
+                                events::CommonBucketDescriptor>,
+                public AbstractApplication::ASCII_Entry {
+public:
+    typedef buckets::BucketStreamReader< aux::SHA256BucketHash,
+                                         events::CommonBucketDescriptor> Parent;
+private:
+    // ...
+protected:
+public:
+    Buckets( events::DeflatedBucket * dfltdBcktPtr,
+             events::Bucket * bucketPtr,
+             events::BucketInfo * bucketInfoPtr,
+             const Decompressors * decompressors );
+    Buckets( const goo::dict::Dictionary & );
+};  // class BucketsFile
+}  // namespace sV
+
 # endif  // RPC_PROTOCOLS
 
 # endif  // H_STROMA_V_SVBP_READER_H
