@@ -41,8 +41,9 @@ public:
     virtual size_t raw_buffer_length() const = 0;
 
     IPlainBufferDispatcher( size_t nMaxKB, size_t nMaxEvents,
+                            events::BucketInfo * biEntriesPtr,
                             bool doPackSuppInfo ) :
-                iBundlingDispatcher( nMaxKB, nMaxEvents, doPackSuppInfo ) {}
+                iBundlingDispatcher( nMaxKB, nMaxEvents, biEntriesPtr, doPackSuppInfo ) {}
 };  // class iPlainBufferDispatcher
 
 
@@ -70,9 +71,10 @@ protected:
     }
 public:
     iTPlainBufferDispatcher( size_t nMaxKB, size_t nMaxEvents,
+                             events::BucketInfo * biEntriesPtr,
                              bool doPackSuppInfo=true,
                              const Allocator& alloc=Allocator() ) :
-                IPlainBufferDispatcher( nMaxKB, nMaxEvents, doPackSuppInfo ),
+                IPlainBufferDispatcher( nMaxKB, nMaxEvents, biEntriesPtr, doPackSuppInfo ),
                 _allocator(alloc),
                 _buffer(_allocator) {
         if( nMaxKB ) {

@@ -31,6 +31,16 @@
 namespace sV {
 namespace buckets {
 
+StromaV_BUCKET_INFO_COLLECTOR_DEFINE( ChecksumsCollector, "SHA256" ) {
+    return goo::dict::Dictionary( NULL, 
+        "This class intoduces the SHA256 digest of raw (uncompressed) buckets. "
+        "SHA256 checksum may further be used for bucket identification as well "
+        "as for integrity checks. The sum is intended to uncompressed "
+        "serialized buckets, may cause a significant performance impact (due "
+        "to complexity of SHA256), and has a dynamic cast operation that "
+        "may yield a deficiency of overall performance for small buckets.");
+}
+
 ChecksumsCollector::ChecksumsCollector( events::CommonBucketDescriptor * rmsgPtr ) :
                 Parent(rmsgPtr) {
     clear();
@@ -73,15 +83,18 @@ ChecksumsCollector::_V_pack_suppinfo(
 
 //
 
-iBundlingDispatcher::iBundlingDispatcher(   size_t nMaxKB, size_t nMaxEvents,
+iBundlingDispatcher::iBundlingDispatcher(   size_t nMaxKB,
+                                            size_t nMaxEvents,
+                                            events::BucketInfo * biEntriesPtr,
                                             bool doPackSuppInfo ) :
             iDispatcher( nMaxKB, nMaxEvents ),
-            _doPackSuppInfo(doPackSuppInfo) { }
+            _doPackSuppInfo(doPackSuppInfo),
+            _biEntriesPtr(biEntriesPtr) { }
 
 void
-iBundlingDispatcher::_append_suppinfo( events::BucketInfo & bInfo ) {
+iBundlingDispatcher::_append_suppinfo() {
     for( auto cp : suppinfo_collectors() ) {
-        ::sV::events::BucketInfoEntry * entryPtr = bInfo.add_entries();
+        ::sV::events::BucketInfoEntry * entryPtr = supp_info().add_entries();
         entryPtr->set_infotype( cp.first );
         cp.second->pack_suppinfo( entryPtr->mutable_suppinfo(), *this );
         cp.second->clear();
@@ -92,7 +105,7 @@ size_t
 iBundlingDispatcher::drop_bucket() {
     if( iBundlingDispatcher::do_pack_suppinfo()
      && are_suppinfo_collectors_set() ) {
-        _append_suppinfo( *(bucket().mutable_info()) );
+        _append_suppinfo();
     }
     return iDispatcher::drop_bucket();
 }
@@ -126,6 +139,33 @@ iBundlingDispatcher::suppinfo_collectors() {
     const iBundlingDispatcher * cthis = this;
     const CollectorsMap & cref = cthis->suppinfo_collectors();
     return const_cast<CollectorsMap &>(cref);
+}
+
+events::BucketInfo &
+iBundlingDispatcher::supp_info() {
+    const iBundlingDispatcher * cthis = this;
+    return const_cast<events::BucketInfo &>( cthis->supp_info() );
+}
+
+const events::BucketInfo &
+iBundlingDispatcher::supp_info() const {
+    if( !_biEntriesPtr ) {
+        emraise( badArchitect,
+            "Supp info msg ptr is not set for bundling dispatcher instance %p.",
+            this );
+    }
+    return *_biEntriesPtr;
+}
+
+void
+iBundlingDispatcher::add_collector( const std::string & name,
+                                    iAbstractInfoCollector & collector ) {
+    auto ir = suppinfo_collectors().emplace( name, &collector );
+    if( !ir.second ) {
+        sV_logw( "Duplicating insertion of an info collector \"%s\" denied. "
+            "Offered instance ptr: %p, existing: %p.\n",
+            name.c_str(), &collector, ir.first->second );
+    }
 }
 
 }  // namespace ::sV::buckets

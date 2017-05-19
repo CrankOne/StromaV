@@ -53,6 +53,7 @@ public:
 protected:
     buckets::iBundlingDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
+    virtual void _V_finalize() const override;
     std::fstream _file;
 
     void _update_stat();

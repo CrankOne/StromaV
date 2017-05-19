@@ -63,7 +63,7 @@ BucketReader::_V_initialize_reading() {
 
 void
 BucketReader::_V_finalize_reading() {
-    _it.sym().nEvent = 0;
+    _it.sym().nEvent = (size_t) bucket().events_size();
 }
 
 size_t
@@ -78,9 +78,12 @@ BucketReader::n_events() const {
 //
 //
 
-SuppInfoBucketReader::SuppInfoBucketReader( events::Bucket * bucketPtr ) :
-                                                iEventSequence( 0x0 ),
-                                                BucketReader( bucketPtr ) {}
+SuppInfoBucketReader::SuppInfoBucketReader(
+                        events::Bucket * bucketPtr,
+                        events::BucketInfo * bucketInfoPtr ) :
+                                        iEventSequence( 0x0 ),
+                                        BucketReader( bucketPtr ),
+                                        _bucketInfo( bucketInfoPtr ) {}
 
 void
 SuppInfoBucketReader::invalidate_supp_info_caches() const {
@@ -92,12 +95,12 @@ SuppInfoBucketReader::invalidate_supp_info_caches() const {
 
 const events::BucketInfoEntry &
 SuppInfoBucketReader::_metainfo( uint16_t n ) const {
-    return bucket().info().entries( n );
+    return supp_info_entries().entries( n );
 }
 
 void
 SuppInfoBucketReader::_recache_supp_info() {
-    for( int i = 0; i < bucket().info().entries_size(); ++i ) {
+    for( int i = 0; i < supp_info_entries().entries_size(); ++i ) {
         const events::BucketInfoEntry & miRef = _metainfo( i );
         std::type_index tIdx = _V_get_collector_type_hash( miRef.infotype() );
         auto cacheEntryIt = _miCache.find( tIdx );
@@ -110,6 +113,21 @@ SuppInfoBucketReader::_recache_supp_info() {
     }
 }
 
+const events::BucketInfo &
+SuppInfoBucketReader::supp_info_entries() const {
+    if( !_bucketInfo ) {
+        emraise( badArchitect, "Suplementary info container instance is not "
+            "set for reader instance %p.", this );
+    }
+    return *_bucketInfo;
+}
+
+events::BucketInfo &
+SuppInfoBucketReader::supp_info_entries() {
+    const SuppInfoBucketReader * cthis = this;
+    return const_cast<events::BucketInfo &>( cthis->supp_info_entries() );
+}
+
 //
 //
 //
@@ -117,9 +135,10 @@ SuppInfoBucketReader::_recache_supp_info() {
 CompressedBucketReader::CompressedBucketReader(
                 events::DeflatedBucket * dfltdBcktPtr,
                 events::Bucket * bucketPtr,
+                events::BucketInfo * bucketInfoPtr,
                 const Decompressors * decompressors ) :
                         iEventSequence( 0x0 ),
-                        SuppInfoBucketReader( bucketPtr ),
+                        SuppInfoBucketReader( bucketPtr, bucketInfoPtr ),
                         _dfltdBucketPtr( dfltdBcktPtr ),
                         _decompressedBucketValid( false ),
                         _decompressors( decompressors )
@@ -136,7 +155,7 @@ CompressedBucketReader::compressed_bucket() const {
 
 const events::BucketInfoEntry &
 CompressedBucketReader::_metainfo( uint16_t n ) const {
-    return compressed_bucket().info().entries( n );
+    return supp_info_entries().entries( n );
 }
 
 const iDecompressor *

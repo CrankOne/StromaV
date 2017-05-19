@@ -37,8 +37,9 @@ CompressedDispatcher::CompressedDispatcher(
                 std::ostream * streamPtr,
                 size_t nMaxKB,
                 size_t nMaxEvents,
+                events::BucketInfo * biEntriesPtr,
                 bool doPackSuppinfo ) :
-                                    Parent( nMaxKB, nMaxEvents, false ),
+                                    Parent( nMaxKB, nMaxEvents, biEntriesPtr, false ),
                                     _compressor( compressorPtr ),
                                     _streamPtr( streamPtr ),
                                     _deflatedBucketPtr(
@@ -81,15 +82,24 @@ size_t CompressedDispatcher::_compress_bucket() {
 
 size_t CompressedDispatcher::_V_drop_bucket() {
     _compress_bucket();
-    _append_suppinfo( *(_deflatedBucketPtr->mutable_info()) );
+    _append_suppinfo();
     // Write size of the bucket to be dropped into output file
-    size_t deflatedBucketSize = _deflatedBucketPtr->ByteSize();
+    uint32_t deflatedBucketSize = _deflatedBucketPtr->ByteSize(),
+             suppInfoSize = supp_info().ByteSize()
+             ;
     _streamPtr->write((char*)(&deflatedBucketSize), sizeof(uint32_t));
-    // Then write the bucket
-    if (!_deflatedBucketPtr->SerializeToOstream(_streamPtr)) {
+    _streamPtr->write((char*)(&suppInfoSize), sizeof(uint32_t));
+    // Write supp info (uncompressed)
+    if( !supp_info().SerializeToOstream(_streamPtr) ) {
+        emraise( ioError, "protobuf failed to serialize bucket supp info "
+            "of size %zu to stream %p.",
+            suppInfoSize, _streamPtr );
+    }
+    // Write the bucket
+    if( !_deflatedBucketPtr->SerializeToOstream(_streamPtr) ) {
         emraise( ioError, "protobuf failed to serialize deflated bucket "
             "of size %zu to stream %p.",
-            _deflatedBucketPtr->ByteSize(), _streamPtr );
+            deflatedBucketSize, _streamPtr );
     }
     _deflatedBucketPtr->Clear();
     return bucket().ByteSize();

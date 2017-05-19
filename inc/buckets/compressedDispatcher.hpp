@@ -29,6 +29,7 @@
 
 # include "buckets/iTPlainBufferDispatcher.tcc"
 # include "compression/iCompressor.hpp"
+# include "app/mixins/protobuf.hpp"
 
 # include <ostream>
 
@@ -62,19 +63,22 @@ protected:
 
     virtual size_t _compress_bucket();
 protected:
-    CompressedDispatcher( iCompressor * compressorPtr,
-                                std::ostream * streamPtr,
-                                size_t nMaxKB, size_t nMaxEvents,
-                                bool doPackSuppinfo=true);
+    CompressedDispatcher(   iCompressor * compressorPtr,
+                            std::ostream * streamPtr,
+                            size_t nMaxKB, size_t nMaxEvents,
+                            events::BucketInfo * biEntriesPtr,
+                            bool doPackSuppinfo=true);
 public:
-    CompressedDispatcher( iCompressor * compressorPtr,
-                                std::ostream & streamRef,
-                                size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents ) {}
+    CompressedDispatcher(   iCompressor * compressorPtr,
+                            std::ostream & streamRef,
+                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+            CompressedDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents,
+                google::protobuf::Arena::CreateMessage<events::BucketInfo>(::sV::mixins::PBEventApp::arena_ptr()) ) {}
 
-    CompressedDispatcher( iCompressor * compressorPtr,
-                                size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents ) {}
+    CompressedDispatcher(   iCompressor * compressorPtr,
+                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
+            CompressedDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents,
+                google::protobuf::Arena::CreateMessage<events::BucketInfo>(::sV::mixins::PBEventApp::arena_ptr()) ) {}
 
     virtual ~CompressedDispatcher();
 

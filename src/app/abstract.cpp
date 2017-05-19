@@ -308,14 +308,18 @@ AbstractApplication::_append_common_config( Config & ) {
                         targetSectionPtr->insertion_proxy()
                                 .insert_copy_of( concreteCfg.parameter(entry.path) );
                     } else {
-                        // If transformation is defined and we're here it
+                        // The transformation is defined, but none common config
+                        // entry was defined. It
                         // probably means that user code didn't yet
                         // appended the common conf dictionary with
-                        // appropriate type.
+                        // appropriate type. It is crucial for common entry to
+                        // exist since type information has to be claimed.
                         emraise( badState, "For configuration mapping: "
                         "%s (common config) -> %s (local virtual ctr config) "
-                        "user code defined the transformation, but did not "
-                        "added a common config entry." );
+                        "user code defined paths and the transformation via "
+                        "injection, but common config entry is not defined "
+                        "upon mapping merge.",
+                        commonPath.c_str(), entry.path.c_str() );
                     }
                 } else {
                     // // compare types for existing parameter

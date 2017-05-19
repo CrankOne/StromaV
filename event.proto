@@ -100,7 +100,6 @@ message CommonBucketDescriptor {
 }
 
 message Bucket {
-    BucketInfo info = 1;
     repeated Event events = 3;
 }
 
@@ -138,9 +137,6 @@ message CompressedData {
 }
 
 message DeflatedBucket {
-    /// When compression is applied, the compressed bucket data won't contain
-    /// the metainfo physically and this field will be set instead of it.
-    BucketInfo info = 1;
     CompressedData data = 3;
 }
 

@@ -29,6 +29,8 @@
 
 # include "iDispatcher.hpp"
 
+# include "ctrs_dict.hpp"
+
 # include <openssl/sha.h>
 
 # include <memory>
@@ -161,6 +163,9 @@ public:
 private:
     /// Whether to append supp information to dropped bucket
     bool _doPackSuppInfo;
+
+    /// Pointer to message instance.
+    events::BucketInfo * _biEntriesPtr;
 protected:
     /// Supp info collectors associated with this dispatcher instance
     CollectorsMap _miCollectors;
@@ -169,9 +174,12 @@ protected:
     CollectorsMap & suppinfo_collectors();
 
     /// Will append supp info from all associated collectors.
-    void _append_suppinfo( events::BucketInfo & );
+    void _append_suppinfo();
+
+    /// Returns mutable reference to supplementary info.
+    virtual events::BucketInfo & supp_info();
 public:
-    iBundlingDispatcher( size_t nMaxKB, size_t nMaxEvents, bool doPackSuppInfo=true );
+    iBundlingDispatcher( size_t nMaxKB, size_t nMaxEvents, events::BucketInfo *, bool doPackSuppInfo=true );
 
     /// (overriden) Additionally, performs invokations of associated collectors.
     virtual void push_event(const events::Event & ) override;
@@ -185,6 +193,9 @@ public:
     /// Sets the supplementary information flag
     virtual void do_pack_suppinfo( bool v ) { _doPackSuppInfo = v; }
 
+    /// Returns immutable reference to supplementary info.
+    const events::BucketInfo & supp_info() const;
+
     /// Returns true if there are supp info collectors associated with an
     /// instance
     bool are_suppinfo_collectors_set() const { return !suppinfo_collectors().empty(); }
@@ -194,10 +205,26 @@ public:
 
     /// Returns supp info collectors index associated with this instance
     const CollectorsMap & suppinfo_collectors() const;
+
+    /// Inserts a new supp info collector.
+    void add_collector( const std::string &, iAbstractInfoCollector & );
 };  // class iBundlingDispatcher
 
 }  // namespace ::sV::buckets
 }  // namespace sV
+
+/// Shortcut for define virtual ctr for bucket supp info collector without
+/// common config mapping.
+# define StromaV_BUCKET_INFO_COLLECTOR_DEFINE( cxxClassName,                \
+                                               name )                       \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::buckets::iAbstractInfoCollector )
+
+
+/// Shortcut for define virtual ctr for bucket supp info collector with
+/// common config mapping.
+# define StromaV_BUCKET_INFO_COLLECTOR_DEFINE_MCONF( cxxClassName,          \
+                                                  name )                    \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::buckets::iAbstractInfoCollector )
 
 # endif  // RPC_PROTOCOLS
 

@@ -30,5 +30,7 @@ analysis:
         store:
             compression: trivial
             maxBucketSize_events: 1000
+            suppInfo:
+                - SHA256
             maxBucketSize_kB: 16384  # 16MB
 

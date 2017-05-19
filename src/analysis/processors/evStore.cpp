@@ -27,8 +27,11 @@
 
 # include "ctrs_dict.hpp"
 # include "buckets/compressedDispatcher.hpp"
+//# include "buckets/iBundlingDispatcher.hpp"
 
 # include <goo_dict/parameters/path_parameter.hpp>
+//# include <goo_dict/parameters/pointer_parameter.tcc>
+# include <goo_dict/parameter.tcc>
 
 namespace sV {
 namespace dprocessors {
@@ -55,6 +58,10 @@ EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
     _bucketDispatcher = new buckets::CompressedDispatcher( compressorPtr, _file,
                 dct["maxBucketSize_kB"].as<uint32_t>(),
                 dct["maxBucketSize_events"].as<uint32_t>() );
+    for( const auto & nm : dct["suppInfo"].as_list_of<std::string>() ) {
+        _bucketDispatcher->add_collector(
+                    nm, *generic_new<buckets::iAbstractInfoCollector>( nm ) );
+    }
 }
 
 EventsStore::~EventsStore() {}
@@ -64,6 +71,13 @@ EventsStore::_V_process_event( Event * uEvent ){
     _bucketDispatcher->push_event( *(uEvent) );
     _update_stat();
     return true;
+}
+
+void
+EventsStore::_V_finalize() const {
+    if( _bucketDispatcher->n_events() ) {
+        _bucketDispatcher->drop_bucket();
+    }
 }
 
 void
@@ -101,21 +115,27 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
     evStorePDict.insertion_proxy()
         .p<uint32_t>("maxBucketSize_kB",
                         "Maximum bucket capacity (in kilobytes). 0 disables"
-                        "criterion.", 500)
+                        "criterion.",
+                    500)
         .p<uint32_t>("maxBucketSize_events",
                         "Maximum bucket capacity (number of enents). 0 disables "
-                        "criterion.", 0)
+                        "criterion.",
+                    0)
         .p<std::string>("compression",
                         "Algorithm name for compressing buckets.",
-                        "bz2")
+                    "bz2")
+        .list<std::string>( "suppInfo",
+                        "Supplementary info collectors.",
+                        { "SHA256" } )
         .p<goo::filesystem::Path>("outFile",
                         "Output file for serialized data.",
-                        "/tmp/sV_latest.svbs" )
+                    "/tmp/sV_latest.svbs" )
         ;
     goo::dict::DictionaryInjectionMap injM;
         injM( "maxBucketSize_kB",       "analysis.processors.store.maxBucketSize_kB" )
             ( "maxBucketSize_events",   "analysis.processors.store.maxBucketSize_events" )
             ( "compression",            "analysis.processors.store.compression" )
+            ( "suppInfo",               "analysis.processors.store.suppInfo" )
             ( "outFile" ,               "analysis.processors.store.outFile" )
             ;
     return std::make_pair( evStorePDict, injM );
