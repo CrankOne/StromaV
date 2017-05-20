@@ -33,4 +33,6 @@ analysis:
             suppInfo:
                 - SHA256
             maxBucketSize_kB: 16384  # 16MB
+        retrieve:
+            progressbar: true
 

@@ -68,6 +68,11 @@ protected:
 public:
     PBEventApp( AbstractApplication::Config * c );
 
+    template<typename MessageT> MessageT *
+    new_msg_on_arena() {
+        return google::protobuf::Arena::CreateMessage<MessageT>( arena_ptr() );
+    }
+
     /// Returns current event.
     static UniEvent & c_event();
 
@@ -77,6 +82,9 @@ public:
 }  // namespace mixins
 
 }  // namespace sV
+
+# define sV_MSG_NEW(type) \
+::goo::app<::sV::mixins::PBEventApp>().new_msg_on_arena<type>()
 
 # endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_PROTOCOL_BUFFER_UNIFIED_EVENT_APPLICATION_MIXIN_H

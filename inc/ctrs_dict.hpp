@@ -67,7 +67,12 @@ class IndexOfConstructables {
 public:
     struct AbstractEnumerableEntry {
         goo::dict::Dictionary arguments;
-        AbstractEnumerableEntry( const goo::dict::Dictionary & d ) : arguments(d){}
+        std::type_index finalTypeIndex;
+
+        AbstractEnumerableEntry( const goo::dict::Dictionary & d,
+                                 std::type_index tIdx ) :
+                                        arguments(d),
+                                        finalTypeIndex(tIdx) {}
     };
 
     typedef std::unordered_map<std::string, AbstractEnumerableEntry *> ConstructablesSection;
@@ -76,8 +81,10 @@ public:
     struct EnumerableEntry : public AbstractEnumerableEntry {
         typedef ConstructableT * (*ConstructorT)( const goo::dict::Dictionary & );
         ConstructorT constructor;
-        EnumerableEntry( ConstructorT ctr, const goo::dict::Dictionary & args ) :
-            AbstractEnumerableEntry(args), constructor(ctr) {}
+        EnumerableEntry( ConstructorT ctr,
+                         const goo::dict::Dictionary & args,
+                         std::type_index finalTIdx ) :
+            AbstractEnumerableEntry(args, finalTIdx), constructor(ctr) {}
     };
 private:
     static IndexOfConstructables * _self;
@@ -264,7 +271,8 @@ static goo::dict::Dictionary __static_assemble_config_ ## cxxClassName ();      
 static void __static_register_ ## cxxClassName ## _ctr() {                      \
     sV::sys::IndexOfConstructables::self().add_constructor<cxxBaseClass>( name, \
         new sV::sys::IndexOfConstructables::EnumerableEntry<cxxBaseClass>(      \
-        constructorName, __static_assemble_config_ ## cxxClassName() ) ); }     \
+        constructorName, __static_assemble_config_ ## cxxClassName(),           \
+        typeid(cxxClassName) ) ); }                                             \
 goo::dict::Dictionary __static_assemble_config_ ## cxxClassName ()
 
 

@@ -33,6 +33,7 @@
 # include "utils.h"
 
 # include <goo_mixins/iterable.tcc>
+# include <goo_dict/parameters/path_parameter.hpp>
 
 # include <fstream>
 
@@ -43,9 +44,16 @@ namespace buckets {
 /**@brief Performs basic reading from events bucket.
  * @class BucketReader
  *
- * Provides basic implementation for reading events from bucket.
+ * Provides basic implementation for reading events from bucket. This class
+ * keeps track of single bucket associated with current instance and implements
+ * basic iEventSequence interface for iterating it within sV's events pipeline
+ * framework.
+ *
+ * This class is expected to be not quite useful as it is rather than in
+ * combination with additional bucket management code.
  *
  * @ingroup analysis
+ * @ingroup buckets
  */
 class BucketReader : public virtual sV::aux::iEventSequence {
 public:
@@ -140,10 +148,33 @@ public:
  * This class introduces access to buckets supplementary info based on
  * supp. info collector classes implementation.
  *
+ * The bucket itself does not provide any data except the sequence of events.
+ * However, for many practical application user code usually involves some
+ * preliminary (supplementary) information about these events: number of
+ * events, size, various excerpts, hash sums, etc. Thus, immediately after the
+ * basic sequence management it does become crucial to introduce support for
+ * such supplementary data.
+ *
+ * At the level of bucket serialization mechanism the supplementary data is
+ * defined via the collectors classes (see iAbstractInfoCollector descendants).
+ * Hence we will use the same definitions for unpacking supplementary
+ * information.
+ *
+ * This class inherits the basic BucketReader class and additionally contains
+ * the internal cache of the related supplementary information. One has to
+ * note that for the sake of efficiency this cache won't be unpacked
+ * immediately all at once. Instead, each cache entry will be unpacked by
+ * demand. Standard getter is the supp_info_entry() template method.
+ *
+ * The couple of abstract methods has to define interaction with some external
+ * source of information about available supp. info collector classes.
+ *
  * @ingroup analysis
+ * @ingroup buckets
  */
 class SuppInfoBucketReader : public BucketReader {
 public:
+    /// Single supplementary information cache entry.
     struct MetaInfoCache {
         std::string name;
         buckets::iAbstractInfoCollector * collectorPtr;
@@ -323,11 +354,12 @@ public:
     /// Generic ctr.
     BucketStreamReader( events::DeflatedBucket *,
                         events::Bucket *,
+                        events::BucketInfo * bInfo,
                         BucketKeyInfoT *,
                         const Decompressors *,
                         std::istream * is=nullptr );
 
-    ~BucketStreamReader();
+    ~BucketStreamReader() {}
 
     /// Returns true, if stream is set for this instance.
     bool is_stream_set() const { return _iStreamPtr; }
@@ -349,10 +381,12 @@ template<typename BucketIDT, typename BucketKeyInfoT>
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::BucketStreamReader(
                         events::DeflatedBucket * dfltBcktPtr,
                         events::Bucket * bcktPtr,
+                        events::BucketInfo * bInfo,
                         BucketKeyInfoT * keyMsgPtr,
                         const Decompressors * dcmprssrsMap,
                         std::istream * is ) :
-        CompressedBucketReader(dfltBcktPtr, bcktPtr, dcmprssrsMap),
+        aux::iEventSequence(0x0),
+        CompressedBucketReader(dfltBcktPtr, bcktPtr, bInfo, dcmprssrsMap),
         _iStreamPtr(is),
         _bucketKeyInfoMsg(keyMsgPtr) {}
 
@@ -370,6 +404,12 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_emplace_bucket_offset(
             const BucketID & bid,
             std::istream::streampos sPos ) {
     _offsetsMap.emplace( bid, sPos );
+}
+
+template<typename BucketIDT, typename BucketKeyInfoT>
+const typename BucketStreamReader<BucketIDT, BucketKeyInfoT>::OffsetsMap &
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::offsets_map() const {
+    return _offsetsMap;
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT> void
@@ -445,7 +485,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_initialize_reading() {
 
 template<typename BucketIDT, typename BucketKeyInfoT> void
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_finalize_reading() {
-    _cBucketIt = offsets_map.end();
+    _cBucketIt = offsets_map().end();
     Parent::_V_finalize_reading();
 }
 
@@ -510,14 +550,34 @@ public:
     typedef buckets::BucketStreamReader< aux::SHA256BucketHash,
                                          events::CommonBucketDescriptor> Parent;
 private:
-    // ...
+    std::vector<goo::filesystem::Path> _paths;
+    bool _lastEvReadingWasGood;
+    PBarParameters * _pbParameters;  ///< set to nullptr when unused
+    size_t _maxEventsNumber,
+           _eventsRead;
+
+    std::unordered_map<std::string, sV::buckets::iAbstractInfoCollector *> _collectors;
+    Buckets::Decompressors _decompressors;
 protected:
+    /// Returns C++ RTTI type hash for given supp info data type using the sV's
+    /// system VCtr dict.
+    virtual std::type_index _V_get_collector_type_hash( const std::string & ) override;
+
+    /// Allocates new cache entry with set name and collector ptr fields.
+    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) override;
 public:
     Buckets( events::DeflatedBucket * dfltdBcktPtr,
              events::Bucket * bucketPtr,
-             events::BucketInfo * bucketInfoPtr,
-             const Decompressors * decompressors );
+             events::BucketInfo * bInfo,
+             events::CommonBucketDescriptor * particularInfo,
+             const Decompressors * decompressors,
+             const std::list<goo::filesystem::Path> & paths,
+             size_t nMaxEvents,
+             bool enablePBar=false,
+             uint8_t ASCII_lines=1);
     Buckets( const goo::dict::Dictionary & );
+
+    ~Buckets();
 };  // class BucketsFile
 }  // namespace sV
 

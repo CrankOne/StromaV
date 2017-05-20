@@ -40,8 +40,15 @@ namespace buckets {
 
 class iBundlingDispatcher;
 
-/// An abstract interfacing base for bucket supplementary information collector.
-/// @ingroup buckets
+/**@class iAbstractInfoCollector
+ * @brief An abstract interfacing base for bucket supplementary information
+ *        collector.
+ *
+ * Descendants of this base class are used for both, packing and unpacking the
+ * supplementary information about sV's events buckets.
+ *
+ * @ingroup buckets
+ */
 class iAbstractInfoCollector {
 protected:
     /// (IM) Has to perform consideration of an event.

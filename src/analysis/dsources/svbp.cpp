@@ -22,6 +22,10 @@
 
 # include "analysis/dsources/svbs.hpp"
 
+# ifdef RPC_PROTOCOLS
+
+# include "app/analysis.hpp"
+
 namespace sV {
 
 namespace buckets {
@@ -305,4 +309,104 @@ operator<<(std::ostream & os, const ::sV::aux::SHA256BucketHash & sha256h) {
 }
 
 }  // namespace std
+
+namespace sV {
+
+Buckets::Buckets(
+            events::DeflatedBucket * dfltdBcktPtr,
+            events::Bucket * bucketPtr,
+            events::BucketInfo * bInfo,
+            events::CommonBucketDescriptor * particularInfo,
+            const Buckets::Decompressors * decompressors,
+            const std::list<goo::filesystem::Path> & paths_,
+            size_t nMaxEvents,
+            bool enableProgressbar,
+            uint8_t ASCII_lines ) :
+                iEventSequence(0x0),
+                Parent( dfltdBcktPtr, bucketPtr, bInfo, particularInfo,
+                        decompressors ),
+                ASCII_Entry( goo::aux::iApp::exists() ?
+                        &goo::app<AbstractApplication>() : nullptr,
+                        ASCII_lines ),
+                _paths( paths_.begin(), paths_.end() ),
+                _lastEvReadingWasGood(false),
+                _pbParameters( nullptr ),
+                _maxEventsNumber( nMaxEvents ),
+                _eventsRead(0) {
+    if( enableProgressbar && _maxEventsNumber ) {
+        _pbParameters = new PBarParameters;
+        bzero( _pbParameters, sizeof(PBarParameters) );
+        _pbParameters->mtrestrict = 250;
+        _pbParameters->length = 80;
+        _pbParameters->full = _maxEventsNumber;
+    }
+}
+
+Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
+            sV_MSG_NEW( events::DeflatedBucket  ),
+            sV_MSG_NEW( events::Bucket          ),
+            sV_MSG_NEW( events::BucketInfo      ),
+            sV_MSG_NEW( events::CommonBucketDescriptor ),
+            &_decompressors,
+            std::list<goo::filesystem::Path>(
+                goo::app<AbstractApplication>().app_options_list<goo::filesystem::Path>("input-file").begin(),
+                goo::app<AbstractApplication>().app_options_list<goo::filesystem::Path>("input-file").end()
+            ),
+            goo::app<AbstractApplication>().app_option<size_t>("max-events-to-read"),
+            dct["progressbar"].as<bool>(),
+            1
+        ) {}
+
+std::type_index
+Buckets::_V_get_collector_type_hash( const std::string & collectorName ) {
+    auto & sect = sV::sys::IndexOfConstructables::self()
+                    .known_constructors<sV::buckets::iAbstractInfoCollector>();
+    auto it = sect.find( collectorName );
+    if( sect.end() == it ) {
+        emraise( noSuchKey, "Unable to find RTTI registered for buckets supp "
+            "info type \"%s\".", collectorName.c_str() );
+    }
+    return it->second->finalTypeIndex;
+}
+
+Buckets::MetaInfoCache
+Buckets::_V_new_cache_entry( const std::string & collectorName ) {
+    MetaInfoCache ret;
+    ret.name = collectorName;
+    // Try to find existing collector:
+    auto it = _collectors.find( collectorName );
+    if( _collectors.end() == it ) {
+        // If it is not found, construct one:
+        it = _collectors.emplace(
+                    collectorName,
+                    sV::generic_new<sV::buckets::iAbstractInfoCollector>( collectorName )
+                ).first;
+    }
+    ret.collectorPtr = it->second;
+    ret.positionInMetaInfo = USHRT_MAX;
+    return ret;
+}
+
+Buckets::~Buckets() {
+    for( auto p : _collectors ) {
+        delete p.second;
+    }
+}
+
+StromaV_EVENTS_SEQUENCE_DEFINE_MCONF( Buckets, "svb" ) {
+    goo::dict::Dictionary svbfRetrieve( "svb",
+        "Generic reader for compressed buckets files (.svbp)." );
+    svbfRetrieve.insertion_proxy()
+        .flag("progressbar",
+            "Displays simple ASCII progressbar on stdout.")
+        ;
+    goo::dict::DictionaryInjectionMap injM;
+        injM( "progressbar",        "analysis.data-sources.retreive.progressbar" )
+            ;
+    return std::make_pair( svbfRetrieve, injM );
+}
+
+}  // namespace sV
+
+# endif  // RPC_PROTOCOLS
 
