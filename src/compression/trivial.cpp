@@ -38,12 +38,6 @@ TrivialCompression::_V_compress_series(
     assert( outMaxLen >= inLen );
     (void)(outMaxLen);
     memcpy( output, input, inLen );
-    // _V_compress_series() should return real length of compressed series
-    // (not lenComprBuf, because lenComprBuf is a allocated memory for
-    // compressed data and real size of this compressed data could be
-    // different).
-    // Here it returns lenUncomprBuf, cause in fact DummyCompressor doesn't
-    // compress series and in this case real length equal to lenUncomprBuf.
     return inLen;
 }
 
@@ -58,12 +52,6 @@ TrivialCompression::_V_decompress_series(
     assert( outMaxLen >= inLen );
     (void)(outMaxLen);
     memcpy( output, input, inLen );
-    // _V_decompress_series() should return real length of decompressed series
-    // (not lenUncomprBuf, because lenUncomprBuf is a allocated memory for
-    // decompressed data and real size of this decompressed data could be
-    // different).
-    // Here it returns lenComprBuf, cause in fact DummyDecompressor doesn't
-    // decompress series and in this case real length equal to lenComprBuf.
     return inLen;
 }
 

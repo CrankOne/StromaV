@@ -42,9 +42,7 @@ CompressedDispatcher::CompressedDispatcher(
                                     Parent( nMaxKB, nMaxEvents, biEntriesPtr, false ),
                                     _compressor( compressorPtr ),
                                     _streamPtr( streamPtr ),
-                                    _deflatedBucketPtr(
-                                        google::protobuf::Arena::CreateMessage<events::DeflatedBucket>(
-                                            sV::mixins::PBEventApp::arena_ptr()) ),
+                                    _deflatedBucketPtr(sV_MSG_NEW(events::DeflatedBucket)),
                                     _latestDrop{0, 0},
                                     _doPackSuppInfo2(doPackSuppinfo) {
     assert(_deflatedBucketPtr);
@@ -77,6 +75,7 @@ size_t CompressedDispatcher::_compress_bucket() {
                 compressed_buffer_data(),   compressed_buffer_length() );
     _deflatedBucketPtr->mutable_data()->set_compressedcontent(
                         compressed_buffer_data(), _latestDrop.compressedLen );
+    _deflatedBucketPtr->mutable_data()->set_compressionalgo( _compressor->algorithm() );
     return _latestDrop.compressedLen;
 }
 

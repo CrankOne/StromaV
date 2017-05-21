@@ -80,6 +80,11 @@ public:
         return _V_decompress_series( input, inLen, output, outMaxLen ); }
 };  // class iDecompressor
 
+namespace sys {
+/// Returns compression algorithm stringified name by given enum entry.
+const char * compression_algo_name( iDecompressor::CompressionAlgo );
+}  // namespace ::sV::sys
+
 } // namespace sV
 
 

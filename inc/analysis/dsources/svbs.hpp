@@ -191,12 +191,12 @@ private:
 protected:
     /// Shall return bucket's metainfo hdr. May be overriden by descendants in
     /// case the metainfo shall not be obtained from bucket itself.
-    virtual const events::BucketInfoEntry & _metainfo( uint16_t ) const;
+    virtual const events::BucketInfoEntry & _supp_info( uint16_t ) const;
 
     /// Invalidates supp. info caches
     void invalidate_supp_info_caches() const;
 
-    /// Will use _metainfo() method to set up internal caches ready for various
+    /// Will use _supp_info() method to set up internal caches ready for various
     /// supp_info_entries() acquizition.
     virtual void _recache_supp_info();
 
@@ -227,10 +227,10 @@ public:
             return false;
         }
         it->second.collectorPtr->unpack_suppinfo(
-                    _metainfo( it->second.positionInMetaInfo ).suppinfo() );
+                    _supp_info( it->second.positionInMetaInfo ).suppinfo() );
         return true;
     }
-};
+};  // class SuppInfoBucketReader
 
 /**@brief A compressed bucket reader.
  * @class CompressedBucketReader
@@ -243,7 +243,7 @@ public:
  */
 class CompressedBucketReader : public SuppInfoBucketReader {
 public:
-    typedef std::unordered_map<int, const iDecompressor *>
+    typedef std::unordered_map<int, iDecompressor *>
             Decompressors;
 private:
     /// Keeps pointer to DeflatedBucket instance that stores the compressed
@@ -265,7 +265,7 @@ private:
 protected:
     /// Overrides default metainfo getter to obtain compressed metainfo instead
     /// of raw.
-    virtual const events::BucketInfoEntry & _metainfo( uint16_t ) const override;
+    virtual const events::BucketInfoEntry & _supp_info( uint16_t ) const override;
 
     /// Look-up for required decompression algorithm.
     virtual const iDecompressor * _decompressor( iDecompressor::CompressionAlgo ) const;
@@ -309,6 +309,15 @@ public:
 /**@class BucketStreamReader
  * @brief A class wrapping std::istream providing compressed bucket reading
  *        interface.
+ *
+ * The default implementation of this class implies that compressed (deflated)
+ * buckets an their supplementary information lie sequentially in the stream
+ * according to the following scheme:
+ *      1. uint32_t byte length of the bucket block
+ *      2. uint32_t byte length of the supplementary info block
+ *      3. Block of serialized supp. info data
+ *      4. Block of serialized DeflatedBucket
+ * The reading logic is summed up in the _V_acquire_next_bucket() method.
  * */
 template<typename BucketIDT,
          typename BucketKeyInfoT>
@@ -318,6 +327,7 @@ public:
     typedef BucketKeyInfoT BucketKeyInfo;
     typedef std::unordered_multimap<BucketID, std::istream::streampos> OffsetsMap;
     typedef CompressedBucketReader Parent;
+    typedef BucketStreamReader<BucketID, BucketKeyInfo> Self;
 private:
     /// Cache keeping physical offsets of buckets with certain ID.
     OffsetsMap _offsetsMap;
@@ -346,10 +356,10 @@ protected:
     /// Performs iterating of the entire stream from the beginning collecting
     /// physical offsets for each bucket. Performance heavy, need for
     /// random-access routines only.
-    void _build_offsets_map();
+    void _build_offsets_map( std::istream & is );
 
     /// Performs reading of next bucket.
-    virtual void _V_acquire_next_bucket();
+    virtual bool _V_acquire_next_bucket( BucketReader::Event *& epr );
 public:
     /// Generic ctr.
     BucketStreamReader( events::DeflatedBucket *,
@@ -362,7 +372,7 @@ public:
     ~BucketStreamReader() {}
 
     /// Returns true, if stream is set for this instance.
-    bool is_stream_set() const { return _iStreamPtr; }
+    bool is_stream_set() const { return !! _iStreamPtr; }
 
     /// Associates the stream with this instance. Causes re-caching of offsets
     /// map if it was not provided.
@@ -372,6 +382,12 @@ public:
 
     /// Prints human-readable excerpt of buckets available in the stream.
     void dump_offsets_map( std::ostream & );
+
+    /// Reads the supp info message from given stream.
+    bool read_supp_info( std::istream &, size_t );
+
+    /// Reads the bucket from given stream.
+    bool read_bucket( std::istream &, size_t );
 };
 
 // BucketStreamReader
@@ -387,7 +403,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::BucketStreamReader(
                         std::istream * is ) :
         aux::iEventSequence(0x0),
         CompressedBucketReader(dfltBcktPtr, bcktPtr, bInfo, dcmprssrsMap),
-        _iStreamPtr(is),
+        _iStreamPtr( is ),
         _bucketKeyInfoMsg(keyMsgPtr) {}
 
 template<typename BucketIDT, typename BucketKeyInfoT> std::istream &
@@ -413,7 +429,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::offsets_map() const {
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT> void
-BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map() {
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map( std::istream & is ) {
     offsets_map().clear();
 
     bool parsingResult;
@@ -426,17 +442,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map() {
         stream().read( (char*)(&bucketSize), sizeof(uint32_t) );
         stream().read( (char*)(&suppInfoSize), sizeof(uint32_t) );
 
-        _readingBuffer.resize( suppInfoSize );
-        nRead = stream().read( (char*) _readingBuffer.data(), suppInfoSize );
-        if( suppInfoSize != nRead ) {
-            emraise( ioError, "Unable to read bucket supp. info of size %u "
-                "from stream %p. Read %zu bytes.", suppInfoSize, _iStreamPtr,
-                nRead )
-        }
-        parsingResult = supp_info_entries().ParseFromArray( _readingBuffer.data(), suppInfoSize );
-        if( parsingResult ) {
-            emraise( thirdParty, "protobuf unable to parse bucket supp. info of size %u "
-                "from stream %p.", suppInfoSize, _iStreamPtr )
+        if( suppInfoSize ) {
+            read_supp_info( is, suppInfoSize );
         }
 
         std::istream::streampos cBucketOffset = stream().tellg();
@@ -463,23 +470,22 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map() {
 
 template<typename BucketIDT, typename BucketKeyInfoT> bool
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_is_good() {
-    return Parent::_V_is_good() && _cBucketIt != _offsetsMap.end();
+    return _cBucketIt != _offsetsMap.end() && Parent::_V_is_good();
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT> void
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_next_event( BucketReader::Event *& epr ) {
-    if( Parent::_V_is_good() ) {
+    if( Self::_V_is_good() ) {
         return Parent::_V_next_event( epr );
     }
-    _V_acquire_next_bucket();
-    epr = Parent::_V_initialize_reading();
+    _V_acquire_next_bucket( epr );
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT> BucketReader::Event *
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_initialize_reading() {
-    _cBucketIt = offsets_map().begin();
     Event * ePtr;
-    _V_next_event( ePtr );
+    _V_acquire_next_bucket( ePtr );
+    _cBucketIt = offsets_map().begin();
     return ePtr;
 }
 
@@ -490,9 +496,67 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_finalize_reading() {
 }
 
 
-template<typename BucketIDT, typename BucketKeyInfoT> void
-BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket() {
-    _TODO_  // TODO: ...
+template<typename BucketIDT, typename BucketKeyInfoT> bool
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketReader::Event *& epr ) {
+    invalidate_supp_info_caches();
+    invalidate_decompressed_bucket_cache();
+
+    uint32_t bucketLength,
+             suppInfoLength;
+    stream().read( (char*) &bucketLength,   sizeof(uint32_t) );
+    if( !stream().good() ) {
+        sV_log3( "BucketStreamReader<...> %p: Unable to read from stream %p "
+            "anymore.\n",
+            this, _iStreamPtr );
+        return false;
+    }
+    stream().read( (char*) &suppInfoLength, sizeof(uint32_t) );
+    if( suppInfoLength ) {
+        if( !read_supp_info( stream(), suppInfoLength ) ) {
+            emraise( thirdParty, "Bucket reader %p was unable parse supp info from "
+                "stream %p.", this, _iStreamPtr );
+        }
+        sV_log3( "BucketStreamReader<...> %p: parsed supp info header of "
+            "size %u carrying %d entries.\n",
+            this, suppInfoLength, supp_info_entries().entries_size() );
+    } else {
+        sV_log3( "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
+            this );
+    }
+    if( !read_bucket( stream(), bucketLength ) ) {
+        emraise( thirdParty, "Bucket reader %p was unable to parse compressed "
+                "bucket from stream %p.", this, _iStreamPtr  );
+    }
+    epr = Parent::_V_initialize_reading();
+    sV_log3( "BucketStreamReader<...> %p: read %u/%u bytes: bucket/supp. info.\n",
+            this, bucketLength, suppInfoLength );
+    return true;
+}
+
+template<typename BucketIDT, typename BucketKeyInfoT> bool
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_supp_info( std::istream & is, size_t length ) {
+    _readingBuffer.resize( length );
+    /*size_t nRead = */is.read( (char*) _readingBuffer.data(), length );
+    /*if( length != nRead ) {
+        emraise( ioError, "Bucket reader %p was unable to read supp info from "
+            "stream %p.", this, &is );
+    }*/
+    return supp_info_entries().ParseFromArray( _readingBuffer.data(), length );
+}
+
+template<typename BucketIDT, typename BucketKeyInfoT> bool
+BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_bucket( std::istream & is, size_t length ) {
+    _readingBuffer.resize( length );
+    /*size_t nRead = */is.read( (char*) _readingBuffer.data(), length );
+    /*if( length != nRead ) {
+        emraise( ioError, "Bucket reader %p was unable to read compressed "
+            "bucket info from stream %p.", this, &is );
+    }*/
+    if( _mutable_compressed_bucket_ptr()->ParseFromArray( _readingBuffer.data(), length ) ) {
+        invalidate_decompressed_bucket_cache();
+        return true;
+    }
+    return false;
 }
 
 }  // namespace ::sV::buckets
@@ -557,7 +621,9 @@ private:
            _eventsRead;
 
     std::unordered_map<std::string, sV::buckets::iAbstractInfoCollector *> _collectors;
-    Buckets::Decompressors _decompressors;
+    mutable Buckets::Decompressors _decompressors;
+    std::ifstream _file;
+    std::vector<goo::filesystem::Path>::const_iterator _sourcesIt;
 protected:
     /// Returns C++ RTTI type hash for given supp info data type using the sV's
     /// system VCtr dict.
@@ -565,12 +631,21 @@ protected:
 
     /// Allocates new cache entry with set name and collector ptr fields.
     virtual MetaInfoCache _V_new_cache_entry( const std::string & ) override;
+
+    virtual bool _V_is_good() override;
+
+    /// ...
+    virtual Event * _V_initialize_reading() override;
+
+    virtual bool _V_acquire_next_bucket( BucketReader::Event *& epr ) override;
+
+    /// Instead of raising an exception, creates a new decompressor.
+    virtual const iDecompressor * _decompressor( iDecompressor::CompressionAlgo ) const override;
 public:
     Buckets( events::DeflatedBucket * dfltdBcktPtr,
              events::Bucket * bucketPtr,
              events::BucketInfo * bInfo,
              events::CommonBucketDescriptor * particularInfo,
-             const Decompressors * decompressors,
              const std::list<goo::filesystem::Path> & paths,
              size_t nMaxEvents,
              bool enablePBar=false,

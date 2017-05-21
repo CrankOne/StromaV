@@ -72,7 +72,6 @@ protected:
     /// the `custom` field of the compression parameters field.
     virtual void  _V_set_compression_info( events::CompressedData & ) = 0;
 public:
-
     /// Ctr. Receives the name of particular compression algorithm.
     iCompressor( CompressionAlgo algo=events::CompressedData_CompressionAlgorithm_other ) :
                     _compressionAlgo( algo ) {}
@@ -95,6 +94,11 @@ public:
         _V_set_compression_info( cdatRef );
     }
 }; // class iCompressor
+
+namespace sys {
+/// Returns compression algorithm stringified name by given enum entry.
+const char * compression_algo_name( iCompressor::CompressionAlgo );
+}  // namespace ::sV::sys
 
 } // namespace sV
 

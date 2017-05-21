@@ -121,13 +121,14 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence * evSeqPtr ) {
                      "pipeline %p.\n", this );
         return -1;
     }
-    //AnalysisPipeline::iEventSequence & evseq
-    //                        = get_evseq<AnalysisPipeline::iEventSequence&>();
+    size_t nEventsProcessed = 0;
     for( auto evPtr = evSeqPtr->initialize_reading();
          evSeqPtr->is_good();
-         evSeqPtr->next_event( evPtr ) ) {
+         evSeqPtr->next_event( evPtr ), ++nEventsProcessed ) {
         this->process( evPtr );
     }
+    sV_log2( "Pipeline %p depleted the source %p with %zu events. Finalizing...\n",
+            this, evSeqPtr, nEventsProcessed );
     _finalize_sequence( evSeqPtr );
 
     _evSeq = nullptr;

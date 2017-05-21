@@ -33,8 +33,7 @@ namespace buckets {
 BucketReader::BucketReader( events::Bucket * reentrantBucketPtr ) :
             iEventSequence( 0x0 ),
             _cBucket( reentrantBucketPtr ),
-            _it( reentrantBucketPtr ) {
-}
+            _it( reentrantBucketPtr ) {}
 
 const events::Bucket &
 BucketReader::_V_bucket() const {
@@ -47,7 +46,7 @@ BucketReader::_V_bucket() const {
 
 bool
 BucketReader::_V_is_good() {
-    return _it.sym().nEvent < (size_t) bucket().events_size();
+    return _it.sym().nEvent < BucketReader::n_events();
 }
 
 void
@@ -61,7 +60,8 @@ BucketReader::_V_next_event( Event *& ePtr ) {
 BucketReader::Event *
 BucketReader::_V_initialize_reading() {
     Event * eventPtr;
-    _V_next_event( eventPtr );
+    BucketReader::_V_next_event( eventPtr );
+    sV_log3( "BucketReader %p: initialized for reading.\n", this );
     return eventPtr;
 }
 
@@ -95,17 +95,18 @@ SuppInfoBucketReader::invalidate_supp_info_caches() const {
     for( auto & p : _miCache ) {
         p.second.positionInMetaInfo = USHRT_MAX;
     }
+    sV_log3( "SuppInfoBucketReader %p: supp. info caches invalidated.\n", this );
 }
 
 const events::BucketInfoEntry &
-SuppInfoBucketReader::_metainfo( uint16_t n ) const {
+SuppInfoBucketReader::_supp_info( uint16_t n ) const {
     return supp_info_entries().entries( n );
 }
 
 void
 SuppInfoBucketReader::_recache_supp_info() {
     for( int i = 0; i < supp_info_entries().entries_size(); ++i ) {
-        const events::BucketInfoEntry & miRef = _metainfo( i );
+        const events::BucketInfoEntry & miRef = _supp_info( i );
         std::type_index tIdx = _V_get_collector_type_hash( miRef.infotype() );
         auto cacheEntryIt = _miCache.find( tIdx );
         if( _miCache.end() == cacheEntryIt ) {
@@ -115,6 +116,7 @@ SuppInfoBucketReader::_recache_supp_info() {
         MetaInfoCache & micRef = cacheEntryIt->second;
         micRef.positionInMetaInfo = i;
     }
+    sV_log3( "SuppInfoBucketReader %p: supp. info caches renewed.\n", this );
 }
 
 const events::BucketInfo &
@@ -158,7 +160,7 @@ CompressedBucketReader::compressed_bucket() const {
 }
 
 const events::BucketInfoEntry &
-CompressedBucketReader::_metainfo( uint16_t n ) const {
+CompressedBucketReader::_supp_info( uint16_t n ) const {
     return supp_info_entries().entries( n );
 }
 
@@ -174,33 +176,61 @@ CompressedBucketReader::_decompressor( iDecompressor::CompressionAlgo algo ) con
 
 void
 CompressedBucketReader::_decompress_bucket() const {
+    if( ! _dfltdBucketPtr->data().compressedcontent().size() ) {
+        sV_logw( "Trying to decompress bucket of zero size.\n" );
+    } else {
+        sV_log3( "Decompressing data of size %d with algorithm #%d.\n",
+                _dfltdBucketPtr->data().compressedcontent().size(),
+                _dfltdBucketPtr->data().compressionalgo() );
+    }
     const iDecompressor * dcmprPtr = _decompressor(
                                     _dfltdBucketPtr->data().compressionalgo() );
     size_t decompressedLength;  // provisioned
-    _dcmBuffer.reserve(
+    _dcmBuffer.resize(
             decompressedLength = dcmprPtr->decompressed_dest_buffer_len(
                 (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
                 _dfltdBucketPtr->data().compressedcontent().size()
             ) );
-    _dcmBuffer.resize(
+    size_t realDecompressedLength =
         dcmprPtr->decompress_series(
             (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
             _dfltdBucketPtr->data().compressedcontent().size(),
             _dcmBuffer.data(),
-            _dcmBuffer.capacity() )
+            _dcmBuffer.capacity() );
+    # if 0
+        const uint8_t * dt = (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str();
+        sV_log3( "XXX: %x %x %x ... [%zu] -decompression-> %x %x %x ... [%zu]\n",
+            dt[0], dt[1], dt[2], _dfltdBucketPtr->data().compressedcontent().size(),
+            _dcmBuffer.data()[0],
+            _dcmBuffer.data()[1],
+            _dcmBuffer.data()[2], _dcmBuffer.size()
         );
+    # endif
+    _dcmBuffer.erase(
+        _dcmBuffer.begin() + realDecompressedLength,
+        _dcmBuffer.end() );
     if( decompressedLength < _dcmBuffer.size() ) {
-        emraise( badState, "Decompressed length was erroneousle predicted: "
+        emraise( badState, "Decompressed length was erroneously predicted: "
                 "%zu (provisioned) < %zu (real).",
                 decompressedLength, _dcmBuffer.size() );
     }
+    sV_log3( "CompressedBucketReader %p: bucket of size %zu -> %zu "
+            "decompressed.\n", this,
+            _dfltdBucketPtr->data().compressedcontent().size(),
+            decompressedLength );
     if( ! const_cast<CompressedBucketReader *>(this)
                 ->_mutable_bucket_ptr()
-                ->ParseFromArray( _dcmBuffer.data(), _dcmBuffer.size() ) ) {
+                ->ParseFromArray( _dcmBuffer.data(), _dcmBuffer.size() )
+                // XXX: tests on trivial compression:
+                //->ParseFromArray( _dfltdBucketPtr->data().compressedcontent().c_str(),
+                //                  _dcmBuffer.size() )
+        ) {
         emraise( thirdParty, "Protobuf failed to parse decompressed data of "
             "size %zu.", _dcmBuffer.size() );
     }
     _decompressedBucketValid = true;
+    sV_log3( "CompressedBucketReader %p: bucket of size %zu "
+            "parsed.\n", this, decompressedLength );
 }
 
 const events::Bucket &
@@ -254,10 +284,6 @@ BucketsFileReader::BucketsFileReader(
 # endif
 
 }  // namespace ::sV::buckets
-
-namespace aux {
-
-}  // namespace ::sV::aux
 
 }  // namespace sV
 
@@ -317,14 +343,13 @@ Buckets::Buckets(
             events::Bucket * bucketPtr,
             events::BucketInfo * bInfo,
             events::CommonBucketDescriptor * particularInfo,
-            const Buckets::Decompressors * decompressors,
             const std::list<goo::filesystem::Path> & paths_,
             size_t nMaxEvents,
             bool enableProgressbar,
             uint8_t ASCII_lines ) :
                 iEventSequence(0x0),
                 Parent( dfltdBcktPtr, bucketPtr, bInfo, particularInfo,
-                        decompressors ),
+                        &_decompressors, &_file ),
                 ASCII_Entry( goo::aux::iApp::exists() ?
                         &goo::app<AbstractApplication>() : nullptr,
                         ASCII_lines ),
@@ -340,6 +365,8 @@ Buckets::Buckets(
         _pbParameters->length = 80;
         _pbParameters->full = _maxEventsNumber;
     }
+    _sourcesIt = _paths.end();
+    sV_log3( "Buckets %p: constructed.\n", this );
 }
 
 Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
@@ -347,7 +374,6 @@ Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
             sV_MSG_NEW( events::Bucket          ),
             sV_MSG_NEW( events::BucketInfo      ),
             sV_MSG_NEW( events::CommonBucketDescriptor ),
-            &_decompressors,
             std::list<goo::filesystem::Path>(
                 goo::app<AbstractApplication>().app_options_list<goo::filesystem::Path>("input-file").begin(),
                 goo::app<AbstractApplication>().app_options_list<goo::filesystem::Path>("input-file").end()
@@ -356,6 +382,16 @@ Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
             dct["progressbar"].as<bool>(),
             1
         ) {}
+
+Buckets::~Buckets() {
+    for( auto p : _collectors ) {
+        delete p.second;
+    }
+    for( auto p : _decompressors ) {
+        delete p.second;
+    }
+    sV_log3( "Buckets %p: freed.\n", this );
+}
 
 std::type_index
 Buckets::_V_get_collector_type_hash( const std::string & collectorName ) {
@@ -387,10 +423,56 @@ Buckets::_V_new_cache_entry( const std::string & collectorName ) {
     return ret;
 }
 
-Buckets::~Buckets() {
-    for( auto p : _collectors ) {
-        delete p.second;
+const iDecompressor *
+Buckets::_decompressor( iDecompressor::CompressionAlgo algo ) const {
+    auto it = _decompressors.find( algo );
+    if( _decompressors.end() == it ) {
+        std::string dcmprssrName = sV::sys::compression_algo_name( algo );
+        it = _decompressors.emplace(
+                    algo,
+                    generic_new<iDecompressor>( dcmprssrName ) ).first;
     }
+    return it->second;
+}
+
+Buckets::Event *
+Buckets::_V_initialize_reading() {
+    _file.open( *(_sourcesIt = _paths.begin()) );
+    return Parent::_V_initialize_reading();
+}
+
+bool
+Buckets::_V_is_good() {
+    if( !_lastEvReadingWasGood ) {
+        sV_log3( "XXX #1\n" );  // XXX
+        return false;
+    }
+    if( _maxEventsNumber && _eventsRead > _maxEventsNumber ) {
+        sV_log3( "XXX #2\n" );  // XXX
+        return false;
+    }
+    return true;
+}
+
+bool
+Buckets::_V_acquire_next_bucket( BucketReader::Event *& epr ) {
+    if( _paths.end() == _sourcesIt ) {
+        return _lastEvReadingWasGood = false;
+    }
+    if( Parent::_V_acquire_next_bucket( epr ) ) {
+        sV_log3( "Next bucket in a queue acquired.\n" );
+        return _lastEvReadingWasGood = true;
+    }
+    if( _paths.end() == ++_sourcesIt ) {
+        sV_log3( "Buckets %p: has no more sources in queue of %zu entries. Done.\n",
+                this, _paths.size() );
+        return _lastEvReadingWasGood = false;
+    }
+    _file.close();
+    _file.open( *_sourcesIt/*->interpolated()*/ );
+    sV_log3( "Buckets %p: switched to next source in a queue: \"%s\".\n",
+        this, _sourcesIt->/*interpolated().*/c_str() );
+    return _lastEvReadingWasGood = Parent::_V_acquire_next_bucket( epr );
 }
 
 StromaV_EVENTS_SEQUENCE_DEFINE_MCONF( Buckets, "svb" ) {

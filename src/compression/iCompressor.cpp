@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+ * Copyright (c) 2017 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -20,37 +20,27 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "pipeline_app.hpp"
+# include "compression/iCompressor.hpp"
 
 namespace sV {
+namespace sys {
 
-int
-App::_V_run() {
-    if( do_immediate_exit() ) return EXIT_FAILURE;
-    // Check if we actually have something to do
-    if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- will do nothing with events read.\n" );
-    }
-    if( !event_sequence() ) {
-        sV_loge( "No data source specified. Has nothing to do.\n" );
-        return EXIT_FAILURE;
-    }
-
-    AnalysisPipeline::iEventSequence * evseq
-        = dynamic_cast<AnalysisPipeline::iEventSequence*>( event_sequence() );
-
-    int rc = this->AnalysisPipeline::process( evseq );
-
-    evseq->print_brief_summary( goo::app<App>().ls() );
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
-        (**it).print_brief_summary( goo::app<App>().ls() );
-    }
-    sV_log2( "Pipeline analysis done.\n" );
-
-    return EXIT_SUCCESS ? rc == 0 : EXIT_FAILURE;
+const char *
+compression_algo_name( iCompressor::CompressionAlgo a ) {
+    switch( a) {
+        case events::CompressedData_CompressionAlgorithm_plain:
+            return "trivial";
+        case events::CompressedData_CompressionAlgorithm_ZLIB:
+            return "zlib";
+        case events::CompressedData_CompressionAlgorithm_BZIP2:
+            return "bz2";
+        case events::CompressedData_CompressionAlgorithm_LZMA:
+            return "lzma";
+        default:
+            return "other";
+    };
 }
 
+}  // namespace ::sV::sys
 }  // namespace sV
-
 
