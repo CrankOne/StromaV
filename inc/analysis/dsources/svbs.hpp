@@ -198,13 +198,13 @@ protected:
 
     /// Will use _supp_info() method to set up internal caches ready for various
     /// supp_info_entries() acquizition.
-    virtual void _recache_supp_info();
+    virtual void _recache_supp_info() const;
 
     /// Has to return C++ RTTI type hash for given supp info data type.
-    virtual std::type_index _V_get_collector_type_hash( const std::string & ) = 0;
+    virtual std::type_index _V_get_collector_type_hash( const std::string & ) const = 0;
 
     /// Has to allocate new cache entry with set name and collector ptr fields.
-    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) = 0;
+    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) const = 0;
 
     /// Returns mutable reference to supplementary info container of current
     /// bucket. Usually used as a setter.
@@ -217,10 +217,17 @@ public:
     /// bucket.
     const events::BucketInfo & supp_info_entries() const;
 
+    /// Returns true when supp info caches are valid (related to the current
+    /// bucket).
+    bool is_supp_info_caches_valid() const { return _cacheValid; }
+
     /// Writes the content of supp info of target type to destination by
     /// reference and returns true. Returns false if no supp info of this type
     /// available in current bucket.
     template<typename T> bool supp_info_entry( T & dest ) const {
+        if( !is_supp_info_caches_valid() ) {
+            _recache_supp_info();
+        }
         auto it = _miCache.find( typeid(T) );
         if( _miCache.end() == it
          || it->second.positionInMetaInfo == USHRT_MAX ) {
@@ -478,6 +485,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_next_event( BucketReader::Even
     if( Self::_V_is_good() ) {
         return Parent::_V_next_event( epr );
     }
+    sV_log3( "BucketStreamReader<...> %p: current bucket depleted. Acquiring "
+            "next...\n", this );
     _V_acquire_next_bucket( epr );
 }
 
@@ -523,6 +532,22 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
         sV_log3( "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
             this );
     }
+    # if 0
+    std::istream::streampos cBucketOffset = stream().tellg();
+    if( ! supp_info_entry( *_bucketKeyInfoMsg ) ) {
+        sV_logw( "Bucket at position %zu in stream %p has no supp. info of type %s that "
+                 "was expected for bucket key type %s. Bucket won't be indexed.\n",
+            cBucketOffset, _iStreamPtr,
+            _bucketKeyInfoMsg->GetTypeName().c_str(),
+            typeid(BucketID).name() );
+    } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) ) == offsets_map().end() ) {
+        _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
+        sV_log3( "BucketStreamReader<...> %p: new bucket at position %zu indexed.\n",
+                this, cBucketOffset);
+    }
+    # else
+    _TODO_  // TODO
+    # endif
     if( !read_bucket( stream(), bucketLength ) ) {
         emraise( thirdParty, "Bucket reader %p was unable to parse compressed "
                 "bucket from stream %p.", this, _iStreamPtr  );
@@ -573,6 +598,10 @@ namespace aux {
 struct SHA256BucketHash {
     uint32_t hash[8];
     friend std::ostream & operator<<(std::ostream& stream, const SHA256BucketHash &);
+
+    SHA256BucketHash( sV::events::CommonBucketDescriptor & msg ) {
+        _TODO_  // TODO
+    }
 };
 
 }  // namespace ::sV::aux
@@ -620,17 +649,17 @@ private:
     size_t _maxEventsNumber,
            _eventsRead;
 
-    std::unordered_map<std::string, sV::buckets::iAbstractInfoCollector *> _collectors;
+    mutable std::unordered_map<std::string, sV::buckets::iAbstractInfoCollector *> _collectors;
     mutable Buckets::Decompressors _decompressors;
     std::ifstream _file;
     std::vector<goo::filesystem::Path>::const_iterator _sourcesIt;
 protected:
     /// Returns C++ RTTI type hash for given supp info data type using the sV's
     /// system VCtr dict.
-    virtual std::type_index _V_get_collector_type_hash( const std::string & ) override;
+    virtual std::type_index _V_get_collector_type_hash( const std::string & ) const override;
 
     /// Allocates new cache entry with set name and collector ptr fields.
-    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) override;
+    virtual MetaInfoCache _V_new_cache_entry( const std::string & ) const override;
 
     virtual bool _V_is_good() override;
 

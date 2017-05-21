@@ -30,6 +30,9 @@ namespace sV {
 
 namespace buckets {
 
+// BucketReader
+//////////////
+
 BucketReader::BucketReader( events::Bucket * reentrantBucketPtr ) :
             iEventSequence( 0x0 ),
             _cBucket( reentrantBucketPtr ),
@@ -79,8 +82,8 @@ BucketReader::n_events() const {
 }
 
 //
-//
-//
+// SuppInfoBucketReader
+//////////////////////
 
 SuppInfoBucketReader::SuppInfoBucketReader(
                         events::Bucket * bucketPtr,
@@ -104,9 +107,9 @@ SuppInfoBucketReader::_supp_info( uint16_t n ) const {
 }
 
 void
-SuppInfoBucketReader::_recache_supp_info() {
-    for( int i = 0; i < supp_info_entries().entries_size(); ++i ) {
-        const events::BucketInfoEntry & miRef = _supp_info( i );
+SuppInfoBucketReader::_recache_supp_info() const {
+    for( int i = 0; i < _bucketInfo->entries_size(); ++i ) {
+        const events::BucketInfoEntry & miRef = _bucketInfo->entries( i );
         std::type_index tIdx = _V_get_collector_type_hash( miRef.infotype() );
         auto cacheEntryIt = _miCache.find( tIdx );
         if( _miCache.end() == cacheEntryIt ) {
@@ -116,6 +119,7 @@ SuppInfoBucketReader::_recache_supp_info() {
         MetaInfoCache & micRef = cacheEntryIt->second;
         micRef.positionInMetaInfo = i;
     }
+    _cacheValid = true;
     sV_log3( "SuppInfoBucketReader %p: supp. info caches renewed.\n", this );
 }
 
@@ -124,6 +128,9 @@ SuppInfoBucketReader::supp_info_entries() const {
     if( !_bucketInfo ) {
         emraise( badArchitect, "Suplementary info container instance is not "
             "set for reader instance %p.", this );
+    }
+    if( !is_supp_info_caches_valid() ) {
+        _recache_supp_info();
     }
     return *_bucketInfo;
 }
@@ -135,8 +142,8 @@ SuppInfoBucketReader::supp_info_entries() {
 }
 
 //
-//
-//
+// CompressedBucketReader
+////////////////////////
 
 CompressedBucketReader::CompressedBucketReader(
                 events::DeflatedBucket * dfltdBcktPtr,
@@ -394,7 +401,7 @@ Buckets::~Buckets() {
 }
 
 std::type_index
-Buckets::_V_get_collector_type_hash( const std::string & collectorName ) {
+Buckets::_V_get_collector_type_hash( const std::string & collectorName ) const {
     auto & sect = sV::sys::IndexOfConstructables::self()
                     .known_constructors<sV::buckets::iAbstractInfoCollector>();
     auto it = sect.find( collectorName );
@@ -406,7 +413,7 @@ Buckets::_V_get_collector_type_hash( const std::string & collectorName ) {
 }
 
 Buckets::MetaInfoCache
-Buckets::_V_new_cache_entry( const std::string & collectorName ) {
+Buckets::_V_new_cache_entry( const std::string & collectorName ) const {
     MetaInfoCache ret;
     ret.name = collectorName;
     // Try to find existing collector:
