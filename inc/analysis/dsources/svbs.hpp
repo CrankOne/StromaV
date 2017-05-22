@@ -38,6 +38,36 @@
 # include <fstream>
 
 namespace sV {
+namespace aux {
+struct SHA256BucketHash;
+}  // namespace ::sV::aux
+}  // namespace sV
+
+namespace std {
+std::ostream & operator<<(std::ostream& stream, const ::sV::aux::SHA256BucketHash &);
+}
+
+namespace sV {
+namespace aux {
+
+struct SHA256BucketHash {
+    uint32_t hash[8];
+    friend std::ostream & ::std::operator<<(std::ostream& stream, const SHA256BucketHash &);
+
+    SHA256BucketHash( sV::events::CommonBucketDescriptor & msg ) {
+        if( sizeof(hash) != msg.sha256hash().size() ) {
+            emraise( badValue, "Expected length of SHA256 hash is 32 bytes "
+                "while incoming protobuf message carries %d.",
+                msg.sha256hash().size() );
+        }
+        memcpy( hash, msg.sha256hash().c_str(), sizeof(hash) );
+    }
+};
+
+}  // namespace ::sV::aux
+}  // namespace sV
+
+namespace sV {
 
 namespace buckets {
 
@@ -97,7 +127,7 @@ public:
                                                             ConstBucketIterator;
 private:
     events::Bucket * _cBucket;
-    ConstBucketIterator _it;
+    mutable ConstBucketIterator _it;
 protected:
     virtual bool _V_is_good() override;
     virtual void _V_next_event( Event *& ) override;
@@ -139,6 +169,9 @@ public:
     const events::Event & operator[]( size_t n ) {
         return bucket().events(n);
     }
+
+    /// Wil set internal bucket iterator to beginning.
+    void reset_bucket_iterator() const;
 };  // BucketReader
 
 
@@ -207,8 +240,8 @@ protected:
     virtual MetaInfoCache _V_new_cache_entry( const std::string & ) const = 0;
 
     /// Returns mutable reference to supplementary info container of current
-    /// bucket. Usually used as a setter.
-    events::BucketInfo & supp_info_entries();
+    /// bucket. Usually used as a setter. Doesn't cause recaching.
+    events::BucketInfo & mutable_supp_info_entries();
 public:
     SuppInfoBucketReader( events::Bucket * bucketPtr,
                           events::BucketInfo * bucketInfoPtr );
@@ -224,17 +257,20 @@ public:
     /// Writes the content of supp info of target type to destination by
     /// reference and returns true. Returns false if no supp info of this type
     /// available in current bucket.
-    template<typename T> bool supp_info_entry( T & dest ) const {
+    template<typename T> bool supp_info_entry( typename T::CollectingType & dest ) const {
         if( !is_supp_info_caches_valid() ) {
             _recache_supp_info();
         }
-        auto it = _miCache.find( typeid(T) );
+        auto it = _miCache.find( std::type_index(typeid(T)) );
         if( _miCache.end() == it
          || it->second.positionInMetaInfo == USHRT_MAX ) {
+            //sV_log3( "XXX unable to find \"%s\" among existing caches (type hash %x)\n",
+            //    dest.GetTypeName().c_str(), std::type_index(typeid(T)) );
             return false;
         }
         it->second.collectorPtr->unpack_suppinfo(
                     _supp_info( it->second.positionInMetaInfo ).suppinfo() );
+        dest.CopyFrom( dynamic_cast<T*>(it->second.collectorPtr)->own_supp_info_ref() );
         return true;
     }
 };  // class SuppInfoBucketReader
@@ -358,7 +394,8 @@ protected:
     virtual void _V_finalize_reading() override;
 
     /// Adds new bucket position entry to cache.
-    void _emplace_bucket_offset( const BucketID &, std::istream::streampos );
+    typename OffsetsMap::const_iterator
+            _emplace_bucket_offset( const BucketID &, std::istream::streampos );
 
     /// Performs iterating of the entire stream from the beginning collecting
     /// physical offsets for each bucket. Performance heavy, need for
@@ -422,11 +459,19 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::stream() {
     return *_iStreamPtr;
 }
 
-template<typename BucketIDT, typename BucketKeyInfoT> void
+template<typename BucketIDT, typename BucketKeyInfoT>
+typename BucketStreamReader<BucketIDT, BucketKeyInfoT>::OffsetsMap::const_iterator
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_emplace_bucket_offset(
             const BucketID & bid,
             std::istream::streampos sPos ) {
-    _offsetsMap.emplace( bid, sPos );
+    auto ir = _offsetsMap.emplace( bid, sPos );
+    {
+        std::stringstream ss;
+        ss << bid;
+        sV_log3( "Bucket %s events indexed by offset %zu.\n",
+            ss.str().c_str(), sPos );
+    }
+    return ir;
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT>
@@ -461,7 +506,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map( std::istream 
         parsingResult = compressed_bucket().ParseFromArray( _readingBuffer.data(), bucketSize );
         # endif
 
-        if( ! supp_info_entry( *_bucketKeyInfoMsg ) ) {
+        if( ! supp_info_entry<ChecksumsCollector>( *_bucketKeyInfoMsg ) ) {
             sV_logw( "Bucket %zu of stream %p has no supp. info of type %s that "
                      "was expected for bucket key type %s. Bucket won't be indexed.\n",
                 nBucket, _iStreamPtr,
@@ -494,7 +539,6 @@ template<typename BucketIDT, typename BucketKeyInfoT> BucketReader::Event *
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_initialize_reading() {
     Event * ePtr;
     _V_acquire_next_bucket( ePtr );
-    _cBucketIt = offsets_map().begin();
     return ePtr;
 }
 
@@ -525,29 +569,32 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
             emraise( thirdParty, "Bucket reader %p was unable parse supp info from "
                 "stream %p.", this, _iStreamPtr );
         }
-        sV_log3( "BucketStreamReader<...> %p: parsed supp info header of "
-            "size %u carrying %d entries.\n",
-            this, suppInfoLength, supp_info_entries().entries_size() );
     } else {
         sV_log3( "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
             this );
     }
-    # if 0
+    # if 1
     std::istream::streampos cBucketOffset = stream().tellg();
-    if( ! supp_info_entry( *_bucketKeyInfoMsg ) ) {
-        sV_logw( "Bucket at position %zu in stream %p has no supp. info of type %s that "
-                 "was expected for bucket key type %s. Bucket won't be indexed.\n",
+    if( ! supp_info_entry<ChecksumsCollector>( *_bucketKeyInfoMsg ) ) {
+        sV_logw( "Bucket at position %zu in stream %p has no supp. info of "
+                 "type %s that was expected for bucket key type %s. Bucket "
+                 "won't be indexed.\n",
             cBucketOffset, _iStreamPtr,
-            _bucketKeyInfoMsg->GetTypeName().c_str(),
+            //ChecksumsCollector::CollectingType::GetTypeName().c_str(),
+            typeid(ChecksumsCollector::CollectingType).name(),
             typeid(BucketID).name() );
-    } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) ) == offsets_map().end() ) {
-        _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
+    } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) )
+            == offsets_map().end() ) {
+        _cBucketIt = _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
         sV_log3( "BucketStreamReader<...> %p: new bucket at position %zu indexed.\n",
                 this, cBucketOffset);
     }
     # else
     _TODO_  // TODO
     # endif
+    sV_log3( "BucketStreamReader<...> %p: parsed supp info header of "
+            "size %u.\n",
+            this, suppInfoLength );
     if( !read_bucket( stream(), bucketLength ) ) {
         emraise( thirdParty, "Bucket reader %p was unable to parse compressed "
                 "bucket from stream %p.", this, _iStreamPtr  );
@@ -566,7 +613,10 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_supp_info( std::istream & is
         emraise( ioError, "Bucket reader %p was unable to read supp info from "
             "stream %p.", this, &is );
     }*/
-    return supp_info_entries().ParseFromArray( _readingBuffer.data(), length );
+    bool ret = mutable_supp_info_entries().ParseFromArray( _readingBuffer.data(), length );
+    sV_log3( "BucketStreamReader<...> %p: read %d supp info caches from "
+        "stream %p.\n", this, mutable_supp_info_entries().entries_size(), &is );
+    return ret;
 }
 
 template<typename BucketIDT, typename BucketKeyInfoT> bool
@@ -587,26 +637,6 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_bucket( std::istream & is, s
 }  // namespace ::sV::buckets
 
 }  // namespace sV
-
-//
-//
-//
-
-namespace sV {
-namespace aux {
-
-struct SHA256BucketHash {
-    uint32_t hash[8];
-    friend std::ostream & operator<<(std::ostream& stream, const SHA256BucketHash &);
-
-    SHA256BucketHash( sV::events::CommonBucketDescriptor & msg ) {
-        _TODO_  // TODO
-    }
-};
-
-}  // namespace ::sV::aux
-}  // namespace sV
-
 
 //
 // Template specialization for SHA256 hash used as map key

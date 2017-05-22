@@ -101,6 +101,7 @@ size_t CompressedDispatcher::_V_drop_bucket() {
             deflatedBucketSize, _streamPtr );
     }
     _deflatedBucketPtr->Clear();
+    supp_info().Clear();
     return bucket().ByteSize();
 }
 

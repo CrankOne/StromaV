@@ -94,6 +94,8 @@ public:
 /// @ingroup buckets
 template<typename T>
 class ITBucketSuppInfoCollector : public iAbstractInfoCollector {
+public:
+    typedef T CollectingType;
 private:
     T * _miPtr;
 protected:
@@ -109,6 +111,8 @@ protected:
     /// protobyf's Any field referred by given ptr.
     virtual void _V_unpack_suppinfo( const ::google::protobuf::Any & miMsgRef ) override {
         miMsgRef.UnpackTo( _my_supp_info_ptr() );
+        sV_log3( "XXX upacked hash of %zu bytes.\n", 
+            _my_supp_info_ptr()->sha256hash().size() );  // XXX
     }
 
     /// May be used by descendants to perform invasive operations with supp
@@ -118,6 +122,8 @@ public:
     /// Ctr. The pointer of reentrant supp info instance is supposed to be
     /// allocated using arena.
     ITBucketSuppInfoCollector( T * miPtr ) : _miPtr(miPtr) {}
+
+    const T & own_supp_info_ref() const { return *_miPtr; }
 };
 
 /**@class ChecksumsCollector

@@ -56,6 +56,10 @@ void
 BucketReader::_V_next_event( Event *& ePtr ) {
     ePtr = &(::sV::mixins::PBEventApp::c_event());
     ePtr->Clear();
+    if( _it.sym().nEvent >= (size_t) bucket().events_size() ) {
+        emraise( overflow, "Required reading %d-th event from bucket of %d "
+            "events.", _it.sym().nEvent, bucket().events_size() );
+    }
     ePtr->CopyFrom( bucket().events( _it.sym().nEvent ) );
     ++_it;
 }
@@ -63,6 +67,7 @@ BucketReader::_V_next_event( Event *& ePtr ) {
 BucketReader::Event *
 BucketReader::_V_initialize_reading() {
     Event * eventPtr;
+    reset_bucket_iterator();
     BucketReader::_V_next_event( eventPtr );
     sV_log3( "BucketReader %p: initialized for reading.\n", this );
     return eventPtr;
@@ -79,6 +84,11 @@ BucketReader::n_events() const {
         return 0;
     }
     return bucket().events_size();
+}
+
+void
+BucketReader::reset_bucket_iterator() const {
+    _it.sym() = 0;
 }
 
 //
@@ -108,6 +118,8 @@ SuppInfoBucketReader::_supp_info( uint16_t n ) const {
 
 void
 SuppInfoBucketReader::_recache_supp_info() const {
+    size_t nRenewed = 0,
+           nInserted = 0;
     for( int i = 0; i < _bucketInfo->entries_size(); ++i ) {
         const events::BucketInfoEntry & miRef = _bucketInfo->entries( i );
         std::type_index tIdx = _V_get_collector_type_hash( miRef.infotype() );
@@ -115,12 +127,27 @@ SuppInfoBucketReader::_recache_supp_info() const {
         if( _miCache.end() == cacheEntryIt ) {
             cacheEntryIt = _miCache.emplace( tIdx,
                         _V_new_cache_entry( miRef.infotype() ) ).first;
+            ++nInserted;
+            sV_log3( "XXX insertion of type %s (%x)\n",
+                miRef.infotype().c_str(), tIdx );
+        } else {
+            ++nRenewed;
+            sV_log3( "XXX renewal of type %s (%x)\n",
+                miRef.infotype().c_str(), tIdx );
         }
         MetaInfoCache & micRef = cacheEntryIt->second;
+        if( micRef.positionInMetaInfo != USHRT_MAX ) {
+            sV_logw( "Possible duplicating of bucket supp info of type %s (%x). "
+                "New index in array is %u, previous: %u.\n",
+                miRef.infotype().c_str(), tIdx,
+                micRef.positionInMetaInfo, i );
+        }
         micRef.positionInMetaInfo = i;
     }
     _cacheValid = true;
-    sV_log3( "SuppInfoBucketReader %p: supp. info caches renewed.\n", this );
+    sV_log3( "SuppInfoBucketReader %p: %zu supp. info caches renewed, "
+        "%zu inserted from %d entries.\n", this, nRenewed, nInserted,
+        _bucketInfo->entries_size() );
 }
 
 const events::BucketInfo &
@@ -136,9 +163,8 @@ SuppInfoBucketReader::supp_info_entries() const {
 }
 
 events::BucketInfo &
-SuppInfoBucketReader::supp_info_entries() {
-    const SuppInfoBucketReader * cthis = this;
-    return const_cast<events::BucketInfo &>( cthis->supp_info_entries() );
+SuppInfoBucketReader::mutable_supp_info_entries() {
+    return *_bucketInfo;
 }
 
 //
@@ -238,6 +264,7 @@ CompressedBucketReader::_decompress_bucket() const {
     _decompressedBucketValid = true;
     sV_log3( "CompressedBucketReader %p: bucket of size %zu "
             "parsed.\n", this, decompressedLength );
+    reset_bucket_iterator();
 }
 
 const events::Bucket &
