@@ -30,6 +30,7 @@
 # include "analysis/pipeline.hpp"
 # include "compression/iDecompressor.hpp"
 # include "buckets/iBundlingDispatcher.hpp"
+# include "logging.hpp"
 # include "utils.h"
 
 # include <goo_mixins/iterable.tcc>
@@ -79,33 +80,31 @@ namespace buckets {
  * basic iEventSequence interface for iterating it within sV's events pipeline
  * framework.
  *
- * This class is expected to be not quite useful as it is rather than in
- * combination with additional bucket management code.
+ * This rudimentary implementation makes no assumption about bucket contents
+ * and does not involve usage of any supplementary information within. For
+ * supp. info handling reader, see SuppInfoBucketReader.
  *
  * @ingroup analysis
  * @ingroup buckets
+ *
+ * @see SuppInfoBucketReader
  */
 class BucketReader : public virtual sV::aux::iEventSequence {
 public:
+    /// Parent interface class.
     typedef sV::aux::iEventSequence Parent;
+    /// Unified events type.
     typedef typename sV::AnalysisPipeline::Event Event;
-
     /// Bucket event id. Used for custom iterator class.
     template<typename BucketT>
     struct BucketEventID {
         BucketT * authorityPtr;
         size_t nEvent;
-
         BucketEventID( BucketT * bPtr, size_t nEve=0 ) :
                                             authorityPtr(bPtr), nEvent(nEve) {}
-
-        BucketEventID & operator++() {
-            ++nEvent;
-            return *this;
-        }
+        BucketEventID & operator++() { ++nEvent; return *this; }
     };
-
-    /// Template declaration for bucket iterator.
+    /// Template declaration for i/o iterator related to bucket reader.
     template<typename EventT, typename BucketT>
     class _BucketIterator : public goo::iterators::Iterator<
                                         goo::iterators::BaseBidirIterator,
@@ -122,54 +121,47 @@ public:
         BucketEventID<BucketT> & sym() { return _sym; }
         const BucketEventID<BucketT> & sym() const { return _sym; }
     };
-
+    /// Reading iterator.
     typedef _BucketIterator<const events::Event *, const events::Bucket>
                                                             ConstBucketIterator;
 private:
+    /// Reading bucket instance pointer.
     events::Bucket * _cBucket;
+    /// Current iterator for reading associated bucket instance.
     mutable ConstBucketIterator _it;
 protected:
+    /// Reads true if iterator points to existing event instance inside a bucket.
     virtual bool _V_is_good() override;
+    /// Reads next event using internal iterator.
     virtual void _V_next_event( Event *& ) override;
+    /// Resets internal iterator and read first event returning pointer to it.
     virtual Event * _V_initialize_reading() override;
+    /// Sets internal iterator to the end of associated buffer.
     virtual void _V_finalize_reading() override;
-
-    /// This method may be overriden by user classes that may implement some
-    /// caching procedures.
+    /// This immutable bucket getter may be overriden by user classes that may
+    /// implement some caching procedures.
     virtual const events::Bucket & _V_bucket() const;
-
+    /// Mutable bucket getter. Just returns mutable bucket pointer.
     events::Bucket * _mutable_bucket_ptr() { return _cBucket; }
 public:
     /// Ctr. Accepts a ptr to reentrant bucket message instance.
     BucketReader( events::Bucket * bucketPtr );
-
     /// (const) Returns reference to current bucket.
     const events::Bucket & bucket() const { return _V_bucket(); }
-
     /// Returns number of events in a bucket.
     virtual size_t n_events() const;
-
     /// Returns true when bucket pointer was associated with this handle.
     bool is_bucket_set() const { return _cBucket; }
-
     /// Sets bucket pointer to be treated with this handle.
     virtual void set_bucket_ptr( events::Bucket * ptr ) { _cBucket = ptr; }
-
     /// Returns iterator pointing to first event.
-    ConstBucketIterator begin() const {
-        return ConstBucketIterator( &(bucket()) );
-    }
-
+    ConstBucketIterator begin() const
+        { return ConstBucketIterator( &(bucket()) ); }
     /// Returns iterator pointing to the end of events.
-    ConstBucketIterator end() const {
-        return ConstBucketIterator( &(bucket()), bucket().events_size() );
-    }
-
+    ConstBucketIterator end() const
+        { return ConstBucketIterator( &(bucket()), bucket().events_size() ); }
     /// Event getter operator.
-    const events::Event & operator[]( size_t n ) {
-        return bucket().events(n);
-    }
-
+    const events::Event & operator[]( size_t n ) { return bucket().events(n); }
     /// Wil set internal bucket iterator to beginning.
     void reset_bucket_iterator() const;
 };  // BucketReader
@@ -202,10 +194,17 @@ public:
  * The couple of abstract methods has to define interaction with some external
  * source of information about available supp. info collector classes.
  *
+ * Since managing buckets with supplementary information may become a
+ * complicated thing, for development and debugging purposes it becomes
+ * convinient to introduce logging. Operating with buckets within handling
+ * pipeline usually a prolonged routine, so putting these logs into a dedicated
+ * stream may also be convinient.
+ *
  * @ingroup analysis
  * @ingroup buckets
  */
-class SuppInfoBucketReader : public BucketReader {
+class SuppInfoBucketReader : public BucketReader,
+                             public aux::Logger {
 public:
     /// Single supplementary information cache entry.
     struct MetaInfoCache {
@@ -216,7 +215,6 @@ public:
 private:
     /// Ptr to supp info message-container for current bucket.
     events::BucketInfo * _bucketInfo;
-
     /// Indicates whether _miCache is valid for current bucket.
     mutable bool _cacheValid;
     /// Keeps RTTI mappings for suppInfo.
@@ -225,35 +223,30 @@ protected:
     /// Shall return bucket's metainfo hdr. May be overriden by descendants in
     /// case the metainfo shall not be obtained from bucket itself.
     virtual const events::BucketInfoEntry & _supp_info( uint16_t ) const;
-
     /// Invalidates supp. info caches
     void invalidate_supp_info_caches() const;
-
     /// Will use _supp_info() method to set up internal caches ready for various
     /// supp_info_entries() acquizition.
     virtual void _recache_supp_info() const;
-
     /// Has to return C++ RTTI type hash for given supp info data type.
     virtual std::type_index _V_get_collector_type_hash( const std::string & ) const = 0;
-
     /// Has to allocate new cache entry with set name and collector ptr fields.
     virtual MetaInfoCache _V_new_cache_entry( const std::string & ) const = 0;
-
     /// Returns mutable reference to supplementary info container of current
     /// bucket. Usually used as a setter. Doesn't cause recaching.
     events::BucketInfo & mutable_supp_info_entries();
 public:
+    /// Ctr. Accepts pointers to protobuf messages that will be used as
+    /// reentrant buffers. For performance, one probably would prefer to
+    /// allocate them using protobuf's arena.
     SuppInfoBucketReader( events::Bucket * bucketPtr,
                           events::BucketInfo * bucketInfoPtr );
-
     /// Returns immutable reference to supplementary info container of current
     /// bucket.
     const events::BucketInfo & supp_info_entries() const;
-
     /// Returns true when supp info caches are valid (related to the current
     /// bucket).
     bool is_supp_info_caches_valid() const { return _cacheValid; }
-
     /// Writes the content of supp info of target type to destination by
     /// reference and returns true. Returns false if no supp info of this type
     /// available in current bucket.
@@ -264,8 +257,6 @@ public:
         auto it = _miCache.find( std::type_index(typeid(T)) );
         if( _miCache.end() == it
          || it->second.positionInMetaInfo == USHRT_MAX ) {
-            //sV_log3( "XXX unable to find \"%s\" among existing caches (type hash %x)\n",
-            //    dest.GetTypeName().c_str(), std::type_index(typeid(T)) );
             return false;
         }
         it->second.collectorPtr->unpack_suppinfo(
@@ -468,7 +459,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_emplace_bucket_offset(
     {
         std::stringstream ss;
         ss << bid;
-        sV_log3( "Bucket %s events indexed by offset %zu.\n",
+        log_message( aux::Logger::verbose,
+            "Bucket %s events indexed by offset %zu.\n",
             ss.str().c_str(), sPos );
     }
     return ir;
@@ -530,7 +522,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_next_event( BucketReader::Even
     if( Self::_V_is_good() ) {
         return Parent::_V_next_event( epr );
     }
-    sV_log3( "BucketStreamReader<...> %p: current bucket depleted. Acquiring "
+    log_message( aux::Logger::verbose,
+            "BucketStreamReader<...> %p: current bucket depleted. Acquiring "
             "next...\n", this );
     _V_acquire_next_bucket( epr );
 }
@@ -558,7 +551,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
              suppInfoLength;
     stream().read( (char*) &bucketLength,   sizeof(uint32_t) );
     if( !stream().good() ) {
-        sV_log3( "BucketStreamReader<...> %p: Unable to read from stream %p "
+        log_message( aux::Logger::verbose,
+            "BucketStreamReader<...> %p: Unable to read from stream %p "
             "anymore.\n",
             this, _iStreamPtr );
         return false;
@@ -570,7 +564,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
                 "stream %p.", this, _iStreamPtr );
         }
     } else {
-        sV_log3( "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
+        log_message( aux::Logger::verbose,
+            "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
             this );
     }
     # if 1
@@ -586,13 +581,15 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
     } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) )
             == offsets_map().end() ) {
         _cBucketIt = _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
-        sV_log3( "BucketStreamReader<...> %p: new bucket at position %zu indexed.\n",
+        log_message( aux::Logger::loquacious,
+                "BucketStreamReader<...> %p: new bucket at position %zu indexed.\n",
                 this, cBucketOffset);
     }
     # else
     _TODO_  // TODO
     # endif
-    sV_log3( "BucketStreamReader<...> %p: parsed supp info header of "
+    log_message( aux::Logger::loquacious,
+            "BucketStreamReader<...> %p: parsed supp info header of "
             "size %u.\n",
             this, suppInfoLength );
     if( !read_bucket( stream(), bucketLength ) ) {
@@ -600,7 +597,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
                 "bucket from stream %p.", this, _iStreamPtr  );
     }
     epr = Parent::_V_initialize_reading();
-    sV_log3( "BucketStreamReader<...> %p: read %u/%u bytes: bucket/supp. info.\n",
+    log_message( aux::Logger::loquacious,
+            "BucketStreamReader<...> %p: read %u/%u bytes: bucket/supp. info.\n",
             this, bucketLength, suppInfoLength );
     return true;
 }
@@ -614,7 +612,8 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_supp_info( std::istream & is
             "stream %p.", this, &is );
     }*/
     bool ret = mutable_supp_info_entries().ParseFromArray( _readingBuffer.data(), length );
-    sV_log3( "BucketStreamReader<...> %p: read %d supp info caches from "
+    log_message( aux::Logger::loquacious,
+        "BucketStreamReader<...> %p: read %d supp info caches from "
         "stream %p.\n", this, mutable_supp_info_entries().entries_size(), &is );
     return ret;
 }

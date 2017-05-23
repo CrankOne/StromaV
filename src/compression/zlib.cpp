@@ -28,6 +28,10 @@
 namespace sV {
 namespace compression {
 
+//
+// ZLibCompression
+/////////////////
+
 void
 ZLibCompression::init_zlib_stream( z_stream & strm ) {
     strm.zalloc = Z_NULL;
@@ -59,11 +63,6 @@ ZLibCompression::ZLibCompression( const goo::dict::Dictionary & parameters ) :
 }
 
 size_t
-ZLibCompression::_V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const {
-    return deflateBound( const_cast<z_stream *>(&_zstrm), n );
-}
-
-size_t
 ZLibCompression::_V_compress_series( const uint8_t * src, size_t srcLen,
                                     uint8_t * dst, size_t dstMaxLen ) const {
     int rc;
@@ -92,12 +91,78 @@ ZLibCompression::_V_compress_series( const uint8_t * src, size_t srcLen,
         emraise( thirdParty, "Unable to reset zlib stream with "
             "deflateReset() Z_ERRNO code: %d.", rc );
     }
-    return _zstrm.avail_out;
+    return dstMaxLen - _zstrm.avail_out;
 }
 
 void
 ZLibCompression::_V_set_compression_info( events::CompressedData & cDatRef ) {
     cDatRef.mutable_zlib()->set_level( _zLvl );
+}
+
+size_t
+ZLibCompression::_V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const {
+    return deflateBound( const_cast<z_stream *>(&_zstrm), n );
+}
+
+//
+// ZLibDecompression
+///////////////////
+
+ZLibDecompression::~ZLibDecompression() {
+    int rc;
+    if( Z_OK != (rc = inflateEnd( &_zstrm )) ) {
+        sV_logw( "Unable to reset zlib stream with "
+            "inflateEnd() Z_ERRNO code: %d.\n", rc );
+    }
+}
+
+size_t
+ZLibDecompression::_V_decompress_series( const uint8_t * input, size_t inLen,
+                                         uint8_t * output, size_t outMaxLen ) const {
+    int rc;
+
+    ZLibCompression::init_zlib_stream( _zstrm );
+    _zstrm.avail_in = 0;
+    _zstrm.next_in = Z_NULL;
+    rc = inflateInit( &_zstrm );
+
+    _zstrm.avail_in = inLen;
+    _zstrm.next_in = const_cast<Bytef*>(input);
+    _zstrm.avail_out = outMaxLen;
+    _zstrm.next_out = output;
+
+    if( Z_STREAM_END != (rc = inflate( &_zstrm, Z_FINISH )) ) {
+        switch( rc ) {
+            case Z_NEED_DICT:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d, preset dictionary is needed at this "
+                    "point.", rc );
+            case Z_DATA_ERROR:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d, the input data was corrupted.", rc );
+            case Z_STREAM_ERROR:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d, the stream structure was inconsistent.",
+                    rc );
+            case Z_MEM_ERROR:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d, there was not enough memory.",
+                    rc );
+            case Z_BUF_ERROR:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d, there was not enough room in the "
+                    "output buffer.", rc );
+            case Z_STREAM_END:
+            default:
+                emraise( thirdParty, "ZLib decompression failed to inflate. "
+                    "Z_ERRNO code: %d.", rc );
+        };
+    }
+    return outMaxLen - _zstrm.avail_out;
+}
+
+ZLibDecompression::ZLibDecompression( const goo::dict::Dictionary & ) :
+    iDecompressor( events::CompressedData_CompressionAlgorithm_ZLIB ) {
 }
 
 }  // namespace compression
@@ -117,6 +182,11 @@ StromaV_COMPRESSOR_DEFINE_MCONF( ZLibCompression, "zlib" ) {
     goo::dict::DictionaryInjectionMap injM;
         injM( "level", "compressors.zlib.level" );
     return std::make_pair( zlibCmprssnDct, injM ); 
+}
+
+using sV::compression::ZLibDecompression;
+StromaV_DECOMPRESSOR_DEFINE( ZLibDecompression, "zlib" ) {
+    return goo::dict::Dictionary( NULL, "" ); 
 }
 
 # endif

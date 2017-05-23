@@ -49,8 +49,6 @@ protected:
 
     virtual size_t _V_compressed_dest_buffer_len( const uint8_t *, size_t n ) const override
                 { return n; }
-    virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t n ) const override
-                { return n; }
     virtual void  _V_set_compression_info( events::CompressedData & ) override {}
 public:
     TrivialCompression() : iCompressor( events::CompressedData_CompressionAlgorithm_plain ),

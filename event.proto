@@ -127,12 +127,14 @@ message CompressedData {
     CompressionAlgorithm compressionAlgo = 1;
     // Compressed content itself.
     bytes compressedContent = 5;
+    // Size of original (decompressed) content in bytes.
+    uint32 originalSize = 7;
     // Compression parameters.
     oneof CompressionParameters {
-        ZLib_Parameters zlib = 7;
-        BZip2_Parameters bz2 = 9;
-        LZMA_Parameters lzma = 11;
-        google.protobuf.Any custom = 13;
+        ZLib_Parameters zlib = 9;
+        BZip2_Parameters bz2 = 11;
+        LZMA_Parameters lzma = 13;
+        google.protobuf.Any custom = 15;
     }
 }
 

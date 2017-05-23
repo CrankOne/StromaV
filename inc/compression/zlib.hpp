@@ -29,6 +29,7 @@
 # ifdef ZLIB_FOUND 
 
 # include "compression/iCompressor.hpp"
+# include "compression/iDecompressor.hpp"
 
 # include "zlib.h"
 
@@ -51,7 +52,19 @@ public:
 
     /// A helper function, common to merely all ZLib routines.
     static void init_zlib_stream( z_stream & strm );
-};
+};  // class ZLibCompression
+
+
+class ZLibDecompression : public iDecompressor {
+private:
+    mutable z_stream _zstrm;
+protected:
+    virtual size_t _V_decompress_series( const uint8_t * input, size_t inLen,
+                                         uint8_t * output, size_t outMaxLen ) const override;
+public:
+    ZLibDecompression( const goo::dict::Dictionary & );
+    ~ZLibDecompression();
+};  // class ZLibDecompression
 
 }  // namespace compression
 }  // namespace sV

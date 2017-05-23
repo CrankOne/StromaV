@@ -69,7 +69,6 @@ BucketReader::_V_initialize_reading() {
     Event * eventPtr;
     reset_bucket_iterator();
     BucketReader::_V_next_event( eventPtr );
-    sV_log3( "BucketReader %p: initialized for reading.\n", this );
     return eventPtr;
 }
 
@@ -100,6 +99,8 @@ SuppInfoBucketReader::SuppInfoBucketReader(
                         events::BucketInfo * bucketInfoPtr ) :
                                         iEventSequence( 0x0 ),
                                         BucketReader( bucketPtr ),
+                                        aux::Logger( (aux::Logger::LogLevel)
+                                                    goo::app<sV::AbstractApplication>().verbosity() ),
                                         _bucketInfo( bucketInfoPtr ) {}
 
 void
@@ -108,7 +109,8 @@ SuppInfoBucketReader::invalidate_supp_info_caches() const {
     for( auto & p : _miCache ) {
         p.second.positionInMetaInfo = USHRT_MAX;
     }
-    sV_log3( "SuppInfoBucketReader %p: supp. info caches invalidated.\n", this );
+    log_message( aux::Logger::laconic,
+        "SuppInfoBucketReader %p: supp. info caches invalidated.\n", this );
 }
 
 const events::BucketInfoEntry &
@@ -128,11 +130,11 @@ SuppInfoBucketReader::_recache_supp_info() const {
             cacheEntryIt = _miCache.emplace( tIdx,
                         _V_new_cache_entry( miRef.infotype() ) ).first;
             ++nInserted;
-            sV_log3( "XXX insertion of type %s (%x)\n",
+            log_message( aux::Logger::loquacious, "insertion of type %s (%x)\n",
                 miRef.infotype().c_str(), tIdx );
         } else {
             ++nRenewed;
-            sV_log3( "XXX renewal of type %s (%x)\n",
+            log_message( aux::Logger::loquacious, "renewal of type %s (%x)\n",
                 miRef.infotype().c_str(), tIdx );
         }
         MetaInfoCache & micRef = cacheEntryIt->second;
@@ -145,7 +147,7 @@ SuppInfoBucketReader::_recache_supp_info() const {
         micRef.positionInMetaInfo = i;
     }
     _cacheValid = true;
-    sV_log3( "SuppInfoBucketReader %p: %zu supp. info caches renewed, "
+    log_message( aux::Logger::verbose, "SuppInfoBucketReader %p: %zu supp. info caches renewed, "
         "%zu inserted from %d entries.\n", this, nRenewed, nInserted,
         _bucketInfo->entries_size() );
 }
@@ -212,27 +214,29 @@ CompressedBucketReader::_decompress_bucket() const {
     if( ! _dfltdBucketPtr->data().compressedcontent().size() ) {
         sV_logw( "Trying to decompress bucket of zero size.\n" );
     } else {
-        sV_log3( "Decompressing data of size %d with algorithm #%d.\n",
+        log_message( aux::Logger::verbose,
+            "Decompressing data of size %d with algorithm #%d.\n",
                 _dfltdBucketPtr->data().compressedcontent().size(),
                 _dfltdBucketPtr->data().compressionalgo() );
     }
     const iDecompressor * dcmprPtr = _decompressor(
                                     _dfltdBucketPtr->data().compressionalgo() );
     size_t decompressedLength;  // provisioned
-    _dcmBuffer.resize(
-            decompressedLength = dcmprPtr->decompressed_dest_buffer_len(
-                (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
-                _dfltdBucketPtr->data().compressedcontent().size()
-            ) );
+    _dcmBuffer.resize( decompressedLength = _dfltdBucketPtr->data().originalsize() );
     size_t realDecompressedLength =
         dcmprPtr->decompress_series(
             (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str(),
             _dfltdBucketPtr->data().compressedcontent().size(),
             _dcmBuffer.data(),
-            _dcmBuffer.capacity() );
+            decompressedLength );
+    if( !realDecompressedLength ) {
+        sV_logw( "Decompression returned buffer of zero length. "
+            "Possible errors ahead.\n" );
+    }
     # if 0
         const uint8_t * dt = (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str();
-        sV_log3( "XXX: %x %x %x ... [%zu] -decompression-> %x %x %x ... [%zu]\n",
+        log_message( aux::Logger::loquacious,
+            "%x %x %x ... [%zu] -decompression-> %x %x %x ... [%zu]\n",
             dt[0], dt[1], dt[2], _dfltdBucketPtr->data().compressedcontent().size(),
             _dcmBuffer.data()[0],
             _dcmBuffer.data()[1],
@@ -246,8 +250,12 @@ CompressedBucketReader::_decompress_bucket() const {
         emraise( badState, "Decompressed length was erroneously predicted: "
                 "%zu (provisioned) < %zu (real).",
                 decompressedLength, _dcmBuffer.size() );
+    } else {
+        log_message( aux::Logger::verbose,
+            "CompressedBucketReader %p: decompressed sizes: predicted=%zu, real=%zu.\n",
+            this, decompressedLength, _dcmBuffer.size() );
     }
-    sV_log3( "CompressedBucketReader %p: bucket of size %zu -> %zu "
+    log_message( aux::Logger::loquacious, "CompressedBucketReader %p: bucket of size %zu -> %zu "
             "decompressed.\n", this,
             _dfltdBucketPtr->data().compressedcontent().size(),
             decompressedLength );
@@ -262,8 +270,9 @@ CompressedBucketReader::_decompress_bucket() const {
             "size %zu.", _dcmBuffer.size() );
     }
     _decompressedBucketValid = true;
-    sV_log3( "CompressedBucketReader %p: bucket of size %zu "
-            "parsed.\n", this, decompressedLength );
+    log_message( aux::Logger::verbose,
+        "CompressedBucketReader %p: bucket of size %zu parsed (%d events).\n",
+        this, decompressedLength, bucket().events_size() );
     reset_bucket_iterator();
 }
 
@@ -400,7 +409,7 @@ Buckets::Buckets(
         _pbParameters->full = _maxEventsNumber;
     }
     _sourcesIt = _paths.end();
-    sV_log3( "Buckets %p: constructed.\n", this );
+    log_message( aux::Logger::laconic, "Buckets %p: constructed.\n", this );
 }
 
 Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
@@ -424,7 +433,6 @@ Buckets::~Buckets() {
     for( auto p : _decompressors ) {
         delete p.second;
     }
-    sV_log3( "Buckets %p: freed.\n", this );
 }
 
 std::type_index
@@ -478,11 +486,9 @@ Buckets::_V_initialize_reading() {
 bool
 Buckets::_V_is_good() {
     if( !_lastEvReadingWasGood ) {
-        sV_log3( "XXX #1\n" );  // XXX
         return false;
     }
     if( _maxEventsNumber && _eventsRead > _maxEventsNumber ) {
-        sV_log3( "XXX #2\n" );  // XXX
         return false;
     }
     return true;
@@ -494,17 +500,20 @@ Buckets::_V_acquire_next_bucket( BucketReader::Event *& epr ) {
         return _lastEvReadingWasGood = false;
     }
     if( Parent::_V_acquire_next_bucket( epr ) ) {
-        sV_log3( "Next bucket in a queue acquired.\n" );
+        log_message( aux::Logger::verbose,
+            "Next bucket in a queue acquired.\n" );
         return _lastEvReadingWasGood = true;
     }
     if( _paths.end() == ++_sourcesIt ) {
-        sV_log3( "Buckets %p: has no more sources in queue of %zu entries. Done.\n",
-                this, _paths.size() );
+        log_message( aux::Logger::verbose,
+            "Buckets %p: has no more sources in queue of %zu entries. Done.\n",
+            this, _paths.size() );
         return _lastEvReadingWasGood = false;
     }
     _file.close();
     _file.open( *_sourcesIt/*->interpolated()*/ );
-    sV_log3( "Buckets %p: switched to next source in a queue: \"%s\".\n",
+    log_message( aux::Logger::laconic,
+        "Buckets %p: switched to next source in a queue: \"%s\".\n",
         this, _sourcesIt->/*interpolated().*/c_str() );
     return _lastEvReadingWasGood = Parent::_V_acquire_next_bucket( epr );
 }

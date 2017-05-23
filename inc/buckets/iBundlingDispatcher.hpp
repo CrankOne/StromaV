@@ -111,8 +111,6 @@ protected:
     /// protobyf's Any field referred by given ptr.
     virtual void _V_unpack_suppinfo( const ::google::protobuf::Any & miMsgRef ) override {
         miMsgRef.UnpackTo( _my_supp_info_ptr() );
-        sV_log3( "XXX upacked hash of %zu bytes.\n", 
-            _my_supp_info_ptr()->sha256hash().size() );  // XXX
     }
 
     /// May be used by descendants to perform invasive operations with supp

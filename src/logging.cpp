@@ -143,6 +143,52 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
                         ->SetFont( labelfont );
 }
 
+//
+// Logger
+////////
+
+Logger::~Logger() {
+    if( own_stream() ) {
+        delete _loggingStream;
+    }
+}
+
+std::ostream &
+Logger::own_log_stream() const {
+    if( !_loggingStream ) {
+        _loggingStream = new std::stringstream();
+    }
+    return *_loggingStream;
+}
+
+void
+Logger::log_message( LogLevel lvl, const char * fmt, ... ) const {
+    int final_n, n = strlen(fmt);
+    if( log_level() < lvl ) {
+        return;
+    }
+
+    va_list ap;
+    while( 1 ) {
+        strcpy( _bf, fmt );
+        va_start( ap, fmt );
+        final_n = vsnprintf( _bf, sizeof( _bf ), fmt, ap );
+        va_end(ap);
+        if( final_n < 0 || final_n >= sizeof(_bf) ) {
+            n += abs(final_n - n + 1);
+        } else {
+            break;
+        }
+    }
+
+    //va_list ap;
+    //va_start( ap, fmt );
+    //snprintf( _bf, sizeof(_bf), fmt, ap );
+    //va_end( ap );
+
+    own_log_stream() << _bf;
+}
+
 }  // namespace aux
 }  // namespace sV
 

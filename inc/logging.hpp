@@ -62,9 +62,69 @@ public:
     void add_target( std::ostream *, bool enableColoring=true );
 };  // class StreamBuffer
 
+/**@class Logger
+ * @brief A utility class for dedicated logging.
+ *
+ * This class may be included into inheritance chain when it is neccesary to
+ * provide a dedicated logging facility, separated or not from sV's
+ * application-wide logging.
+ * 
+ * Follows common convention of three-leveled logging, where 0 does not
+ * produces logging messages at all and 3 generates loquatios output.
+ */
+class Logger {
+public:
+    enum LogLevel : uint8_t {
+        quiet = 0,
+        laconic = 1,
+        verbose = 2,
+        loquacious = 3,
+    };
+private:
+    /// Current logging level.
+    LogLevel _lvl;
+    /// True, if stream pointer has to be deleted by dtr.
+    bool _owningStream;
+    /// Pointer to output stream instance
+    mutable std::ostream * _loggingStream;
+    /// Buffer for snprintf;
+    mutable char _bf[256];
 
-/// Uses Public Morozoff antipattern internally. Accepts standard X11
-/// font ID string.
+    /// Protected ctr invoked by other ctrs.
+    Logger( LogLevel lvl,
+            std::ostream * loggingStream,
+            bool owningStream ) :
+                    _lvl(lvl),
+                    _owningStream(owningStream),
+                    _loggingStream(loggingStream) {}
+public:
+    /// Generic ctr. If stream ptr is non-null, it won't be considered as "own"
+    /// and won't be freed by dtr.
+    Logger( LogLevel lvl, std::ostream * osPtr=nullptr ) :
+            Logger( lvl, osPtr, !osPtr ) {}
+    /// Ctr that accepts reference to externally-managed stream.
+    Logger( LogLevel lvl, std::ostream & os ) :
+            Logger( lvl, &os, false ) {}
+    /// Dtr. Deletes internal stream if need.
+    ~Logger();
+    /// Stream getter. Has const qualifier for caching procedures to become
+    /// able to produce output. If stream is not set upon this method is
+    /// invoked, sets it to new own stringstream.
+    std::ostream & own_log_stream() const;
+    /// Returns true, if stream will be deleted by dtr of this instance.
+    bool own_stream() const { return _owningStream; }
+    /// Returns current logging level.
+    LogLevel log_level() const { return _lvl; }
+    /// Method with functionality similar to native C printf(), putting the
+    /// message into logging stream if given lvl is equal to or less than
+    /// current for this Logger instance.
+    void log_message( LogLevel lvl, const char * fmt, ... ) const;
+};
+
+/** Uses Public Morozoff antipattern internally. Accepts standard X11
+ * font ID string.
+ * @ingroup cernroot
+ */
 void set_font_of_TGCommandPlugin( TGCommandPlugin *, const std::string & );
 
 }  // namespace aux

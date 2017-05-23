@@ -73,9 +73,13 @@ size_t CompressedDispatcher::_compress_bucket() {
     _latestDrop.compressedLen = _compressor->compress_series(
                 raw_buffer_data(),          _latestDrop.rawLen,
                 compressed_buffer_data(),   compressed_buffer_length() );
+
     _deflatedBucketPtr->mutable_data()->set_compressedcontent(
                         compressed_buffer_data(), _latestDrop.compressedLen );
+
     _deflatedBucketPtr->mutable_data()->set_compressionalgo( _compressor->algorithm() );
+    _deflatedBucketPtr->mutable_data()->set_originalsize( _latestDrop.rawLen );
+    _compressor->set_compression_info( *(_deflatedBucketPtr->mutable_data()) );
     return _latestDrop.compressedLen;
 }
 

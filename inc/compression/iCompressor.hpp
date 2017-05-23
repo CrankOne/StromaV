@@ -76,21 +76,19 @@ public:
     iCompressor( CompressionAlgo algo=events::CompressedData_CompressionAlgorithm_other ) :
                     _compressionAlgo( algo ) {}
     virtual ~iCompressor() {}
-
     /// Returns string describing current compression algorithm.
     CompressionAlgo algorithm() const
                 { return _compressionAlgo; }
-
     /// Returns desired length for output buffer.
     size_t compressed_dest_buffer_len( const uint8_t * inbf, size_t inLen ) const
                 { return _V_compressed_dest_buffer_len( inbf, inLen ); }
-
     /// Performs compression of input series into output buffer.
     size_t compress_series( const uint8_t * input, size_t inLen,
                             uint8_t * output, size_t outMaxLen ) {
         return _V_compress_series( input, inLen, output, outMaxLen ); }
-
-    void  set_compression_info( events::CompressedData & cdatRef ) {
+    /// Writes current compression parameters of particular algorithm into
+    /// dedicated protobuf message.
+    void set_compression_info( events::CompressedData & cdatRef ) {
         _V_set_compression_info( cdatRef );
     }
 }; // class iCompressor

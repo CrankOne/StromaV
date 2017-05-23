@@ -58,10 +58,6 @@ protected:
     /// number of bytes in output buffer that is occupied by decompressed data.
     virtual size_t _V_decompress_series( const uint8_t * input, size_t inLen,
                                          uint8_t * output, size_t outMaxLen ) const = 0;
-
-    /// (IM) Has to return desired length of output buffer for decompressed
-    /// series basing on input buffer length.
-    virtual size_t _V_decompressed_dest_buffer_len( const uint8_t *, size_t ) const = 0;
 public:
     iDecompressor( CompressionAlgo ca ) : _compressionAlgo( ca ) {}
     virtual ~iDecompressor() {}
@@ -69,10 +65,6 @@ public:
     /// Returns string describing current compression algorithm.
     CompressionAlgo algorithm() const
                 { return _compressionAlgo; }
-
-    /// Returns desired length for output buffer.
-    size_t decompressed_dest_buffer_len( const uint8_t * inbf, size_t inLen ) const
-                { return _V_decompressed_dest_buffer_len( inbf, inLen ); }
 
     /// Performs decompression of input series into output buffer.
     size_t decompress_series( const uint8_t * input, size_t inLen,
