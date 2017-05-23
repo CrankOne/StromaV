@@ -22,8 +22,13 @@
 ---
 
 compressors:
-    #lzma-7z:
-    #bz2:
+    #lzma:
+    bzip2:
+        blockSize100k: 5
+        verbosity: 0
+        workFactor: 30
+        small: false
+        memopt-decompression: false
     zlib:
         # Possible values are:
         #   - Z_DEFAULT_COMPRESSION [=-1, special value]
@@ -32,6 +37,6 @@ compressors:
         #   - Z_NO_COMPRESSION      [=0]
         #   - or integer levels 0-9
         level: Z_DEFAULT_COMPRESSION
-    plain: {}  # no options
+    #plain: {}  # no options
     # ...
 

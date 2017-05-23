@@ -33,7 +33,7 @@ compression_algo_name( iCompressor::CompressionAlgo a ) {
         case events::CompressedData_CompressionAlgorithm_ZLIB:
             return "zlib";
         case events::CompressedData_CompressionAlgorithm_BZIP2:
-            return "bz2";
+            return "bzip2";
         case events::CompressedData_CompressionAlgorithm_LZMA:
             return "lzma";
         default:

@@ -112,28 +112,36 @@ BZip2Decompression::_V_decompress_series(   const uint8_t * input, size_t inLen,
         /* int           small ........ */ (_small ? 1 : 0),
         /* int           verbosity .... */ _verbosity
         );
-    # if 0
     if( BZ_OK != rc ) {
-BZ_CONFIG_ERROR
-  if the library has been mis-compiled
-BZ_PARAM_ERROR
-  if dest is NULL or destLen is NULL
-  or small != 0 && small != 1
-  or verbosity < 0 or verbosity > 4
-BZ_MEM_ERROR
-  if insufficient memory is available 
-BZ_OUTBUFF_FULL
-  if the size of the compressed data exceeds *destLen
-BZ_DATA_ERROR
-  if a data integrity error was detected in the compressed data
-BZ_DATA_ERROR_MAGIC
-  if the compressed data doesn't begin with the right magic bytes
-BZ_UNEXPECTED_EOF
-  if the compressed data ends unexpectedly
-BZ_OK
-  otherwise
+        switch( rc ) {
+            case BZ_CONFIG_ERROR:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "the library has been mis-compiled." );
+            case BZ_PARAM_ERROR:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "dest is NULL or destLen is NULL"
+                    "or small != 0 && small != 1"
+                    "or verbosity < 0 or verbosity > 4." );
+            case BZ_MEM_ERROR:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "insufficient memory is available." );
+            case BZ_OUTBUFF_FULL:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "the size of the compressed data exceeds *destLen." );
+            case BZ_DATA_ERROR:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "a data integrity error was detected in the compressed data." );
+            case BZ_DATA_ERROR_MAGIC:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "the compressed data doesn't begin with the right magic bytes" );
+            case BZ_UNEXPECTED_EOF:
+                emraise( thirdParty, "BZIP2 decompression error: "
+                    "the compressed data ends unexpectedly." );
+            default:
+                emraise( thirdParty, "BZIP2 decompression error. "
+                        "BZ2_bzBuffToBuffDecompress() returned code %d.", rc );
+        }
     }
-    # endif
     return destLen;
 }
 
@@ -142,7 +150,7 @@ BZ_OK
 
 using sV::compression::BZip2Compression;
 StromaV_COMPRESSOR_DEFINE_MCONF( BZip2Compression, "bzip2" ) {
-    goo::dict::Dictionary bzip2CmprssnDct( "bzip2",
+    goo::dict::Dictionary bzip2CmprssnDct( "bzip2-compression",
         "BZip2 compressor algorithm with incapsulated reentrant stream "
         "instance and adjustible compression parameters." );
     bzip2CmprssnDct.insertion_proxy()
@@ -180,7 +188,7 @@ StromaV_COMPRESSOR_DEFINE_MCONF( BZip2Compression, "bzip2" ) {
 
 using sV::compression::BZip2Decompression;
 StromaV_DECOMPRESSOR_DEFINE_MCONF( BZip2Decompression, "bzip2" ) {
-    goo::dict::Dictionary bzip2DcmprssnDct( "bzip2",
+    goo::dict::Dictionary bzip2DcmprssnDct( "bzip2-decompression",
         "Few BZip2 decompression parameters." );
     bzip2DcmprssnDct.insertion_proxy()
         .flag( "small",
@@ -198,8 +206,8 @@ StromaV_DECOMPRESSOR_DEFINE_MCONF( BZip2Decompression, "bzip2" ) {
             0 )
         ;
     goo::dict::DictionaryInjectionMap injM;
-        injM( "small",          "compressors.bzip2.memopt-decompression"    )
-            ( "verbosity",      "compressors.bzip2.verbosity"               )
+        injM( "verbosity",      "compressors.bzip2.verbosity"               )
+            ( "small",          "compressors.bzip2.memopt-decompression"    )
             ;
     return std::make_pair( bzip2DcmprssnDct, injM );
 }

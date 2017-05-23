@@ -221,6 +221,8 @@ endif( DSuL )
 find_package( ZLIB )  # ZLIB_FOUND
 find_package( BZip2 )  # BZIP2_FOUND
 find_package( LibLZMA )  # LIBLZMA_FOUND
+# ^^^ Note: the project is now called XZ utils, but library, headers, and all
+# the CMake name suffixes are still keeping the name LZMA.
 
 # OpenSSL is used for computing advanced hashes
 find_package( OpenSSL REQUIRED )

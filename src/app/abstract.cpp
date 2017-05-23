@@ -301,12 +301,17 @@ AbstractApplication::_append_common_config( Config & ) {
                                 .bgn_sect( sectPath.c_str(), "" ).end_sect();
                             targetSectionPtr = &(_configuration.subsection( sectPath ));
                         }
+                    } else {
+                        lDelim = 0;
                     }
                     if( !entry.transformation ) {
                         // If transformation is not defined, guess identity
                         // mapping and preserve parameter type.
                         targetSectionPtr->insertion_proxy()
-                                .insert_copy_of( concreteCfg.parameter(entry.path) );
+                                .insert_copy_of(
+                                        concreteCfg.parameter(entry.path),
+                                        commonPath.substr( lDelim+1 ).c_str()
+                                    );
                     } else {
                         // The transformation is defined, but none common config
                         // entry was defined. It
