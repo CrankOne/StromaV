@@ -21,25 +21,27 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_ZLIB_COMPRESSOR_H
-# define H_STROMA_V_ZLIB_COMPRESSOR_H
+# ifndef H_STROMA_V_BZIP2_COMPRESSOR_H
+# define H_STROMA_V_BZIP2_COMPRESSOR_H
 
 # include "sV_config.h"
 
-# ifdef ZLIB_FOUND 
+# ifdef BZIP2_FOUND
 
 # include "compression/iCompressor.hpp"
 # include "compression/iDecompressor.hpp"
 
-# include <zlib.h>
+# include <bzlib.h>
 
 namespace sV {
 namespace compression {
 
-class ZLibCompression : public iCompressor {
+class BZip2Compression : public iCompressor {
 private:
-    mutable z_stream _zstrm;
-    mutable int8_t _zLvl;
+    int _blockSize100k,
+        _verbosity,
+        _workFactor
+        ;
 protected:
     virtual size_t _V_compress_series( const uint8_t *, size_t,
                                        uint8_t *, size_t ) const override;
@@ -48,28 +50,26 @@ protected:
 
     virtual void  _V_set_compression_info( events::CompressedData & ) override;
 public:
-    ZLibCompression( const goo::dict::Dictionary & );
-
-    /// A helper function, common to merely all ZLib routines.
-    static void init_zlib_stream( z_stream & strm );
-};  // class ZLibCompression
+    BZip2Compression( const goo::dict::Dictionary & );
+};  // class BZip2Compression
 
 
-class ZLibDecompression : public iDecompressor {
+class BZip2Decompression : public iDecompressor {
 private:
-    mutable z_stream _zstrm;
+    bool _small;
+    int _verbosity;
 protected:
     virtual size_t _V_decompress_series( const uint8_t * input, size_t inLen,
                                          uint8_t * output, size_t outMaxLen ) const override;
 public:
-    ZLibDecompression( const goo::dict::Dictionary & );
-    ~ZLibDecompression();
-};  // class ZLibDecompression
+    BZip2Decompression( const goo::dict::Dictionary & );
+};  // class BZip2Decompression
 
 }  // namespace compression
 }  // namespace sV
 
-# endif  // ZLIB_FOUND
+# endif  // BZIP2_FOUND
 
-# endif  // H_STROMA_V_ZLIB_COMPRESSOR_H
+# endif  // H_STROMA_V_BZIP2_COMPRESSOR_H
+
 

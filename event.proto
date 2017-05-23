@@ -108,7 +108,8 @@ message ZLib_Parameters {
 }
 
 message BZip2_Parameters {
-    // ...
+    int32 blockSize100k = 1;
+    int32 workFactor = 3; 
 }
 
 message LZMA_Parameters {
