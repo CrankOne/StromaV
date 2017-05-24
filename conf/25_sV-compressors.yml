@@ -22,13 +22,26 @@
 ---
 
 compressors:
-    #lzma:
+    # Gives the best compression ratio (~0.3) by the price of compression
+    # performance. The decompression is generally fast enough, however
+    # consumes more RAM comparingly to other algorithms.
+    lzma:
+        memlimitKB: 204500
+        extreme: false
+        level: 6
+    # Gives reasonable compression ratio (~0.6) with high compression
+    # performance. Decompression performance is generally fast enough and
+    # consumes modest resources.
     bzip2:
         blockSize100k: 5
         verbosity: 0
         workFactor: 30
         small: false
         memopt-decompression: false
+    # Gives worse compression ratio with modest compression performance.
+    # Consumest least amount of resources by providing fast enough
+    # decompression performance. At high levels of compression (>9) may
+    # spoil the compression ratio comparingly to lower levels.
     zlib:
         # Possible values are:
         #   - Z_DEFAULT_COMPRESSION [=-1, special value]
@@ -37,6 +50,4 @@ compressors:
         #   - Z_NO_COMPRESSION      [=0]
         #   - or integer levels 0-9
         level: Z_DEFAULT_COMPRESSION
-    #plain: {}  # no options
-    # ...
 

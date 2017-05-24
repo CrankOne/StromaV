@@ -113,7 +113,8 @@ message BZip2_Parameters {
 }
 
 message LZMA_Parameters {
-    // ...
+    bool extreme = 1;
+    int32 level = 3;
 }
 
 message CompressedData {

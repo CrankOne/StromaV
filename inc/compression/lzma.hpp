@@ -48,7 +48,10 @@ namespace compression {
 
 class LZMACompression : public iCompressor {
 private:
-    // ...
+    /// Sets LZMA_PRESET_EXTREME within LZMA presets.
+    bool _extreme;
+    /// Sets the compression level within LZMA presets.
+    uint32_t _level;
 protected:
     virtual size_t _V_compress_series( const uint8_t *, size_t,
                                        uint8_t *, size_t ) const override;
@@ -63,7 +66,7 @@ public:
 
 class LZMADecompression : public iDecompressor {
 private:
-    // ...
+    size_t _initialMemlimitKB;
 protected:
     virtual size_t _V_decompress_series( const uint8_t * input, size_t inLen,
                                          uint8_t * output, size_t outMaxLen ) const override;
