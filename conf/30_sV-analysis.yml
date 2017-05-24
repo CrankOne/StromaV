@@ -29,10 +29,6 @@ analysis:
             address: 239.255.0.1
         store:
             compression: trivial
-            maxBucketSize_events: 1000
-            suppInfo:
-                - SHA256
-            maxBucketSize_kB: 16384  # 16MB
         retrieve:
             progressbar: true
 

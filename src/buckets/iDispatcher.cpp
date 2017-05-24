@@ -31,14 +31,13 @@
 namespace sV {
 namespace buckets {
 
-iDispatcher::iDispatcher( size_t nMaxKB, size_t nMaxEvents ) :
-                            _nBytesMax(nMaxKB*1024), _nMaxEvents(nMaxEvents),
+iDispatcher::iDispatcher() :
                             _rawBucketPtr(
                                 google::protobuf::Arena::CreateMessage<events::Bucket>(
                                             sV::mixins::PBEventApp::arena_ptr()) ) {}
 
 iDispatcher::~iDispatcher() {
-    if( !is_bucket_empty() ) {
+    if( !is_empty() ) {
         drop_bucket();
     }
 }
@@ -56,21 +55,15 @@ iDispatcher::clear_bucket() {
 }
 
 bool
-iDispatcher::is_bucket_full() {
-    return ( (n_max_bytes()  != 0 && n_bytes()  >= n_max_bytes() )
-          || (n_max_events() != 0 && n_events() >= n_max_events()) );
-}
-
-bool
-iDispatcher::is_bucket_empty() {
-    return ( n_bytes() ?  false : true );
+iDispatcher::is_empty() {
+    return !bucket().events_size();
 }
 
 void
 iDispatcher::push_event(const events::Event & eve) {
     events::Event* event = bucket().add_events();
     event->CopyFrom( eve );
-    if ( is_bucket_full() ) {
+    if ( is_full() ) {
         drop_bucket();
     }
 }

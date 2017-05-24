@@ -22,14 +22,14 @@
 ---
 
 compressors:
-    # Gives the best compression ratio (~0.3) by the price of compression
-    # performance. The decompression is generally fast enough, however
-    # consumes more RAM comparingly to other algorithms.
+    # Gives the best compression ratio (70%) by the highest price of
+    # compression performance. The decompression is generally fast enough,
+    # however consumes more RAM comparingly to other algorithms.
     lzma:
         memlimitKB: 204500
         extreme: false
         level: 6
-    # Gives reasonable compression ratio (~0.6) with high compression
+    # Gives reasonable compression ratio (40%) with high compression
     # performance. Decompression performance is generally fast enough and
     # consumes modest resources.
     bzip2:
@@ -38,7 +38,7 @@ compressors:
         workFactor: 30
         small: false
         memopt-decompression: false
-    # Gives worse compression ratio with modest compression performance.
+    # Gives worst compression ratio (25%) with modest compression performance.
     # Consumest least amount of resources by providing fast enough
     # decompression performance. At high levels of compression (>9) may
     # spoil the compression ratio comparingly to lower levels.

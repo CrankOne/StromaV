@@ -30,11 +30,7 @@ namespace sV {
 namespace buckets {
 
 PlainStreamDispatcher::PlainStreamDispatcher(
-        std::ostream & streamRef,
-        size_t nMaxKB = 16,
-        size_t nMaxEvents = 0 ) :
-    iDispatcher( nMaxKB,
-                       nMaxEvents ),
+        std::ostream & streamRef ) :
     _streamRef(streamRef) {
 }
 
@@ -42,9 +38,9 @@ PlainStreamDispatcher::~PlainStreamDispatcher() {
     drop_bucket();
 }
 
-size_t PlainStreamDispatcher::_V_drop_bucket() {
-
-    size_t bucketSize = n_bytes();
+size_t
+PlainStreamDispatcher::_V_drop_bucket() {
+    size_t bucketSize = bucket().ByteSize();
     // Write size of the bucket to be dropped into output file
     _streamRef.write((char*)(&bucketSize), sizeof(uint32_t));
     // Then write the bucket

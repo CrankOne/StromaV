@@ -65,19 +65,16 @@ protected:
 protected:
     CompressedDispatcher(   iCompressor * compressorPtr,
                             std::ostream * streamPtr,
-                            size_t nMaxKB, size_t nMaxEvents,
                             events::BucketInfo * biEntriesPtr,
                             bool doPackSuppinfo=true);
 public:
     CompressedDispatcher(   iCompressor * compressorPtr,
-                            std::ostream & streamRef,
-                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedDispatcher( compressorPtr, &streamRef, nMaxKB, nMaxEvents,
+                            std::ostream & streamRef ) :
+            CompressedDispatcher( compressorPtr, &streamRef,
                 google::protobuf::Arena::CreateMessage<events::BucketInfo>(::sV::mixins::PBEventApp::arena_ptr()) ) {}
 
-    CompressedDispatcher(   iCompressor * compressorPtr,
-                            size_t nMaxKB=0, size_t nMaxEvents=0 ) :
-            CompressedDispatcher( compressorPtr, nullptr, nMaxKB, nMaxEvents,
+    CompressedDispatcher(   iCompressor * compressorPtr ) :
+            CompressedDispatcher( compressorPtr, nullptr,
                 google::protobuf::Arena::CreateMessage<events::BucketInfo>(::sV::mixins::PBEventApp::arena_ptr()) ) {}
 
     virtual ~CompressedDispatcher();

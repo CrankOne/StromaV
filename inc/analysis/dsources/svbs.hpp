@@ -498,7 +498,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map( std::istream 
         parsingResult = compressed_bucket().ParseFromArray( _readingBuffer.data(), bucketSize );
         # endif
 
-        if( ! supp_info_entry<ChecksumsCollector>( *_bucketKeyInfoMsg ) ) {
+        if( ! supp_info_entry<buckets::GenericCollector>( *_bucketKeyInfoMsg ) ) {
             sV_logw( "Bucket %zu of stream %p has no supp. info of type %s that "
                      "was expected for bucket key type %s. Bucket won't be indexed.\n",
                 nBucket, _iStreamPtr,
@@ -570,13 +570,13 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
     }
     # if 1
     std::istream::streampos cBucketOffset = stream().tellg();
-    if( ! supp_info_entry<ChecksumsCollector>( *_bucketKeyInfoMsg ) ) {
+    if( ! supp_info_entry<GenericCollector>( *_bucketKeyInfoMsg ) ) {
         sV_logw( "Bucket at position %zu in stream %p has no supp. info of "
                  "type %s that was expected for bucket key type %s. Bucket "
                  "won't be indexed.\n",
             cBucketOffset, _iStreamPtr,
-            //ChecksumsCollector::CollectingType::GetTypeName().c_str(),
-            typeid(ChecksumsCollector::CollectingType).name(),
+            //GenericCollector::CollectingType::GetTypeName().c_str(),
+            typeid(GenericCollector::CollectingType).name(),
             typeid(BucketID).name() );
     } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) )
             == offsets_map().end() ) {
@@ -661,8 +661,7 @@ namespace sV {
  * to serialized deflated buckets and their supplementary info indexed
  * by SHA256 hash.
  *
- * TODO: At this level of abstraction we still have no implications about event
- *       ID, isn't it?
+ * At this level of abstraction we still have no implications about event ID.
  * */
 class Buckets : public buckets::BucketStreamReader<
                                 aux::SHA256BucketHash,
@@ -672,34 +671,43 @@ public:
     typedef buckets::BucketStreamReader< aux::SHA256BucketHash,
                                          events::CommonBucketDescriptor> Parent;
 private:
+    /// List of sources paths.
     std::vector<goo::filesystem::Path> _paths;
+    /// Indicates whether the last invokation of _V_next_event() performed
+    /// successfully.
     bool _lastEvReadingWasGood;
+    /// Progressbar parameters.
     PBarParameters * _pbParameters;  ///< set to nullptr when unused
-    size_t _maxEventsNumber,
-           _eventsRead;
-
+    size_t _maxEventsNumber, ///< Maximum events number to read. 0 is for all available.
+           _eventsRead;  ///< Counter of read events.
+    /// Own container for aggregated collector instances performing supp. info
+    /// deserialization by ancestor class (see SuppInfoBucketReader).
     mutable std::unordered_map<std::string, sV::buckets::iAbstractInfoCollector *> _collectors;
+    /// Own container for aggregated decompressor instances involved into
+    /// buckets decompression procedures used by ancestor class
+    /// (see CompressedBucketReader).
     mutable Buckets::Decompressors _decompressors;
+    /// Own instance referring to reading file source.
     std::ifstream _file;
+    /// Iterator referring to current source in a list.
     std::vector<goo::filesystem::Path>::const_iterator _sourcesIt;
 protected:
     /// Returns C++ RTTI type hash for given supp info data type using the sV's
     /// system VCtr dict.
     virtual std::type_index _V_get_collector_type_hash( const std::string & ) const override;
-
     /// Allocates new cache entry with set name and collector ptr fields.
     virtual MetaInfoCache _V_new_cache_entry( const std::string & ) const override;
-
+    /// Returns true, while there are available sources remained in the list.
     virtual bool _V_is_good() override;
-
-    /// ...
+    /// Sets up reading from first source and reads the first available event.
     virtual Event * _V_initialize_reading() override;
-
+    /// Causes re-acquizition of available bucket from stream. If there is no
+    /// more buckets in stream, opens next in a list.
     virtual bool _V_acquire_next_bucket( BucketReader::Event *& epr ) override;
-
     /// Instead of raising an exception, creates a new decompressor.
     virtual const iDecompressor * _decompressor( iDecompressor::CompressionAlgo ) const override;
 public:
+    /// Common C++ ctr.
     Buckets( events::DeflatedBucket * dfltdBcktPtr,
              events::Bucket * bucketPtr,
              events::BucketInfo * bInfo,
@@ -708,8 +716,9 @@ public:
              size_t nMaxEvents,
              bool enablePBar=false,
              uint8_t ASCII_lines=1);
+    /// VCtr interfacing ctr.
     Buckets( const goo::dict::Dictionary & );
-
+    /// Frees resources.
     ~Buckets();
 };  // class BucketsFile
 }  // namespace sV

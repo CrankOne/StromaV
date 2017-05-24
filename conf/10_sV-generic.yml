@@ -58,5 +58,21 @@ ROOT:
         height: 400
         palette: 1
 
+# The buckets implements a basic lower-level infrastructure for handling set of
+# events: count, accumulation of meta- and supplementary information, integrity
+# checks, network and file I/O.
+buckets:
+    # Sets default collectors set set up for default bucket dispatcher
+    # construction:
+    suppInfo:
+        - Generic
+    # Generic bucket supplementary information includes calculation of
+    #   1. Events number in a bucket
+    #   2. Raw data size in a bucket
+    #   3. SHA256 checksum of raw data for bucket identification
+    generic:
+        maxBucketSize_events: 1000
+        maxBucketSize_kB: 16384  # 16MB
+
 ...
 

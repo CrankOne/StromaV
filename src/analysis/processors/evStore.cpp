@@ -41,7 +41,8 @@ EventsStore::EventsStore(   const std::string & pn,
                             buckets::iBundlingDispatcher * bucketDispatcher) :
                 AnalysisPipeline::iEventProcessor( pn ),
                 ASCII_Entry( goo::aux::iApp::exists() ?
-                            &goo::app<AbstractApplication>() : nullptr, 1 ) {
+                            &goo::app<AbstractApplication>() : nullptr, 1 ),
+                _genericCollectorPtr( nullptr ) {
     _file.open( filename, std::ios::out | std::ios::binary );
     _bucketDispatcher = bucketDispatcher;
 }
@@ -49,18 +50,37 @@ EventsStore::EventsStore(   const std::string & pn,
 EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
                     iEventProcessor( "eventsStore" ),
                     ASCII_Entry( goo::aux::iApp::exists() ?
-                            &goo::app<AbstractApplication>() : nullptr, 1 ),
+                            &goo::app<AbstractApplication>() : nullptr, 2 ),
                     _file(  dct["outFile"].as<goo::filesystem::Path>(),
-                            std::ios::out | std::ios::binary ) {
+                            std::ios::out | std::ios::binary ),
+                    _genericCollectorPtr(nullptr) {
     const std::string compressionMethodName =
                 dct["compression"].as<std::string>();
     iCompressor * compressorPtr = sV::generic_new<iCompressor>( compressionMethodName );
-    _bucketDispatcher = new buckets::CompressedDispatcher( compressorPtr, _file,
-                dct["maxBucketSize_kB"].as<uint32_t>(),
-                dct["maxBucketSize_events"].as<uint32_t>() );
+    _bucketDispatcher = new buckets::CompressedDispatcher( compressorPtr, _file );
+    buckets::iAbstractInfoCollector * generic = nullptr;
     for( const auto & nm : dct["suppInfo"].as_list_of<std::string>() ) {
-        _bucketDispatcher->add_collector(
-                    nm, *generic_new<buckets::iAbstractInfoCollector>( nm ) );
+        buckets::iAbstractInfoCollector * collectorPtr =
+                            generic_new<buckets::iAbstractInfoCollector>( nm );
+        _bucketDispatcher->add_collector( nm, *collectorPtr );
+        if( "Generic" == nm ) {
+            generic = collectorPtr;
+        }
+        sV_log3( "Collector \"%s\", %p associated with eventsStore processor %p.\n",
+            nm.c_str(), collectorPtr, this );
+    }
+    if( generic ) {
+        _genericCollectorPtr = dynamic_cast<buckets::GenericCollector *>( generic );
+        _genericCollectorPtr->maximum_events( dct["maxBucketSize_events"].as<size_t>() );
+        _genericCollectorPtr->maximum_raw_data_size( dct["maxBucketSize_kB"].as<size_t>()*1024 );
+        sV_log2( "\"Generic\" collector %p is set for eventsStore processor %p.\n",
+            _genericCollectorPtr, this);
+    } else {
+        // May be or may be not causing errors. For standard usage, the Generic
+        // collector must be present. However for possible future inheritance
+        // scenarios printing a warning here may not be desirable.
+        sV_logw( "Configuration dict of events store %p does not include "
+            "\"Generic\" collector.\n" );
     }
 }
 
@@ -75,7 +95,7 @@ EventsStore::_V_process_event( Event * uEvent ){
 
 void
 EventsStore::_V_finalize() const {
-    if( _bucketDispatcher->n_events() ) {
+    if( ! _bucketDispatcher->is_empty() ) {
         _bucketDispatcher->drop_bucket();
     }
 }
@@ -84,25 +104,37 @@ void
 EventsStore::_update_stat() {
     if( !can_acquire_display_buffer() ) return;
     char ** lines = my_ascii_display_buffer();
-    assert( lines[0] && !lines[1] );
+    assert( lines[0] && lines[1] && !lines[2] );
 
     size_t rawL = static_cast<buckets::CompressedDispatcher*>(_bucketDispatcher)
-                                                ->latest_dropped_raw_len(),
+                                            ->latest_dropped_raw_len(),
            cmrsdL = static_cast<buckets::CompressedDispatcher*>(_bucketDispatcher)
-                                                ->latest_dropped_compressed_len()
+                                            ->latest_dropped_compressed_len()
            ;
     char compressionStatStr[32] = "--";
     if( rawL ) {
         snprintf( compressionStatStr, sizeof(compressionStatStr),
-            "%.2f", double(cmrsdL)/rawL );
+            "%d%%", int(100*(double(cmrsdL)/rawL)) );
     }
 
-    size_t kbFilled = _bucketDispatcher->n_bytes()/1024;
-    snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
-            "Bucket: %.2f KB/event %zu / %zu events, %zu / %zu Kbytes / compression %s",
-            ( _bucketDispatcher->n_events() ? double(kbFilled)/_bucketDispatcher->n_events() : 0 ),
-            _bucketDispatcher->n_events(), _bucketDispatcher->n_max_events(),
-            kbFilled, _bucketDispatcher->n_max_KB(), compressionStatStr );
+    if( _genericCollectorPtr ) {
+        size_t kbFilled = _genericCollectorPtr->raw_data_size()/1024,
+               nMaxKb = _genericCollectorPtr->maximum_raw_data_size()/1024,
+               nEvents = _genericCollectorPtr->number_of_events(),
+               nMaxEvents = _genericCollectorPtr->maximum_events()
+               ;
+        snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
+                "Bucket: %.2f KB/event; %zu =< %zu events; %zu =< %zu Kbytes. Compress.ratio: %s",
+                ( nEvents ? double(kbFilled)/nEvents : 0 ),
+                nEvents, nMaxEvents,
+                kbFilled, nMaxKb,
+                compressionStatStr );
+    } else {
+        snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
+                "<no generic collector info available for %p>", this );
+    }
+    snprintf( lines[1], ::sV::aux::ASCII_Display::LineLength,
+                "<here be dragons>" );  // TODO: latest bucket hash
 }
 
 StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
@@ -111,13 +143,17 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
         "data (usually physical events) based on Google Protocol Buffers. The "
         "so-called \"bucket dispatcher\" performs accumulation and in-RAM "
         "temporary bufferization of events. Such a write-back caching "
-        "mechanism (pretty common) allows to increase performance." );
+        "mechanism (pretty common) allows to increase performance. Note that "
+        "despite of using standard compressed bucket dispatcher collector, the "
+        "drop-bucket criteria (max events and max bucket size) will be "
+        "parameterised in own section instead of common \"buckets\" section "
+        "in common config.");
     evStorePDict.insertion_proxy()
-        .p<uint32_t>("maxBucketSize_kB",
+        .p<size_t>("maxBucketSize_kB",
                         "Maximum bucket capacity (in kilobytes). 0 disables"
                         "criterion.",
                     500)
-        .p<uint32_t>("maxBucketSize_events",
+        .p<size_t>("maxBucketSize_events",
                         "Maximum bucket capacity (number of enents). 0 disables "
                         "criterion.",
                     0)
@@ -126,7 +162,7 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
                     "bz2")
         .list<std::string>( "suppInfo",
                         "Supplementary info collectors.",
-                        { "SHA256" } )
+                        { "Generic" } )
         .p<goo::filesystem::Path>("outFile",
                         "Output file for serialized data.",
                     "/tmp/sV_latest.svbs" )
@@ -140,54 +176,6 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
             ;
     return std::make_pair( evStorePDict, injM );
 }
-
-# if 0
-StromaV_DEFINE_CONFIG_ARGUMENTS( commonConfig ) {
-    commonConfig.insertion_proxy().bgn_sect( "bucketDispatching",
-        "StromaV offers a kind of facility to store and retreive serialized "
-        "data (usually physical events) based on Google Protocol Buffers. The "
-        "so-called \"bucket dispatcher\" performs accumulation and in-RAM "
-        "temporary bufferization of events. Such a write-back caching "
-        "mechanism (pretty common) allows to increase performance.")
-        .p<uint32_t>("maxBucketSize_kB",
-                        "Maximum bucket capacity (in kilobytes). 0 --- "
-                        "criterion not used.", 500)
-        .p<uint32_t>("maxBucketSize_events",
-                        "Maximum bucket capacity (number of enents). 0 --- "
-                        "criterion not used.", 0)
-        .p<std::string>("compression",
-                        "Algorithm name for compressing buckets.",
-                        "bz2")
-        .p<std::string>("outFile",
-                        "Default output file for serialized buckets.",
-                        "/tmp/sV_latest.svbs" )
-    .end_sect("bucketDispatching")
-    ;
-}
-StromaV_DEFINE_DATA_PROCESSOR( BucketerProcessor ) {
-    std::fstream * fileRef = new std::fstream();
-    fileRef->open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
-        ("bucketDispatching.outFile"), std::ios::out | std::ios::binary |
-                                  std::ios::app );
-    sV::DummyCompressor * compressor = new sV::DummyCompressor;
-    sV::ComprBucketDispatcher * dispatcher = new sV::ComprBucketDispatcher(
-                compressor,
-                *(fileRef),
-                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("bucketDispatching.maxBucketSize_kB"),
-                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("bucketDispatching.maxBucketSize_events"),
-                (size_t) goo::app<sV::AbstractApplication>().cfg_option<uint32_t>
-                ("bucketDispatching.bufferSize_kB")
-            );
-    return new Bucketer("bucketer", dispatcher, fileRef);
-} StromaV_REGISTER_DATA_PROCESSOR( BucketerProcessor,
-    "save",
-    "This processor writes events received from analysis pipeline to file. "
-    "File is referenced by \"bucketDispatching.outFile\" argument. Write-back "
-    "caching may be configured using other options from \"bucketDispatching\" "
-    "subsection.")
-# endif
 
 }  // namespace dprocessors
 }  // namespace sV

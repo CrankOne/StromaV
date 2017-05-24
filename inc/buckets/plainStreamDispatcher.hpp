@@ -38,8 +38,7 @@ protected:
     virtual size_t _V_drop_bucket() override;
     std::ostream & _streamRef;
 public:
-    PlainStreamDispatcher( std::ostream & streamRef,
-                                 size_t nMaxKB, size_t nMaxEvents );
+    PlainStreamDispatcher( std::ostream & streamRef );
     virtual ~PlainStreamDispatcher();
 };  // class PlainStreamDispatcher
 

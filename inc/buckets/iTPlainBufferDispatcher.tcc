@@ -40,10 +40,9 @@ public:
     /// Shall return the length of internal buffer with serialized bucket.
     virtual size_t raw_buffer_length() const = 0;
 
-    IPlainBufferDispatcher( size_t nMaxKB, size_t nMaxEvents,
-                            events::BucketInfo * biEntriesPtr,
+    IPlainBufferDispatcher( events::BucketInfo * biEntriesPtr,
                             bool doPackSuppInfo ) :
-                iBundlingDispatcher( nMaxKB, nMaxEvents, biEntriesPtr, doPackSuppInfo ) {}
+                iBundlingDispatcher( biEntriesPtr, doPackSuppInfo ) {}
 };  // class iPlainBufferDispatcher
 
 
@@ -70,17 +69,12 @@ protected:
         return _buffer.data();
     }
 public:
-    iTPlainBufferDispatcher( size_t nMaxKB, size_t nMaxEvents,
-                             events::BucketInfo * biEntriesPtr,
+    iTPlainBufferDispatcher( events::BucketInfo * biEntriesPtr,
                              bool doPackSuppInfo=true,
                              const Allocator& alloc=Allocator() ) :
-                IPlainBufferDispatcher( nMaxKB, nMaxEvents, biEntriesPtr, doPackSuppInfo ),
+                IPlainBufferDispatcher( biEntriesPtr, doPackSuppInfo ),
                 _allocator(alloc),
-                _buffer(_allocator) {
-        if( nMaxKB ) {
-            _buffer.reserve(nMaxKB);
-        }
-    }
+                _buffer(_allocator) {}
 
     virtual const uint8_t * raw_buffer_data() const override {
         return _buffer.data();

@@ -47,15 +47,16 @@ namespace dprocessors {
  * */
 class EventsStore : public AnalysisPipeline::iEventProcessor,
                     public sV::AbstractApplication::ASCII_Entry {
+private:
+    std::fstream _file;
+    buckets::GenericCollector * _genericCollectorPtr;
+    buckets::iBundlingDispatcher * _bucketDispatcher;
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
 protected:
-    buckets::iBundlingDispatcher * _bucketDispatcher;
     virtual bool _V_process_event( Event * ) override;
     virtual void _V_finalize() const override;
-    std::fstream _file;
-
     void _update_stat();
 public:
     EventsStore( const std::string & pn,
@@ -63,13 +64,6 @@ public:
                 buckets::iBundlingDispatcher * bucketDispatcher );
     EventsStore( const goo::dict::Dictionary & );
     virtual ~EventsStore();
-
-    /// Returns true if "full" criterion(-ia) triggered.
-    //  bool is_bucket_full() const;
-
-    /// Causes current bucket to be compressed (and optionally forwarded) and,
-    /// further, cleared.
-    //  void drop_bucket();
 };  // class Bucketer
 
 }  // namespace dprocessors

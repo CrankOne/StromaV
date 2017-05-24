@@ -50,32 +50,24 @@ namespace buckets {
  * This class may represents an automatic buffer that will accumulate data
  * (events) until associated buffer will not be full.
  *
- * One can choose which bucket this processor has to consider as "full": either
- * by entries number or by uncompressed size. If both criteria will be non-null,
- * the first matching criterion will trigger bucket to be dropped. If both
- * criteria are set to 0, the handler will never drop the buket until handler's
- * destructor will be invoked.
+ * User code has to choose which bucket has to considered as "full" by
+ * implementation of _V_is_full() interface method. Particular behaviour of
+ * bucket being "dropped" has to be implemented by _V_drop_bucket() as well.
  * */
 class iDispatcher {
 public:
     typedef events::Bucket Bucket;
-private:
-    /// Upper data size limit for accumulation (in bytes)
-    size_t _nBytesMax;
-    /// Upper size limit for accumulation (in number of events)
-    size_t _nMaxEvents;
 protected:
     /// (IM) Shall define how to perform "drop"
     virtual size_t _V_drop_bucket() = 0;
 
+    /// (IM) Has to return whether bucket is full and thus has to be dropped.
+    virtual bool _V_is_full() const = 0;
+
     /// Buffering bucket instance
     events::Bucket * _rawBucketPtr;
 public:
-    /// Ctr getting drop criteria. When doPackMetaInfo is set and metainfo
-    /// collector is provided, the dropping method will automatically invoke
-    /// pack_metainfo() method of internal metainfo collector prior to
-    /// _V_drop_bucket().
-    iDispatcher( size_t nMaxKB, size_t nMaxEvents );
+    iDispatcher();
 
     virtual ~iDispatcher();
 
@@ -89,31 +81,12 @@ public:
     /// reached, invokes drop_bucket().
     virtual void push_event(const events::Event & );
 
-    /// Returns size limit (in kBs)
-    size_t n_max_KB() const { return _nBytesMax/1024; }
-
-    /// Returns size limit (in bytes)
-    size_t n_max_bytes() const { return _nBytesMax; }
-
-    /// Returns size limit (in events)
-    size_t n_max_events() const { return _nMaxEvents; }
-
-    /// Returns current size (in bytes)
-    size_t n_bytes() const {
-        return (size_t)(bucket().ByteSize());
-    };
-
-    /// Returns current size (in events)
-    size_t n_events() const {
-        return (size_t)(bucket().events_size());
-    };
-
-    /// Returns true when one of the size limits is reached
-    virtual bool is_bucket_full();
-
     /// Returns true if no events had been considered after last drop (or
     /// instance creation)
-    virtual bool is_bucket_empty();
+    virtual bool is_empty();
+
+    /// Returns whether bucket is full and thus has to be dropped.
+    bool is_full() const { return _V_is_full(); }
 
     /// Performs dropping procedure (usually defined by subclasses) if bucket
     /// is not empty.

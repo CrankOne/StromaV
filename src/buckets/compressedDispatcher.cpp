@@ -35,11 +35,9 @@ namespace buckets {
 CompressedDispatcher::CompressedDispatcher(
                 iCompressor * compressorPtr,
                 std::ostream * streamPtr,
-                size_t nMaxKB,
-                size_t nMaxEvents,
                 events::BucketInfo * biEntriesPtr,
                 bool doPackSuppinfo ) :
-                                    Parent( nMaxKB, nMaxEvents, biEntriesPtr, false ),
+                                    Parent( biEntriesPtr, false ),
                                     _compressor( compressorPtr ),
                                     _streamPtr( streamPtr ),
                                     _deflatedBucketPtr(sV_MSG_NEW(events::DeflatedBucket)),
