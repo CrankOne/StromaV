@@ -147,8 +147,7 @@ find_package( Boost ${Boost_FORCE_VERSION}
               REQUIRED )
 
 # StromaV uses Google Protocol Buffers as a base layer for event structure
-# representation. This dependency is optional and needed only if event
-# processing pipeline is enabled.
+# representation. This dependency is optional.
 if( RPC_PROTOCOLS )
     find_package( Protobuf REQUIRED )
     #set(PROTOBUF_GENERATE_CPP_APPEND_PATH FALSE)
@@ -310,6 +309,10 @@ if( genfit_INCLUDE_DIRS )
     include_directories( ${genfit_INCLUDE_DIRS} )
 endif( genfit_INCLUDE_DIRS )
 
+if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
+    find_package( PythonLibs REQUIRED )
+    include_directories( SYSTEM ${PYTHON_INCLUDE_DIRS} )
+endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 
 #
 # Link directories
@@ -545,11 +548,11 @@ endif( DOC_HTML )
 
 #
 # Py-bindings
-if( PYTHON_BINDINGS )
+if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
     add_subdirectory( py )
     # Can fix possible issue with target visibility:
-    #set_source_files_properties( ${PY_MSG_MODULES} GENERATED TRUE )
-endif( PYTHON_BINDINGS )
+    set_source_files_properties( ${PY_MSG_MODULES} PROPERTIES GENERATED TRUE )
+endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 
 # Build ROOT plugins
 #\project-subdir:

@@ -65,8 +65,9 @@ protected:
     UniEvent * _cEvent;
     /// Message allocation arena instance.
     google::protobuf::Arena _msgArena;
-public:
+
     PBEventApp( AbstractApplication::Config * c );
+public:
 
     template<typename MessageT> MessageT *
     new_msg_on_arena() {

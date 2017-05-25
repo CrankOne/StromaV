@@ -134,7 +134,7 @@ EventsStore::_update_stat() {
             ++_nBucketsDropped;
         }
         snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
-                "Bucket: %.2f KB/event; %6zu =< %zu events; %6zu =< %zu Kbytes. Compress.ratio: %s",
+                "Bucket: %.2f KB/event; %6zu/%zu events; %6zu/%zu Kbytes. Compress.ratio: %s",
                 ( nEvents ? double(kbFilled)/nEvents : 0 ),
                 nEvents, nMaxEvents,
                 kbFilled, nMaxKb,

@@ -162,9 +162,10 @@ protected:
     /// Sets the common config option.
     void _set_common_option( const std::string & path,
                              const std::string & strVal );
-public:
+
     /// Default ctr --- the void config instance should be provided here.
     AbstractApplication( Config * );
+public:
     virtual ~AbstractApplication() {}
 
     /// Verbosity level setter.

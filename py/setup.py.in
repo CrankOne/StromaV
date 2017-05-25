@@ -22,6 +22,8 @@ import os
 from setuptools import setup
 
 #packages = [@PY_EXT_MODULES_LIST@]
+# Note: check whether the installed protobuf implementation was build with
+# use_fast_cpp_protos flag.
 
 setup(
     name            = "StromaV",

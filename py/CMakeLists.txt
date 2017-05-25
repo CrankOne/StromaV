@@ -23,12 +23,15 @@ include(${Goo_CMAKE_MODULES_DIR}/PyExtensions.cmake)
 set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
-    list( APPEND StromaV_PYMODULES pipeline.i )
+    list( APPEND StromaV_PYMODULES events.i app.i pipeline.i )
     install( FILES
+             _commonProtobuf.i
+             app.i
+             events.i
              pipeline.i
              std_unique_ptr.i
              std_stream.i
-             DESTINATION ${SWIG_IFACES_DIR}/sV )
+             DESTINATION ${SWIG_IFACES_DIR}/sV  )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 if ( StromaV_PYMODULES )
@@ -36,7 +39,8 @@ if ( StromaV_PYMODULES )
     Goo_PY_EXTENSIONS( INTERFACES ${StromaV_PYMODULES}
                        LINK_LIBS ${StromaV_LIB}
                        WRAPPER_SOUCES WRAPPER_SRCS
-                       SETUP_TEMPLATE setup.py.in )
+                       SETUP_TEMPLATE setup.py.in
+                       INIT_TEMPLATE __init__.py.in )
     # Create symlink to make python's eggs mechanics happy:
     add_custom_target( py_link_target ALL
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/py ${CMAKE_BINARY_DIR}/StromaV)

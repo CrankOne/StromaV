@@ -62,9 +62,9 @@ namespace sV {
  * @ingroup analysis
  */
 class AnalysisApplication :
-        public virtual sV::AbstractApplication,
         public mixins::PBEventApp,
-        public AnalysisPipeline {
+        public AnalysisPipeline,
+        public virtual sV::AbstractApplication {
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
@@ -79,8 +79,9 @@ protected:
     /// Appends updating of ASCII display upon successfull finish of single
     /// event processing.
     virtual void _finalize_event( Event * ) override;
-public:
+
     AnalysisApplication( Parent::Config * vm );
+public:
     virtual ~AnalysisApplication();
 
     /// Find processor by name and push back it to chain.
