@@ -20,11 +20,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "sV_config.h"
+# include "net/mCastReceiver.hpp"
 
 # if defined(RPC_PROTOCOLS)
 
-# include "mCastReceiver.hpp"
 # include "app/app.h"
 
 # include <goo_exception.hpp>

@@ -55,7 +55,7 @@ iDispatcher::clear_bucket() {
 }
 
 bool
-iDispatcher::is_empty() {
+iDispatcher::is_empty() const {
     return !bucket().events_size();
 }
 

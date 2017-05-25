@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+ * Copyright (c) 2017 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
- *
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -21,41 +20,42 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
-# define H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# ifndef H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
+# define H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
 
 # include "sV_config.h"
 
-# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
-
 # include "evStreamDispatch.hpp"
+# include "net/client.hpp"
 
-# include <fstream>
+# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
 namespace sV {
 namespace dprocessors {
 
-/**@class EventsStore
- * @brief Pipeline handler performing saving of the events to file.
- *
- * This class uses \ref iBundlingDispatcher interface to perform high-level
- * version of write-back caching.
- * */
-class EventsStore : public EventsDispatcher {
+class EventsSend : public EventsDispatcher,
+                   public net::Client {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
 private:
-    std::fstream _file;
+    std::string _sendingBuffer;
+    std::stringstream _sendingBufferStream;
+protected:
+    /// Performs sending of the bucket.
+    virtual size_t _V_drop_bucket() override;
 public:
-    EventsStore( const goo::dict::Dictionary & );
-    virtual ~EventsStore();
-};  // class EventsStore
+    EventsSend( const std::string & pn
+                // ...
+                );
+    EventsSend( const goo::dict::Dictionary & );
+    virtual ~EventsSend();
+};  // class EventsSend
 
 }  // namespace ::sV::dprocessors
 }  // namespace sV
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
-# endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# endif  // H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
 

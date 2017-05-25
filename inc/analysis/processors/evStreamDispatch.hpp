@@ -21,36 +21,55 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
-# define H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# ifndef H_STROMA_V_BUCKET_STREAM_DISPATCHER_H
+# define H_STROMA_V_BUCKET_STREAM_DISPATCHER_H
 
 # include "sV_config.h"
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
-# include "evStreamDispatch.hpp"
+# include "app/analysis.hpp"
+# include "uevent.hpp"
+# include "buckets/compressedDispatcher.hpp"
 
-# include <fstream>
+# include <goo_dict/dict.hpp>
 
 namespace sV {
 namespace dprocessors {
 
-/**@class EventsStore
- * @brief Pipeline handler performing saving of the events to file.
+/**@class EventsDispatcher
+ * @brief Implements interim class for file storaging and network dispatching.
  *
  * This class uses \ref iBundlingDispatcher interface to perform high-level
  * version of write-back caching.
  * */
-class EventsStore : public EventsDispatcher {
+class EventsDispatcher : public AnalysisPipeline::iEventProcessor,
+                         public sV::AbstractApplication::ASCII_Entry,
+                         public buckets::CompressedDispatcher {
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
 private:
-    std::fstream _file;
+    std::ostream * _stream;
+    buckets::GenericCollector * _genericCollectorPtr;
+    uint8_t _prevHash[SHA256_DIGEST_LENGTH];
+    uint32_t _nBucketsDropped;
+
+    EventsDispatcher( const std::string & pn,
+                      std::ostream * streamPtr );
+protected:
+    virtual bool _V_process_event( Event * ) override;
+    virtual void _V_finalize() const override;
+    void _update_stat();
+
+    void _set_generic_collector( buckets::GenericCollector * );
+    buckets::GenericCollector & _generic_collector();
 public:
-    EventsStore( const goo::dict::Dictionary & );
-    virtual ~EventsStore();
-};  // class EventsStore
+    EventsDispatcher( const std::string & pn,
+                      const goo::dict::Dictionary &,
+                      std::ostream * streamPtr );
+    virtual ~EventsDispatcher();
+};  // class EventsDispatcher
 
 }  // namespace ::sV::dprocessors
 }  // namespace sV
@@ -58,4 +77,5 @@ public:
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
 # endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+
 

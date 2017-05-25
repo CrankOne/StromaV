@@ -83,7 +83,7 @@ public:
 
     /// Returns true if no events had been considered after last drop (or
     /// instance creation)
-    virtual bool is_empty();
+    virtual bool is_empty() const;
 
     /// Returns whether bucket is full and thus has to be dropped.
     bool is_full() const { return _V_is_full(); }

@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+ * Copyright (c) 2017 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
- *
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -21,41 +20,40 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
-# define H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# ifndef H_STROMA_V_NETWORKING_CLIENT_H
+# define H_STROMA_V_NETWORKING_CLIENT_H
 
 # include "sV_config.h"
 
-# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
-
-# include "evStreamDispatch.hpp"
-
-# include <fstream>
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
 
 namespace sV {
-namespace dprocessors {
+namespace net {
 
-/**@class EventsStore
- * @brief Pipeline handler performing saving of the events to file.
- *
- * This class uses \ref iBundlingDispatcher interface to perform high-level
- * version of write-back caching.
- * */
-class EventsStore : public EventsDispatcher {
-public:
-    typedef AnalysisPipeline::iEventProcessor Parent;
-    typedef sV::events::Event Event;
+/// Rudimentary socket client wrapper.
+class Client {
 private:
-    std::fstream _file;
+    int _sockID;
+    int _port;
+    struct sockaddr_in _addr;
+protected:
+    // ...
 public:
-    EventsStore( const goo::dict::Dictionary & );
-    virtual ~EventsStore();
-};  // class EventsStore
+    Client();
 
-}  // namespace ::sV::dprocessors
+    /// Returns socket ID (if was bound).
+    int socket_id() const { return _sockID; }
+
+    void connect();
+    void disconnect();
+    size_t send( const char *, size_t );
+    size_t recieve( char *, size_t );
+};  // SocketConnection
+
+}  // namespace ::sV::net
 }  // namespace sV
 
-# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
-
-# endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
+# endif  // H_STROMA_V_NETWORKING_CLIENT_H
 

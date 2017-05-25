@@ -50,7 +50,14 @@ CompressedDispatcher::CompressedDispatcher(
 //_dstBuffer = alloc_buffer( _dstBfSize = 1024*nMaxKB );
 
 CompressedDispatcher::~CompressedDispatcher() {
-    drop_bucket();
+    if( !is_empty() ) {
+        drop_bucket();
+    }
+}
+
+void
+CompressedDispatcher::compressor( iCompressor * cmpPtr ) {
+    _compressor = cmpPtr;
 }
 
 size_t CompressedDispatcher::_compress_bucket() {
@@ -88,6 +95,7 @@ size_t CompressedDispatcher::_V_drop_bucket() {
     uint32_t deflatedBucketSize = _deflatedBucketPtr->ByteSize(),
              suppInfoSize = supp_info().ByteSize()
              ;
+    assert( _streamPtr );
     _streamPtr->write((char*)(&deflatedBucketSize), sizeof(uint32_t));
     _streamPtr->write((char*)(&suppInfoSize), sizeof(uint32_t));
     // Write supp info (uncompressed)

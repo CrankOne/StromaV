@@ -84,6 +84,7 @@ public:
     bool stream_is_set() const { return !!_streamPtr; }
 
     iCompressor & compressor() { return *_compressor; }
+    void compressor( iCompressor * );
 
     size_t latest_dropped_raw_len() const { return _latestDrop.rawLen; }
     size_t latest_dropped_compressed_len() const { return _latestDrop.compressedLen; }
