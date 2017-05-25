@@ -21,6 +21,51 @@
 %YAML 1.2
 ---
 
+# Measurements of various compression algorithms performed with NA64 data.
+# Conditions: 25000 events, 39 buckets, ~25 KiB/event, from cdr01020-001481.dat.
+# All algorithms were tested on their recommended parameters.
+# 
+# *** Absolute results (core i7-3517U, 8GiB RAM, SATA HDD)
+# 
+#         | encoding, usec/event  | decoding, usec/event  | Compression ratio |
+# --------+-----------------------+-----------------------+-------------------|
+# raw .dat|                     - |               8337.14 |                 - |
+#    plain|                     - |                278.35 |                 - |
+#     ZLib|               2860.39 |                355.79 |               29% |
+#    BZip2|               2454.37 |                860.97 |               17% |
+#     LZMA|              24223.91 |                594.11 |               83% |
+# 
+# 
+# *** Relative results
+# 
+#         | enc, evs/sec | dec, evs/sec | ratio
+# --------+--------------+--------------+-------
+# raw .dat|            - |          120 |     -
+#    plain|            - |         3595 |     -
+#     ZLib|          350 |         2810 |   29%
+#    BZip2|          407 |         1161 |   17%
+#     LZMA|        41.28 |         1683 |   83%
+# 
+# *** Recommendations
+# 
+# LZMA gives astonishing compression ratio while being very slow at compression
+# performance*. Its decompression performance is also not good. It is recommended
+# for large rarely need data.
+# 
+# ZLib gives a reasonable compression ratio while keeping good speed. Yields a
+# fastest decompression performance. We recommend it as generic purpose
+# compression algorithm.
+# 
+# BZip2 produces poor compression ratio** while being a fastest compression
+# algorithm on its default settings. It is not fairly good on decompression.
+# Recommended for IPC applications.
+# 
+# *) LZMA speed may be increased by involving a custom pool allocator. sV
+# currently does not support it.
+# **) BZip2 is known to come in its full Glory with large data chunks, so it may
+# demonstrate better performance/compression ration with data chunks of different
+# size.
+
 compressors:
     # Gives the best compression ratio (70%) by the highest price of
     # compression performance. The decompression is generally fast enough,

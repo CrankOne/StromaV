@@ -80,7 +80,9 @@ GenericCollector::GenericCollector(
                     ),
                 dct["maxBucketSize_events"].as<size_t>(),
                 dct["maxBucketSize_kB"].as<size_t>()*1024
-            ) {}
+            ) {
+    bzero( _hash, SHA256_DIGEST_LENGTH );
+}
 
 bool
 GenericCollector::_V_consider_event( const events::Event &,
@@ -98,9 +100,7 @@ GenericCollector::_V_consider_event( const events::Event &,
 
 void
 GenericCollector::_V_clear() {
-    bzero( _hash, SHA256_DIGEST_LENGTH );
     _nEvents = _rawDataSize = 0;
-    bzero( _hash, sizeof(_hash) );
 }
 
 void

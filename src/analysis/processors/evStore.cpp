@@ -42,9 +42,11 @@ EventsStore::EventsStore(   const std::string & pn,
                 AnalysisPipeline::iEventProcessor( pn ),
                 ASCII_Entry( goo::aux::iApp::exists() ?
                             &goo::app<AbstractApplication>() : nullptr, 1 ),
-                _genericCollectorPtr( nullptr ) {
+                _genericCollectorPtr( nullptr ),
+                _nBucketsDropped(0) {
     _file.open( filename, std::ios::out | std::ios::binary );
     _bucketDispatcher = bucketDispatcher;
+    bzero(_prevHash, SHA256_DIGEST_LENGTH);
 }
 
 EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
@@ -53,7 +55,8 @@ EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
                             &goo::app<AbstractApplication>() : nullptr, 2 ),
                     _file(  dct["outFile"].as<goo::filesystem::Path>(),
                             std::ios::out | std::ios::binary ),
-                    _genericCollectorPtr(nullptr) {
+                    _genericCollectorPtr(nullptr),
+                    _nBucketsDropped(0) {
     const std::string compressionMethodName =
                 dct["compression"].as<std::string>();
     iCompressor * compressorPtr = sV::generic_new<iCompressor>( compressionMethodName );
@@ -82,6 +85,7 @@ EventsStore::EventsStore( const goo::dict::Dictionary & dct ) :
         sV_logw( "Configuration dict of events store %p does not include "
             "\"Generic\" collector.\n" );
     }
+    bzero(_prevHash, SHA256_DIGEST_LENGTH);
 }
 
 EventsStore::~EventsStore() {}
@@ -114,7 +118,7 @@ EventsStore::_update_stat() {
     char compressionStatStr[32] = "--";
     if( rawL ) {
         snprintf( compressionStatStr, sizeof(compressionStatStr),
-            "%d%%", int(100*(double(cmrsdL)/rawL)) );
+            "%d%%", 100 - int(100*(double(cmrsdL)/rawL)) );
     }
 
     if( _genericCollectorPtr ) {
@@ -123,18 +127,30 @@ EventsStore::_update_stat() {
                nEvents = _genericCollectorPtr->number_of_events(),
                nMaxEvents = _genericCollectorPtr->maximum_events()
                ;
+        const uint8_t * latestHash = _genericCollectorPtr->hash();
+        if( memcmp( _prevHash, latestHash, SHA256_DIGEST_LENGTH ) ) {
+            // Hash have changed --- bucket dropped.
+            memcpy( _prevHash, latestHash, SHA256_DIGEST_LENGTH );
+            ++_nBucketsDropped;
+        }
         snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
-                "Bucket: %.2f KB/event; %zu =< %zu events; %zu =< %zu Kbytes. Compress.ratio: %s",
+                "Bucket: %.2f KB/event; %6zu =< %zu events; %6zu =< %zu Kbytes. Compress.ratio: %s",
                 ( nEvents ? double(kbFilled)/nEvents : 0 ),
                 nEvents, nMaxEvents,
                 kbFilled, nMaxKb,
                 compressionStatStr );
+        snprintf( lines[1], ::sV::aux::ASCII_Display::LineLength,
+                "  dropped:%4u, latest SHA256 hash: %02x%02x%02x%02x...%02x%02x%02x%02x",
+                    _nBucketsDropped,
+                    latestHash[0], latestHash[1], latestHash[2], latestHash[3],
+                    latestHash[SHA256_DIGEST_LENGTH-4],
+                    latestHash[SHA256_DIGEST_LENGTH-3],
+                    latestHash[SHA256_DIGEST_LENGTH-2],
+                    latestHash[SHA256_DIGEST_LENGTH-1] );
     } else {
         snprintf( lines[0], ::sV::aux::ASCII_Display::LineLength,
                 "<no generic collector info available for %p>", this );
     }
-    snprintf( lines[1], ::sV::aux::ASCII_Display::LineLength,
-                "<here be dragons>" );  // TODO: latest bucket hash
 }
 
 StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {

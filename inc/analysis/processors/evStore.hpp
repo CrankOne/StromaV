@@ -51,6 +51,8 @@ private:
     std::fstream _file;
     buckets::GenericCollector * _genericCollectorPtr;
     buckets::iBundlingDispatcher * _bucketDispatcher;
+    uint8_t _prevHash[SHA256_DIGEST_LENGTH];
+    uint32_t _nBucketsDropped;
 public:
     typedef AnalysisPipeline::iEventProcessor Parent;
     typedef sV::events::Event Event;
