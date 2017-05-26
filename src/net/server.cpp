@@ -20,7 +20,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "net/client.hpp"
+# include "net/server.hpp"
 
 # include <goo_exception.hpp>
 
@@ -30,11 +30,10 @@
 namespace sV {
 namespace net {
 
-ClientConnection::ClientConnection() :
+ServerConnection::ServerConnection() :
                     _sockID(0),
                     _port(0),
-                    _server(nullptr),
-                    _destinationSet(false) {
+                    _listeningSet(false) {
     _sockID = socket(AF_INET, SOCK_STREAM, 0);
     if( _sockID < 0 ) {
         emraise( nwGeneric, "socket(): \"%s\"", strerror(errno) );
@@ -46,9 +45,8 @@ ClientConnection::ClientConnection() :
     _addr.sin_port = htons(_port);
 }
 
-ClientConnection::ClientConnection(
-            int portNo,
-            const std::string serverHostname ) :
+ServerConnection::ServerConnection(
+            int portNo ) :
                 _sockID( 0 ),
                 _port( portNo ),
                 _server( nullptr ),
@@ -62,47 +60,30 @@ ClientConnection::ClientConnection(
 }
 
 void
-ClientConnection::_setup_loopback_destination() {
+ServerConnection::_setup_on_loopback_iface() {
     _addr.sin_addr.s_addr = htonl( INADDR_LOOPBACK );
-    _destinationSet = true;
 }
 
 void
-ClientConnection::_setup_destination_host( const std::string & hostname ) {
-    _server = gethostbyname( hostname.c_str() );
-    bcopy(  (char *) server->h_addr,
-            (char *) &_addr.sin_addr.s_addr,
-            server->h_length );
-    _destinationSet = true;
+ServerConnection::_setup_on_any_interface( ) {
+    _addr.sin_addr.s_addr = htonl( INADDR_ANY );
+    // ^^^ Means that we do accept connections from any interface on current
+    // host.
 }
 
 void
-ClientConnection::connect() {
-    if( 0 > ::connect( _sockID, (struct sockaddr *) &_addr, sizeof(_addr)) ) {
-        emraise( nwGeneric, "connect(): \"%s\"", strerror(errno) );
+ServerConnection::_bind_and_listen( uint8_t backlog ) {
+    if( ::bind( _sockID, (struct sockaddr *) &_addr, sizeof(_addr) ) < 0 ) {
+        emraise( nwGeneric, "bind(): \"%s\"", strerror(errno) );
     }
-}
-
-size_t
-ClientConnection::send( const char * data, size_t length ) {
-    ssize_t ret = ::send( _sockID, data, length, 0);
-    if( ret < 0 ) {
-        emraise( nwGeneric, "send(): \"%s\"", strerror(errno) );
+    if( ::listen( _sockID, backlog ) < 0 ) {
+        emraise( nwGeneric, "listen(): \"%s\"", strerror(errno) );
     }
-    return ret;
-}
-
-size_t
-ClientConnection::recieve( char * output, size_t maxLength ) {
-    size_t acqSize = 0;
-    ssize_t ret = recv( _sockID, output, maxLength, 0 );
-    if( ret < 0 ) {
-        emraise( nwGeneric, "recv(): \"%s\"", strerror(errno) );
-    }
+    _listeningSet = true;
 }
 
 int
-ClientConnection::socket_status_code() {
+ServerConnection::socket_status_code() {
     int errCode;
     int errCodeSize = sizeof(errCode);
     if( 0 > getsockopt( _sockID, SOL_SOCKET, SO_ERROR,
@@ -114,13 +95,13 @@ ClientConnection::socket_status_code() {
 }
 
 void
-ClientConnection::disconnect() {
+ServerConnection::disconnect() {
     close(_sockID);
 }
 
 void
-ClientConnection::port( int port_ ) {
-    if( _destinationSet ) {
+ServerConnection::port( int port_ ) {
+    if( _listeningSet ) {
         emraise( badState, "Unable to change destination port since "
             "destination point was set (prev. port %d, new port %d).",
             _port, port_ );
@@ -128,6 +109,21 @@ ClientConnection::port( int port_ ) {
     _port = port_;
 }
 
+void
+ServerConnection::serve_connections( TreatmentCallback cllb ) {
+    int peerSock;
+    for(;;) {
+        if( 0 > (peerSock = accept(listener, NULL, NULL) )) {
+            emraise( nwGeneric, "accept(): \"%s\"", strerror(errno) );
+        }
+        peerConnectionPtr = new PeerConnection( peerSock );
+        cllb( *peerConnectionPtr );
+        close( peerSock );
+        delete [] peerConnectionPtr;
+    }
+}
+
 }  // namespace ::sV::net
 }  // namespace sV
+
 

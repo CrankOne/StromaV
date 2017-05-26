@@ -20,8 +20,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_NETWORKING_CLIENT_H
-# define H_STROMA_V_NETWORKING_CLIENT_H
+# ifndef H_STROMA_V_NETWORKING_SERVER_H
+# define H_STROMA_V_NETWORKING_SERVER_H
 
 # include "sV_config.h"
 
@@ -32,22 +32,27 @@
 namespace sV {
 namespace net {
 
-/**@brief Implements rudimentary socket client wrapper.
- * @class ClientSocket
+/**@brief Implements rudimentary socket server wrapper.
+ * @class ServerSocket
  *
  * This a pretty simple wrapper around native <sys/socket.h> routines providing
- * typical handles for managing client network connection via blocking AF_INET
+ * typical handles for managing server network connection via blocking AF_INET
  * socket.
  **/
-class ClientConnection {
+class ServerConnection {
+public:
+    class PeerConnection : public ClientConnection {
+    protected:
+        PeerConnection();
+        friend class ServerConnection(PeerConnection &);
+    };  // class PeerConnection
+
+    typedef void (*TreatmentCallback)();
 private:
-    int _sockID,    ///< std socket identifier
+    int _sockID,    ///< listening socket, std socket identifier
         _port;      ///< port number
     struct sockaddr_in _addr;
-    /// True if either loopback or destination point was set.
-    bool _destinationSet;
-    /// Refers to particular host, for non-loopback connections.
-    struct hostent * _server;
+    bool _listeningSet;
 protected:
     /// Sets up INADDR_LOOPBACK socket for transmission. Only port number has
     /// to be set.
@@ -55,39 +60,34 @@ protected:
     /// Sets up socket for transmission with remote destination point
     /// identified with string hostname.
     void _setup_destination_host( const std::string & hostname );
+    /// Binds the socket prior to listening.
+    void _bind_and_listen( uint8_t backlog=128 );
 public:
     /// Constructs unbound socket.
-    ClientConnection();
-    /// Constructs socket and sets it up for recieving/sending. Set
-    /// serverHostname to an empty string or to "loopback" string to set up the
-    /// loopback socket.
-    ClientConnection( int portNo, const std::string serverHostname );
-    /// Returns socket ID (if was bound).
-    int socket_id() const { return _sockID; }
-    /// Establishes a connection with native connect() function. Will throw
-    /// nwGeneric, if connect() return <0.
-    void connect();
+    ServerConnection();
+    /// Constructs socket and sets it up for listening.
+    ServerConnection( int portNo );
+    /// Returns listening socket ID (if was bound).
+    int listening_socket_id() const { return _sockID; }
     /// Closes the socket.
     void disconnect();
     /// Uses getsockopt() to obtain and return latest SO_ERROR code. Resets the
     /// socket. If getsockopt() fails, raises nwGeneric exception.
     int socket_status_code();
-    /// Wraps native send() call with error-checking code. If error occurs
-    /// (send() returned <0), nwgeneric exception will be thrown. Returns
-    /// number of bytes sent.
-    size_t send( const char *, size_t );
-    /// Wraps native recv() call with error-checking code. If error occurs
-    /// (recv() returned <0), nwgeneric exception will be thrown. Returns
-    /// number of bytes recieved.
-    size_t recieve( char *, size_t );
     /// Port number getter.
-    int port const { return _port; }
+    int listening_port const { return _port; }
     /// Prot number setter.
-    void port( int );
-};  // ClientConnection
+    void listening_port( int );
+
+    /// Internally, calls the 2 accept() function. It blocks the current
+    /// execution until next incoming connection on listening port will come.
+    /// Once it came, the PeerConnection instance will be created and the given
+    /// treatment callback will be invoked.
+    void serve_connections( TreatmentCallback cllb );
+};  // ServerConnection
 
 }  // namespace ::sV::net
 }  // namespace sV
 
-# endif  // H_STROMA_V_NETWORKING_CLIENT_H
+# endif  // H_STROMA_V_NETWORKING_SERVER_H
 
