@@ -24,20 +24,21 @@
 
 # include <goo_exception.hpp>
 
+# include <netdb.h>
 # include <unistd.h>
+
 # include <cstring>
 
 namespace sV {
 namespace net {
 
 ClientConnection::ClientConnection() :
-                    _sockID(0),
                     _port(0),
-                    _server(nullptr),
-                    _destinationSet(false) {
-    _sockID = socket(AF_INET, SOCK_STREAM, 0);
-    if( _sockID < 0 ) {
-        emraise( nwGeneric, "socket(): \"%s\"", strerror(errno) );
+                    _destinationSet(false),
+                    _server(nullptr) {
+    socket_id( socket(AF_INET, SOCK_STREAM, 0) );
+    if( socket_id() < 0 ) {
+        emraise( nwGeneric, "socket(): %s.", strerror(errno) );
     }
 
     bzero( &_addr, sizeof(_addr) );
@@ -49,10 +50,19 @@ ClientConnection::ClientConnection() :
 ClientConnection::ClientConnection(
             int portNo,
             const std::string serverHostname ) :
-                _sockID( 0 ),
                 _port( portNo ),
-                _server( nullptr ),
-                _destinationSet( false ) {
+                _destinationSet( false ),
+                _server( nullptr ) {
+    socket_id( socket(AF_INET, SOCK_STREAM, 0) );
+    if( socket_id() < 0 ) {
+        emraise( nwGeneric, "socket(): %s.", strerror(errno) );
+    }
+
+    bzero( &_addr, sizeof(_addr) );
+
+    _addr.sin_family = AF_INET;
+    _addr.sin_port = htons(_port);
+
     if( serverHostname.empty()
      || "loopback" == serverHostname ) {
         _setup_loopback_destination();
@@ -69,53 +79,18 @@ ClientConnection::_setup_loopback_destination() {
 
 void
 ClientConnection::_setup_destination_host( const std::string & hostname ) {
-    _server = gethostbyname( hostname.c_str() );
-    bcopy(  (char *) server->h_addr,
+    _server = ::gethostbyname( hostname.c_str() );
+    bcopy(  (char *) _server->h_addr,
             (char *) &_addr.sin_addr.s_addr,
-            server->h_length );
+            _server->h_length );
     _destinationSet = true;
 }
 
 void
 ClientConnection::connect() {
-    if( 0 > ::connect( _sockID, (struct sockaddr *) &_addr, sizeof(_addr)) ) {
-        emraise( nwGeneric, "connect(): \"%s\"", strerror(errno) );
+    if( 0 > (::connect( socket_id(), (struct sockaddr *) &_addr, sizeof(_addr))) ) {
+        emraise( nwGeneric, "connect(): %s.", strerror(errno) );
     }
-}
-
-size_t
-ClientConnection::send( const char * data, size_t length ) {
-    ssize_t ret = ::send( _sockID, data, length, 0);
-    if( ret < 0 ) {
-        emraise( nwGeneric, "send(): \"%s\"", strerror(errno) );
-    }
-    return ret;
-}
-
-size_t
-ClientConnection::recieve( char * output, size_t maxLength ) {
-    size_t acqSize = 0;
-    ssize_t ret = recv( _sockID, output, maxLength, 0 );
-    if( ret < 0 ) {
-        emraise( nwGeneric, "recv(): \"%s\"", strerror(errno) );
-    }
-}
-
-int
-ClientConnection::socket_status_code() {
-    int errCode;
-    int errCodeSize = sizeof(errCode);
-    if( 0 > getsockopt( _sockID, SOL_SOCKET, SO_ERROR,
-                &error_code, &errCodeSize ) ) {
-        emraise( nwGeneric, "Unable to identify socket error: \"%s\"",
-            strerror(errno) );
-    }
-    return errCode;
-}
-
-void
-ClientConnection::disconnect() {
-    close(_sockID);
 }
 
 void

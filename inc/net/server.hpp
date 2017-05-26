@@ -25,9 +25,9 @@
 
 # include "sV_config.h"
 
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
+# include "peer.hpp"
+
+# include <string>
 
 namespace sV {
 namespace net {
@@ -41,27 +41,26 @@ namespace net {
  **/
 class ServerConnection {
 public:
-    class PeerConnection : public ClientConnection {
-    protected:
-        PeerConnection();
-        friend class ServerConnection(PeerConnection &);
-    };  // class PeerConnection
-
-    typedef void (*TreatmentCallback)();
+    typedef void (*TreatmentCallback)( PeerConnection * );
 private:
     int _sockID,    ///< listening socket, std socket identifier
         _port;      ///< port number
     struct sockaddr_in _addr;
     bool _listeningSet;
 protected:
-    /// Sets up INADDR_LOOPBACK socket for transmission. Only port number has
-    /// to be set.
-    void _setup_loopback_destination();
-    /// Sets up socket for transmission with remote destination point
-    /// identified with string hostname.
-    void _setup_destination_host( const std::string & hostname );
+    /// Sets up INADDR_LOOPBACK socket for listening.
+    void _setup_on_loopback_iface();
+    /// Sets up on any interface for listening.
+    void _setup_on_any_interface();
     /// Binds the socket prior to listening.
     void _bind_and_listen( uint8_t backlog=128 );
+
+    /// (IM) Has to allocate and return new PeerConnection instance (or its
+    /// descendant). Will be called after new incoming connection is accepted.
+    virtual PeerConnection * _V_new_connection( int, const struct sockaddr_in & ) = 0;
+    /// (IM) Has to free PeerConnection instance (or its descendant) upon
+    /// worker completes.
+    virtual void _V_free_connection( PeerConnection * ) = 0;
 public:
     /// Constructs unbound socket.
     ServerConnection();
@@ -70,12 +69,9 @@ public:
     /// Returns listening socket ID (if was bound).
     int listening_socket_id() const { return _sockID; }
     /// Closes the socket.
-    void disconnect();
-    /// Uses getsockopt() to obtain and return latest SO_ERROR code. Resets the
-    /// socket. If getsockopt() fails, raises nwGeneric exception.
-    int socket_status_code();
+    virtual void shutdown();
     /// Port number getter.
-    int listening_port const { return _port; }
+    int listening_port() const { return _port; }
     /// Prot number setter.
     void listening_port( int );
 

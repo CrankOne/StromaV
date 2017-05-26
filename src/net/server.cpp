@@ -49,14 +49,8 @@ ServerConnection::ServerConnection(
             int portNo ) :
                 _sockID( 0 ),
                 _port( portNo ),
-                _server( nullptr ),
-                _destinationSet( false ) {
-    if( serverHostname.empty()
-     || "loopback" == serverHostname ) {
-        _setup_loopback_destination();
-    } else {
-        _setup_destination_host( serverHostname );
-    }
+                _listeningSet( false ) {
+    _TODO_  // TODO
 }
 
 void
@@ -82,25 +76,13 @@ ServerConnection::_bind_and_listen( uint8_t backlog ) {
     _listeningSet = true;
 }
 
-int
-ServerConnection::socket_status_code() {
-    int errCode;
-    int errCodeSize = sizeof(errCode);
-    if( 0 > getsockopt( _sockID, SOL_SOCKET, SO_ERROR,
-                &error_code, &errCodeSize ) ) {
-        emraise( nwGeneric, "Unable to identify socket error: \"%s\"",
-            strerror(errno) );
-    }
-    return errCode;
-}
-
 void
-ServerConnection::disconnect() {
+ServerConnection::shutdown() {
     close(_sockID);
 }
 
 void
-ServerConnection::port( int port_ ) {
+ServerConnection::listening_port( int port_ ) {
     if( _listeningSet ) {
         emraise( badState, "Unable to change destination port since "
             "destination point was set (prev. port %d, new port %d).",
@@ -112,14 +94,16 @@ ServerConnection::port( int port_ ) {
 void
 ServerConnection::serve_connections( TreatmentCallback cllb ) {
     int peerSock;
+    struct sockaddr_in rSckddr;
+    socklen_t rSckddrLen = sizeof(rSckddr);
     for(;;) {
-        if( 0 > (peerSock = accept(listener, NULL, NULL) )) {
+        bzero( &rSckddr, sizeof(rSckddr) );
+        if( 0 > (peerSock = accept( _sockID, (struct sockaddr*) &rSckddr, &rSckddrLen) )) {
             emraise( nwGeneric, "accept(): \"%s\"", strerror(errno) );
         }
-        peerConnectionPtr = new PeerConnection( peerSock );
-        cllb( *peerConnectionPtr );
-        close( peerSock );
-        delete [] peerConnectionPtr;
+        auto pc = _V_new_connection( peerSock, rSckddr );
+        cllb( pc );
+        _V_free_connection(pc);
     }
 }
 

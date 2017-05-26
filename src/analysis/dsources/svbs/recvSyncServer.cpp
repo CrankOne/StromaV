@@ -20,39 +20,49 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# ifndef H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
-# define H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
-
 # include "sV_config.h"
 
-# include "evStreamDispatch.hpp"
-# include "net/client.hpp"
+# ifdef RPC_PROTOCOLS
 
-# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
+# include "analysis/dsources/svbs/buckets.hpp"
 
 namespace sV {
-namespace dprocessors {
+namespace buckets {
 
-class EventsSend : public EventsDispatcher {
-public:
-    typedef AnalysisPipeline::iEventProcessor Parent;
-    typedef sV::events::Event Event;
-private:
-    std::string _sendingBuffer;
-    std::stringstream _sendingBufferStream;
-    net::ClientConnection _connection;
-protected:
-    /// Performs sending of the bucket.
-    virtual size_t _V_drop_bucket() override;
-public:
-    EventsSend( const goo::dict::Dictionary & );
-    virtual ~EventsSend();
-};  // class EventsSend
+//
+// RecievingServer
+/////////////////
 
-}  // namespace ::sV::dprocessors
+RecievingServer::RecievingServer( int portNo, Buckets * b ) :
+                        net::ServerConnection(portNo),
+                        _issuerPtr(nullptr),
+                        _bucketsAuthority( b ) { }
+
+RecievingServer::~RecievingServer() {
+    if( _issuerPtr ) {
+        delete _issuerPtr;
+    }
+}
+
+net::PeerConnection *
+RecievingServer::_V_new_connection( int sockID,
+                                    const struct sockaddr_in & sain ) {
+    if( _issuerPtr ) {
+        _issuerPtr->socket_id( sockID );
+        _issuerPtr->set_sockaddr( sain );
+    } else {
+        _issuerPtr = new ClientConnection( _bucketsAuthority, sain );
+    }
+    return _issuerPtr;
+}
+
+void
+RecievingServer::_V_free_connection( net::PeerConnection * ptr ) {
+    ptr->close();
+}
+
+}  // namespace ::sV::buckets
 }  // namespace sV
 
-# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
-
-# endif  // H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
+# endif  // RPC_PROTOCOLS
 

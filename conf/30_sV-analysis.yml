@@ -33,4 +33,12 @@ analysis:
             maxBucketSize_kB: 16384
         retrieve:
             progressbar: true
-
+            listeningPort: 23011
+        send:
+            maxBucketSize_events: 1000
+            maxBucketSize_kB: 4096
+            compression: zlib
+            suppInfo:
+                - Generic
+            destination: loopback
+            portNo: 23011

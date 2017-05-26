@@ -25,9 +25,11 @@
 
 # include "sV_config.h"
 
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
+# include "peer.hpp"
+
+# include <string>
+
+struct hostent;
 
 namespace sV {
 namespace net {
@@ -39,10 +41,9 @@ namespace net {
  * typical handles for managing client network connection via blocking AF_INET
  * socket.
  **/
-class ClientConnection {
+class ClientConnection : public PeerConnection {
 private:
-    int _sockID,    ///< std socket identifier
-        _port;      ///< port number
+    int _port;      ///< port number
     struct sockaddr_in _addr;
     /// True if either loopback or destination point was set.
     bool _destinationSet;
@@ -62,26 +63,11 @@ public:
     /// serverHostname to an empty string or to "loopback" string to set up the
     /// loopback socket.
     ClientConnection( int portNo, const std::string serverHostname );
-    /// Returns socket ID (if was bound).
-    int socket_id() const { return _sockID; }
     /// Establishes a connection with native connect() function. Will throw
     /// nwGeneric, if connect() return <0.
     void connect();
-    /// Closes the socket.
-    void disconnect();
-    /// Uses getsockopt() to obtain and return latest SO_ERROR code. Resets the
-    /// socket. If getsockopt() fails, raises nwGeneric exception.
-    int socket_status_code();
-    /// Wraps native send() call with error-checking code. If error occurs
-    /// (send() returned <0), nwgeneric exception will be thrown. Returns
-    /// number of bytes sent.
-    size_t send( const char *, size_t );
-    /// Wraps native recv() call with error-checking code. If error occurs
-    /// (recv() returned <0), nwgeneric exception will be thrown. Returns
-    /// number of bytes recieved.
-    size_t recieve( char *, size_t );
     /// Port number getter.
-    int port const { return _port; }
+    int port() const { return _port; }
     /// Prot number setter.
     void port( int );
 };  // ClientConnection
