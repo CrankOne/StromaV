@@ -94,7 +94,8 @@ public:
                         events::BucketInfo * bInfo,
                         BucketKeyInfoT *,
                         const Decompressors *,
-                        std::istream * is=nullptr );
+                        std::istream * is=nullptr,
+                        std::ostream * logStream=nullptr);
 
     ~BucketStreamReader() {}
 
@@ -127,9 +128,10 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::BucketStreamReader(
                         events::BucketInfo * bInfo,
                         BucketKeyInfoT * keyMsgPtr,
                         const Decompressors * dcmprssrsMap,
-                        std::istream * is ) :
+                        std::istream * is,
+                        std::ostream * logStream ) :
         aux::iEventSequence(0x0),
-        CompressedBucketReader(dfltBcktPtr, bcktPtr, bInfo, dcmprssrsMap),
+        CompressedBucketReader(dfltBcktPtr, bcktPtr, bInfo, dcmprssrsMap, logStream),
         _iStreamPtr( is ),
         _bucketKeyInfoMsg(keyMsgPtr) {}
 
@@ -151,7 +153,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_emplace_bucket_offset(
     {
         std::stringstream ss;
         ss << bid;
-        log_message( aux::Logger::verbose,
+        log_msg( logging::verbose,
             "Bucket %s events indexed by offset %zu.\n",
             ss.str().c_str(), sPos );
     }
@@ -214,7 +216,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_next_event( BucketReader::Even
     if( Self::_V_is_good() ) {
         return Parent::_V_next_event( epr );
     }
-    log_message( aux::Logger::verbose,
+    log_msg( logging::verbose,
             "BucketStreamReader<...> %p: current bucket depleted. Acquiring "
             "next...\n", this );
     _V_acquire_next_bucket( epr );
@@ -243,7 +245,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
              suppInfoLength;
     stream().read( (char*) &bucketLength,   sizeof(uint32_t) );
     if( !stream().good() ) {
-        log_message( aux::Logger::verbose,
+        log_msg( logging::verbose,
             "BucketStreamReader<...> %p: Unable to read from stream %p "
             "anymore.\n",
             this, _iStreamPtr );
@@ -256,7 +258,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
                 "stream %p.", this, _iStreamPtr );
         }
     } else {
-        log_message( aux::Logger::verbose,
+        log_msg( logging::verbose,
             "BucketStreamReader<...> %p: omitting reading of supp. info.\n",
             this );
     }
@@ -272,11 +274,11 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
     } else if( offsets_map().find( BucketID(*_bucketKeyInfoMsg) )
             == offsets_map().end() ) {
         _cBucketIt = _emplace_bucket_offset( *_bucketKeyInfoMsg, cBucketOffset );
-        log_message( aux::Logger::loquacious,
+        log_msg( logging::loquacious,
                 "BucketStreamReader<...> %p: new bucket at position %zu indexed.\n",
                 this, cBucketOffset);
     }
-    log_message( aux::Logger::loquacious,
+    log_msg( logging::loquacious,
             "BucketStreamReader<...> %p: parsed supp info header of "
             "size %u.\n",
             this, suppInfoLength );
@@ -285,7 +287,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::_V_acquire_next_bucket( BucketRea
                 "bucket from stream %p.", this, _iStreamPtr  );
     }
     epr = Parent::_V_initialize_reading();
-    log_message( aux::Logger::loquacious,
+    log_msg( logging::loquacious,
             "BucketStreamReader<...> %p: read %u/%u bytes: bucket/supp. info.\n",
             this, bucketLength, suppInfoLength );
     return true;
@@ -300,7 +302,7 @@ BucketStreamReader<BucketIDT, BucketKeyInfoT>::read_supp_info( std::istream & is
             "stream %p.", this, &is );
     }*/
     bool ret = mutable_supp_info_entries().ParseFromArray( _readingBuffer.data(), length );
-    log_message( aux::Logger::loquacious,
+    log_msg( logging::loquacious,
         "BucketStreamReader<...> %p: read %d supp info caches from "
         "stream %p.\n", this, mutable_supp_info_entries().entries_size(), &is );
     return ret;

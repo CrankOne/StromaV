@@ -31,9 +31,13 @@ namespace sV {
 namespace net {
 
 ServerConnection::ServerConnection() :
-                    _sockID(0),
-                    _port(0),
-                    _listeningSet(false) {
+                    ServerConnection(0) {}
+
+ServerConnection::ServerConnection(
+            int portNo ) :
+                _sockID( 0 ),
+                _port( portNo ),
+                _listeningSet( false ) {
     _sockID = socket(AF_INET, SOCK_STREAM, 0);
     if( _sockID < 0 ) {
         emraise( nwGeneric, "socket(): \"%s\"", strerror(errno) );
@@ -42,15 +46,9 @@ ServerConnection::ServerConnection() :
     bzero( &_addr, sizeof(_addr) );
 
     _addr.sin_family = AF_INET;
-    _addr.sin_port = htons(_port);
-}
-
-ServerConnection::ServerConnection(
-            int portNo ) :
-                _sockID( 0 ),
-                _port( portNo ),
-                _listeningSet( false ) {
-    _TODO_  // TODO
+    if( _port ) {
+        _addr.sin_port = htons(_port);
+    }
 }
 
 void
@@ -66,7 +64,7 @@ ServerConnection::_setup_on_any_interface( ) {
 }
 
 void
-ServerConnection::_bind_and_listen( uint8_t backlog ) {
+ServerConnection::bind_and_listen( uint8_t backlog ) {
     if( ::bind( _sockID, (struct sockaddr *) &_addr, sizeof(_addr) ) < 0 ) {
         emraise( nwGeneric, "bind(): \"%s\"", strerror(errno) );
     }

@@ -80,47 +80,6 @@ parse_g4_three_vector( const std::string & s, double factor ) {
 }
 # endif
 
-
-// TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-// or ::goo::dict::Configuration::free_tokens()
-// when goo/appParameters branch will be merged to goo/master:
-size_t
-goo_XXX_tokenize_argstring( const std::string & str, char **& argvTokens ) {
-    ::wordexp_t pwords;
-    int rc = wordexp( str.c_str(), &pwords, WRDE_UNDEF | WRDE_SHOWERR | WRDE_NOCMD );
-    if( rc ) {
-        if( WRDE_BADCHAR == rc) {
-            emraise( badParameter, "Bad character met." );
-        } else if( WRDE_BADVAL == rc ) {
-            emraise( badArchitect, "Reference to undefined shell variable met." );
-        } else if( WRDE_CMDSUB == rc ) {
-            emraise( badState, "Command substitution requested." );
-        } else if( WRDE_NOSPACE == rc ) {
-            emraise( memAllocError, "Attempt to allocate memory failed." );
-        } else if( WRDE_SYNTAX == rc ) {
-            emraise( interpreter, "Shell syntax error." );
-        }
-    }
-    const Size nWords = pwords.we_wordc;
-    argvTokens = (char**) malloc( sizeof(char*)*nWords );
-    for( size_t n = 0; n < nWords; ++n ) {
-        argvTokens[n] = strdup( pwords.we_wordv[n] );
-    }
-    wordfree( &pwords );
-    return nWords;
-}
-
-// TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-// or ::goo::dict::Configuration::free_tokens()
-// when goo/appParameters branch will be merged to goo/master:
-void
-goo_XXX_free_tokens( size_t argcTokens, char ** argvTokens ) {
-    for( size_t n = 0; n < argcTokens; ++n ) {
-        free( argvTokens[n] );
-    }
-    free( argvTokens );
-}
-
 }  // namespace aux
 }  // namespace sV
 

@@ -37,9 +37,10 @@ CompressedBucketReader::CompressedBucketReader(
                 events::DeflatedBucket * dfltdBcktPtr,
                 events::Bucket * bucketPtr,
                 events::BucketInfo * bucketInfoPtr,
-                const Decompressors * decompressors ) :
+                const Decompressors * decompressors,
+                std::ostream * logStream ) :
                         iEventSequence( 0x0 ),
-                        SuppInfoBucketReader( bucketPtr, bucketInfoPtr ),
+                        SuppInfoBucketReader( bucketPtr, bucketInfoPtr, logStream ),
                         _dfltdBucketPtr( dfltdBcktPtr ),
                         _decompressedBucketValid( false ),
                         _decompressors( decompressors )
@@ -74,7 +75,7 @@ CompressedBucketReader::_decompress_bucket() const {
     if( ! _dfltdBucketPtr->data().compressedcontent().size() ) {
         sV_logw( "Trying to decompress bucket of zero size.\n" );
     } else {
-        log_message( aux::Logger::verbose,
+        log_msg( logging::verbose,
             "Decompressing data of size %d with algorithm #%d.\n",
                 _dfltdBucketPtr->data().compressedcontent().size(),
                 _dfltdBucketPtr->data().compressionalgo() );
@@ -95,7 +96,7 @@ CompressedBucketReader::_decompress_bucket() const {
     }
     # if 0
         const uint8_t * dt = (const uint8_t *) _dfltdBucketPtr->data().compressedcontent().c_str();
-        log_message( aux::Logger::loquacious,
+        log_msg( logging::loquacious,
             "%x %x %x ... [%zu] -decompression-> %x %x %x ... [%zu]\n",
             dt[0], dt[1], dt[2], _dfltdBucketPtr->data().compressedcontent().size(),
             _dcmBuffer.data()[0],
@@ -111,11 +112,11 @@ CompressedBucketReader::_decompress_bucket() const {
                 "%zu (provisioned) < %zu (real).",
                 decompressedLength, _dcmBuffer.size() );
     } else {
-        log_message( aux::Logger::verbose,
+        log_msg( logging::verbose,
             "CompressedBucketReader %p: decompressed sizes: predicted=%zu, real=%zu.\n",
             this, decompressedLength, _dcmBuffer.size() );
     }
-    log_message( aux::Logger::loquacious, "CompressedBucketReader %p: bucket of size %zu -> %zu "
+    log_msg( logging::loquacious, "CompressedBucketReader %p: bucket of size %zu -> %zu "
             "decompressed.\n", this,
             _dfltdBucketPtr->data().compressedcontent().size(),
             decompressedLength );
@@ -130,7 +131,7 @@ CompressedBucketReader::_decompress_bucket() const {
             "size %zu.", _dcmBuffer.size() );
     }
     _decompressedBucketValid = true;
-    log_message( aux::Logger::verbose,
+    log_msg( logging::verbose,
         "CompressedBucketReader %p: bucket of size %zu parsed (%d events).\n",
         this, decompressedLength, bucket().events_size() );
     reset_bucket_iterator();

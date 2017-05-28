@@ -27,8 +27,8 @@
 
 # include "app.h"
 # include "app/ascii_display.hpp"
-# include "../logging.hpp"
-# include "../ctrs_dict.hpp"
+# include "logging.hpp"
+# include "ctrs_dict.hpp"
 
 # include <goo_exception.hpp>
 # include <goo_app.hpp>
@@ -56,6 +56,7 @@ namespace sV {
  * @ingroup app
  */
 class AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
+                            public sV::logging::Logger,
                             public sV::aux::ASCII_Display {
 public:
     typedef goo::dict::Configuration Config;
@@ -112,11 +113,8 @@ public:
 protected:
     std::map<std::string, std::string> _envVarsDocs;
     Stream * _eStr;
-    aux::StreamBuffer _lBuffer,
-                      _eBuffer
-                      ;
-    Config * _appCfg,
-             _configuration;
+    logging::StreamBuffer _lBuffer, _eBuffer;
+    Config * _appCfg, _configuration;
 
     /// Stores linked paths between common config and constructible configs.
     static std::unordered_map<std::type_index,
@@ -124,7 +122,6 @@ protected:
             * _cfgInjectionsPtr;
 
     mutable bool _immediateExit;
-    mutable uint8_t _verbosity;
 
     mutable ConfigPathInterpolator _pathInterpolator;
 
@@ -147,7 +144,6 @@ private:
     uint8_t _ROOTAppFeatures;
 protected:
     void _process_options( const Config * );
-    virtual const char * _get_prefix_for_loglevel( int8_t );
     /// For available features codes see mixins::RootApplication.
     void _enable_ROOT_feature( uint8_t ftCode );
 
@@ -168,10 +164,11 @@ protected:
 public:
     virtual ~AbstractApplication() {}
 
-    /// Verbosity level setter.
-    virtual void verbosity( uint8_t v ) { _verbosity = v; }
-    /// Verbosity level getter.
-    uint8_t verbosity() const { return _verbosity; }
+    /// Verbosity level setter (forwards to Logger::log_level()).
+    virtual void verbosity( sV::logging::LogLevel v ) { log_family().log_level(v); }
+
+    /// Verbosity level getter (forwards to Logger::log_level()).
+    sV::logging::LogLevel verbosity() const { return log_level(); }
 
     /// Prints current build info.
     virtual void dump_build_info( std::ostream & ) const;
@@ -181,9 +178,6 @@ public:
 
     /// Returns common interpolator ptr;
     ConfigPathInterpolator * path_interpolator() const { return &_pathInterpolator; }
-
-    /// Routes message to appropriate streams.
-    virtual void message( int8_t level, const std::string message, bool noprefix=false );
 
     /// Common config option getter.
     template<typename T>

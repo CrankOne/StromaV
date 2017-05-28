@@ -84,7 +84,8 @@ public:
     CompressedBucketReader( events::DeflatedBucket *,
                             events::Bucket *,
                             events::BucketInfo *,
-                            const Decompressors * );
+                            const Decompressors *,
+                            std::ostream * logStream=nullptr );
 
     /// Returns reference to associated compressed bucket isntance.
     const events::DeflatedBucket & compressed_bucket() const;

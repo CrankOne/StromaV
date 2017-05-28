@@ -88,11 +88,11 @@ void __static_custom_segfault_handler( int signum ) {
 # endif
 
 AbstractApplication::AbstractApplication( Config * cfg ) :
+            logging::Logger( "application", "app$(this)" ),
             _eStr(nullptr),
             _appCfg( cfg ),
             _configuration( "sV-config", "StromaV app-managed config" ),
             _immediateExit(false),
-            _verbosity(3),
             _pathInterpolator( _configuration ),
             _ROOTAppFeatures(0x0) {
     // Initialize log dispatching to standard streams by
@@ -209,12 +209,14 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         _immediateExit = true;
     }
 
-    _verbosity = conf["verbosity"].as<int>();
-    if( _verbosity > 3 ) {
-        sV_loge("Invalid verbosity level specified: %d.\n", (int) _verbosity);
-        _verbosity = 3;
-        sV_logw("Verbosity level %d was set.\n", (int) _verbosity);
+    int vrbst = conf["verbosity"].as<int>();
+    if( vrbst > 3 ) {
+        sV_loge("Invalid verbosity level specified: %d.\n", vrbst);
+        vrbst = 3;
+        sV_logw("Verbosity level %d was set.\n", vrbst);
     }
+    const_cast<AbstractApplication*>(this)->verbosity(
+                        (logging::LogLevel) vrbst );
 
     // TODO: acquire IO streams here!
 
@@ -629,43 +631,6 @@ AbstractApplication::dump_build_info( std::ostream & os ) const {
     ::fclose( memfile );
     os << bf;
     free(bf);
-}
-
-static const char _static_logPrefixes[][64] = {
-    "[" ESC_BLDRED "EE" ESC_CLRCLEAR "] ",
-    "[" ESC_BLDYELLOW "WW" ESC_CLRCLEAR "] ",
-    "[" ESC_BLDBLUE "L1" ESC_CLRCLEAR "] ",
-    "[" ESC_CLRCYAN "L2" ESC_CLRCLEAR "] ",
-    "[" ESC_CLRBLUE "L3" ESC_CLRCLEAR "] ",
-    "[" ESC_CLRCYAN "??" ESC_CLRCLEAR "] ",
-};
-
-const char *
-AbstractApplication::_get_prefix_for_loglevel( int8_t l ) {
-    switch(l) {
-        case -2: return _static_logPrefixes[0];
-        case -1: return _static_logPrefixes[1];
-        case  1: return _static_logPrefixes[2];
-        case  2: return _static_logPrefixes[3];
-        case  3: return _static_logPrefixes[4];
-        default: return _static_logPrefixes[5];
-    };
-}
-
-void
-AbstractApplication::message( int8_t level, const std::string msg, bool noprefix ) {
-    if( level <= verbosity() ) {
-        const char noprefixPrefix[] = "";
-        const char * prefix = noprefix ? noprefixPrefix : _get_prefix_for_loglevel(level);
-        std::ostream * os;
-        if( level < 0 ) {
-            os = &(es());
-        } else {
-            os = &( ls_is_set() ? ls() : std::cout );
-        }
-        *os << prefix << msg;
-        os->flush();
-    }
 }
 
 std::string

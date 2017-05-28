@@ -40,10 +40,10 @@ protected:
     struct sockaddr_in & addr();
 public:
     PeerConnection();
-    PeerConnection( const struct sockaddr_in & );
+    PeerConnection( int, const struct sockaddr_in & );
     virtual ~PeerConnection();
     const struct sockaddr_in & addr() const { return _addr; }
-    int socket_id() const { return _sockID; }
+    int socket_id() const;
     /// Wraps native send() call with error-checking code. If error occurs
     /// (send() returned <0), nwgeneric exception will be thrown. Returns
     /// number of bytes sent.
@@ -61,6 +61,7 @@ public:
 
     /// Raises a badState, if connection was not previously closed.
     virtual void socket_id( int );
+    bool is_socket_set() const { return !! _sockID; }
     virtual void reset_socket_id() { _sockID = 0; }
 
     virtual void set_sockaddr( const struct sockaddr_in & );

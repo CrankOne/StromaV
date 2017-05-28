@@ -22,7 +22,6 @@
 
 # include "ctrs_dict.hpp"
 
-# ifdef RPC_PROTOCOLS
 # include "app/app.h"
 
 namespace sV {
@@ -53,4 +52,3 @@ IndexOfConstructables::constructors_for( const std::type_index & tIdx ) const {
 }  // namespace sys
 }  // namespace sV
 
-# endif  // RPC_PROTOCOLS

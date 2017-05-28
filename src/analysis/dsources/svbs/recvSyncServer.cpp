@@ -51,7 +51,7 @@ RecievingServer::_V_new_connection( int sockID,
         _issuerPtr->socket_id( sockID );
         _issuerPtr->set_sockaddr( sain );
     } else {
-        _issuerPtr = new ClientConnection( _bucketsAuthority, sain );
+        _issuerPtr = new ClientConnection( sockID, _bucketsAuthority, sain );
     }
     return _issuerPtr;
 }

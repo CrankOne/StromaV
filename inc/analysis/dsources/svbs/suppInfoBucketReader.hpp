@@ -71,7 +71,7 @@ namespace buckets {
  * @ingroup buckets
  */
 class SuppInfoBucketReader : public BucketReader,
-                             public aux::Logger {
+                             public sV::logging::Logger {
 public:
     /// Single supplementary information cache entry.
     struct MetaInfoCache {
@@ -107,7 +107,8 @@ public:
     /// reentrant buffers. For performance, one probably would prefer to
     /// allocate them using protobuf's arena.
     SuppInfoBucketReader( events::Bucket * bucketPtr,
-                          events::BucketInfo * bucketInfoPtr );
+                          events::BucketInfo * bucketInfoPtr,
+                          std::ostream * logStream=nullptr );
     /// Returns immutable reference to supplementary info container of current
     /// bucket.
     const events::BucketInfo & supp_info_entries() const;

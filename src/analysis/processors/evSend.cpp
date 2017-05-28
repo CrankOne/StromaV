@@ -40,13 +40,14 @@ EventsSend::~EventsSend() {}
 
 size_t
 EventsSend::_V_drop_bucket() {
-    size_t nBytes = EventsDispatcher::_V_drop_bucket(), nSent = 0;
+    size_t nBytes = EventsDispatcher::_V_drop_bucket(),
+           nSent = 0;
     _connection.connect();
     do {
         nSent += _connection.send(
                     _sendingBuffer.c_str() + nSent,
                     _sendingBuffer.size() );
-    } while( nSent < nBytes );
+    } while( nSent < _sendingBuffer.size() );
     _connection.close();
     return nBytes;
 }

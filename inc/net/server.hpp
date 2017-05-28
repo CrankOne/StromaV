@@ -52,8 +52,6 @@ protected:
     void _setup_on_loopback_iface();
     /// Sets up on any interface for listening.
     void _setup_on_any_interface();
-    /// Binds the socket prior to listening.
-    void _bind_and_listen( uint8_t backlog=128 );
 
     /// (IM) Has to allocate and return new PeerConnection instance (or its
     /// descendant). Will be called after new incoming connection is accepted.
@@ -75,6 +73,8 @@ public:
     /// Prot number setter.
     void listening_port( int );
 
+    /// Binds the socket prior to listening.
+    void bind_and_listen( uint8_t backlog=128 );
     /// Internally, calls the 2 accept() function. It blocks the current
     /// execution until next incoming connection on listening port will come.
     /// Once it came, the PeerConnection instance will be created and the given

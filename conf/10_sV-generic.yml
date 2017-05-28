@@ -73,6 +73,5 @@ buckets:
     generic:
         maxBucketSize_events: 1000
         maxBucketSize_kB: 16384  # 16MB
-
 ...
 

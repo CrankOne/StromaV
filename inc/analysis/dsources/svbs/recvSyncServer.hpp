@@ -44,9 +44,10 @@ public:
         Buckets & authority() { return *_authority; }
     public:
         ClientConnection(
+            int socketID,
             Buckets * a,
             const struct sockaddr_in & sain) : 
-                        net::PeerConnection(sain),
+                        net::PeerConnection(socketID, sain),
                         _authority(a) {}
         friend class ::sV::Buckets;
     };

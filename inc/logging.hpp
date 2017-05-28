@@ -23,6 +23,10 @@
 # ifndef H_STROMA_V_LOGGING_AUX_H
 # define H_STROMA_V_LOGGING_AUX_H
 
+# include "ctrs_dict.hpp"
+
+# include <goo_config.h>
+
 # include <list>
 # include <sstream>
 
@@ -30,7 +34,17 @@
 class TGCommandPlugin;
 
 namespace sV {
-namespace aux {
+namespace logging {
+
+enum LogLevel : int8_t {
+    error = -2,
+    warning = -1,
+    quiet = 0,
+    laconic = 1,
+    verbose = 2,
+    loquacious = 3,
+    debug = 4,
+};
 
 /**@class StreamBuffer
  * @brief A stream buffer class multiplicating its output to substreams.
@@ -62,6 +76,48 @@ public:
     void add_target( std::ostream *, bool enableColoring=true );
 };  // class StreamBuffer
 
+
+/**@class LoggingFamily
+ * @brief Thmeatic section for logging usually referring to certain set of
+ *        classes.
+ *
+ * Families are usual sV virtually-constructible classes indexed in its common
+ * IndexOfConstructables class. Besides of that all created instances are
+ * indexed at the common static map.
+ * */
+class LoggingFamily {
+private:
+    const std::string _name;
+    /// Logging level set for family.
+    LogLevel _lvl;
+    /// Stream references set for family.
+    std::ostream * _streamPtrs[7];
+
+    /// Static dictionary of all constructed family objects.
+    static std::unordered_map<std::string, LoggingFamily *> * _families;
+public:
+    /// Ctr. Sets all stream ptrs to null.
+    LoggingFamily( const std::string &, LogLevel );
+    /// Dtr.
+    virtual ~LoggingFamily() {}
+    /// Log level getter.
+    LogLevel log_level() const { return _lvl; }
+    /// Log level setter.
+    virtual void log_level( LogLevel );
+    /// Returns stream appropriate to the level provided (even if set log level
+    /// is lesser than provided). May be
+    /// overriden by descendant classes to provide dedicated stream for errors
+    /// and messages.
+    virtual std::ostream & stream_for( LogLevel );
+    /// Returns prefix string appropriate for referred level.
+    virtual std::string get_prefix_for_loglevel( LogLevel ) const;
+    /// Returns const ref to current family name.
+    virtual const std::string & family_name() const { return _name; }
+    /// Returns logging family instance. If it does not exist, it will be
+    /// created using virtual ctr facility.
+    static LoggingFamily & get_instance( const std::string & );
+};  // class LoggingFamily
+
 /**@class Logger
  * @brief A utility class for dedicated logging.
  *
@@ -70,64 +126,54 @@ public:
  * application-wide logging.
  * 
  * Follows common convention of three-leveled logging, where 0 does not
- * produces logging messages at all and 3 generates loquatios output.
+ * produces logging messages at all and 3 generates loquacious output. Negative
+ * codes are reserved for warnings (-1) and errors (-2). Logging an error has
+ * no effect besides printing an error message to the proper stream (i.e., no
+ * abort, termination or exceptions thrown).
  */
 class Logger {
-public:
-    enum LogLevel : uint8_t {
-        quiet = 0,
-        laconic = 1,
-        verbose = 2,
-        loquacious = 3,
-    };
 private:
-    /// Current logging level.
-    LogLevel _lvl;
-    /// True, if stream pointer has to be deleted by dtr.
-    bool _owningStream;
-    /// Pointer to output stream instance
-    mutable std::ostream * _loggingStream;
     /// Buffer for snprintf;
-    mutable char _bf[256];
+    mutable char _bf[GOO_EMERGENCY_BUFLEN];
 
-    /// Protected ctr invoked by other ctrs.
-    Logger( LogLevel lvl,
-            std::ostream * loggingStream,
-            bool owningStream ) :
-                    _lvl(lvl),
-                    _owningStream(owningStream),
-                    _loggingStream(loggingStream) {}
+    /// Common logging prefix related to this particular instance.
+    std::string _prefix;
+
+    /// Family to which this instance belongs.
+    LoggingFamily & _family;
 public:
-    /// Generic ctr. If stream ptr is non-null, it won't be considered as "own"
-    /// and won't be freed by dtr.
-    Logger( LogLevel lvl, std::ostream * osPtr=nullptr ) :
-            Logger( lvl, osPtr, !osPtr ) {}
-    /// Ctr that accepts reference to externally-managed stream.
-    Logger( LogLevel lvl, std::ostream & os ) :
-            Logger( lvl, &os, false ) {}
-    /// Dtr. Deletes internal stream if need.
-    ~Logger();
-    /// Stream getter. Has const qualifier for caching procedures to become
-    /// able to produce output. If stream is not set upon this method is
-    /// invoked, sets it to new own stringstream.
-    std::ostream & own_log_stream() const;
-    /// Returns true, if stream will be deleted by dtr of this instance.
-    bool own_stream() const { return _owningStream; }
+    /// Creates new instance that may access logging functions via own methods
+    /// automatically dispatching message to the certain logging section
+    /// (LoggingFamily). Second argument describes format string for current
+    /// instance that, if non-empty, will be printed before any message issued
+    /// by this instance, after common section prefix.
+    Logger( const std::string & familyName,
+            const std::string & prfx="" );
+    virtual ~Logger();
     /// Returns current logging level.
-    LogLevel log_level() const { return _lvl; }
+    LogLevel log_level() const { return _family.log_level(); }
     /// Method with functionality similar to native C printf(), putting the
     /// message into logging stream if given lvl is equal to or less than
     /// current for this Logger instance.
-    void log_message( LogLevel lvl, const char * fmt, ... ) const;
+    virtual void log_msg( LogLevel lvl, const char * fmt, ... ) const;
+    /// Returns logging prefix related to this particular instance.
+    const std::string & logging_prefix() const { return _prefix; }
+    /// Returns reference to logging family (mutable).
+    LoggingFamily & log_family() { return _family; }
+    /// Returns reference to logging family (const).
+    const LoggingFamily & log_family() const { return _family; }
 };
 
+}  // namespace logging
+
+namespace aux {
 /** Uses Public Morozoff antipattern internally. Accepts standard X11
  * font ID string.
  * @ingroup cernroot
  */
 void set_font_of_TGCommandPlugin( TGCommandPlugin *, const std::string & );
+}  // namespace ::sV::aux
 
-}  // namespace aux
 }  // namespace sV
 
 # endif  // H_STROMA_V_LOGGING_AUX_H

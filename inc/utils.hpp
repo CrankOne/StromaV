@@ -44,16 +44,6 @@ parse_double_fp_vector( const std::string & );
 G4ThreeVector parse_g4_three_vector( const std::string &, double factor=1 );
 # endif
 
-// TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-// or ::goo::dict::Configuration::free_tokens()
-// when goo/appParameters branch will be merged to goo/master:
-size_t goo_XXX_tokenize_argstring( const std::string &, char **& argvTokens );
-
-// TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-// or ::goo::dict::Configuration::free_tokens()
-// when goo/appParameters branch will be merged to goo/master:
-void goo_XXX_free_tokens( size_t argcTokens, char ** argvTokens );
-
 }  // namespace aux
 }  // namespace sV
 

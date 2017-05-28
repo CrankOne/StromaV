@@ -26,6 +26,8 @@
 # include <cstdlib>
 # include <iostream>
 # include <goo_ansi_escseq.h>
+# else
+# include "app/abstract.hpp"
 # endif
 
 # include <TGText.h>
@@ -36,12 +38,15 @@
 # include <TGResourcePool.h>
 
 # include <goo_utility.hpp>
+# include <goo_ansi_escseq.h>
+# include <goo_utility.h>
 
 # include <regex>
+# include <iostream>
 
 namespace sV {
-namespace aux {
 
+namespace aux {
 struct MorozoffCommandPl : public TGCommandPlugin {
     TGTextView * text_view_ptr() { return fStatus; }
     void text_view_ptr( TGTextView * ntvPtr ) { fStatus = ntvPtr; }
@@ -62,6 +67,11 @@ public:
 
 static const char _static_ASCIIEscSeqRemovingRxStr[] = R"((\x9B|\x1B\[)[0-?]*[ -\/]*[@-~])";
 static const std::regex _static_ASCIIEscSeqRemovingRx(_static_ASCIIEscSeqRemovingRxStr);
+}  // namespace ::sV::aux
+
+
+
+namespace logging {
 
 StreamBuffer::StreamBuffer() /*: _cmdlPluginPtr(nullptr)*/ {
 }
@@ -116,7 +126,7 @@ StreamBuffer::sync() {
             TGText tgt( strippedColorStr.c_str() );
 
             // TODO: monkey-patch!
-            reinterpret_cast<MorozoffCommandPl *>( _cmdlPluginPtr)
+            reinterpret_cast<::sV::aux::MorozoffCommandPl *>( _cmdlPluginPtr)
                         ->text_view_ptr()
                         ->AddText( &tgt );
         }
@@ -138,58 +148,127 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
         font = (TGClient::Instance())->GetResourcePool()->GetDefaultFont();
     }
     FontStruct_t labelfont = font->GetFontStruct();
-    reinterpret_cast<MorozoffCommandPl *>( plPtr )
+    reinterpret_cast<::sV::aux::MorozoffCommandPl *>( plPtr )
                         ->text_view_ptr()
                         ->SetFont( labelfont );
+}
+
+
+//
+// LoggingFamily
+///////////////
+
+std::unordered_map<std::string, LoggingFamily *> * LoggingFamily::_families = nullptr;
+
+LoggingFamily::LoggingFamily( const std::string & nm, LogLevel l ) : _name(nm), _lvl(l) {
+}
+
+void
+LoggingFamily::log_level( LogLevel l ) {
+    _lvl = l;
+}
+
+std::ostream &
+LoggingFamily::stream_for( LogLevel l ) {
+    int8_t n = l + 2;
+    if( _streamPtrs[n] ) {
+        return *_streamPtrs[n];
+    } else if( l < 0 ) {
+        return std::cerr;
+    } else {
+        return std::cerr;
+    }
+}
+
+// Default prefixes.
+static const char _static_logPrefixes[][64] = {
+    "[%7s" ESC_BLDRED "EE" ESC_CLRCLEAR "] %s: ",
+    "[%7s" ESC_BLDYELLOW "WW" ESC_CLRCLEAR "] %s: ",
+    "[%7s" ESC_BLDBLUE "L1" ESC_CLRCLEAR "] %s: ",
+    "[%7s" ESC_CLRCYAN "L2" ESC_CLRCLEAR "] %s: ",
+    "[%7s" ESC_CLRBLUE "L3" ESC_CLRCLEAR "] %s: ",
+    "[%7s" ESC_CLRCYAN "??" ESC_CLRCLEAR "] %s: ",
+};
+
+std::string
+LoggingFamily::get_prefix_for_loglevel( LogLevel l ) const {
+    const char * fmt;
+    char prefixBf[128];
+    switch(l) {
+        case      error: fmt = _static_logPrefixes[0]; break;
+        case    warning: fmt = _static_logPrefixes[1]; break;
+        case      quiet: fmt = _static_logPrefixes[2]; break;
+        case    laconic: fmt = _static_logPrefixes[3]; break;
+        case loquacious: fmt = _static_logPrefixes[4]; break;
+        default: fmt = _static_logPrefixes[5];
+    };
+    snprintf( prefixBf, sizeof(prefixBf), fmt, hctime(), family_name().c_str() );
+    return prefixBf;
+}
+
+LoggingFamily &
+LoggingFamily::get_instance( const std::string & nm ) {
+    if( !_families ) {
+        _families = new std::unordered_map<std::string, LoggingFamily *>();
+    }
+    auto it = _families->find( nm );
+    if( _families->end() == it ) {
+        if( !AbstractApplication::exists() ) {
+            sV_logw( "Unable to acquire \"class\" parameter for logging "
+                    "family \"%s\" since app. instance wasn't initialized "
+                    "up to this time, so \"Common\" class will be set.\n",
+                    nm.c_str() );
+            it = _families->emplace( nm, generic_new<LoggingFamily>(
+                    "Common" ) ).first;
+        } else {
+            it = _families->emplace( nm, generic_new<LoggingFamily>(
+                    goo::app<AbstractApplication>().cfg_option<std::string>(
+                            "logging.sections." + nm + "class" ) ) ).first;
+        }
+    }
+    return *(it->second);
 }
 
 //
 // Logger
 ////////
 
-Logger::~Logger() {
-    if( own_stream() ) {
-        delete _loggingStream;
-    }
+Logger::Logger( const std::string & familyName,
+                const std::string & prfx ) :
+                        _family( LoggingFamily::get_instance( familyName ) ) {
+    _prefix=prfx;
+    // TODO: process $(this)/$(PID)/whatever...
 }
 
-std::ostream &
-Logger::own_log_stream() const {
-    if( !_loggingStream ) {
-        _loggingStream = new std::stringstream();
-    }
-    return *_loggingStream;
-}
+Logger::~Logger() {}
 
 void
-Logger::log_message( LogLevel lvl, const char * fmt, ... ) const {
-    int final_n, n = strlen(fmt);
+Logger::log_msg(    LogLevel lvl,
+                    const char * fmt, ... ) const {
     if( log_level() < lvl ) {
         return;
     }
-
+    int final_n, n = strlen(fmt);
     va_list ap;
     while( 1 ) {
         strcpy( _bf, fmt );
         va_start( ap, fmt );
-        final_n = vsnprintf( _bf, sizeof( _bf ), fmt, ap );
+            final_n = vsnprintf( _bf, sizeof( _bf ), fmt, ap );
         va_end(ap);
-        if( final_n < 0 || final_n >= sizeof(_bf) ) {
+        if( final_n < 0 || final_n >= (int) sizeof(_bf) ) {
             n += abs(final_n - n + 1);
         } else {
             break;
         }
     }
-
-    //va_list ap;
-    //va_start( ap, fmt );
-    //snprintf( _bf, sizeof(_bf), fmt, ap );
-    //va_end( ap );
-
-    own_log_stream() << _bf;
+    char bf[GOO_EMERGENCY_BUFLEN+32];
+    snprintf( bf, sizeof(bf), "%s %s:%s",
+        log_family().get_prefix_for_loglevel(lvl).c_str(), _prefix.c_str(), _bf );
+    const_cast<LoggingFamily &>(log_family())
+        .stream_for(lvl) << bf;
 }
 
-}  // namespace aux
+}  // namespace ::sV::logging
 }  // namespace sV
 
 # if 0
@@ -264,4 +343,20 @@ main(int argc, char * argv[]) {
     return EXIT_SUCCESS;
 }
 # endif
+
+void
+Logger::message( LogLevel level, const std::string & msg, bool noprefix ) {
+    if( level <= log_level() ) {
+        char prefixBf[128];
+        const char emptyPrefix[] = "";
+        if( !noprefix ) {
+            snprintf( prefixBf, sizeof(prefixBf),
+                      get_prefix_for_loglevel(level), hctime() );
+        }
+        const char * prefix = noprefix ? emptyPrefix : prefixBf;
+        std::ostream & os = ostream_for( level );
+        os << prefix << msg;
+        os.flush();
+    }
+}
 # endif

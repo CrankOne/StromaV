@@ -25,6 +25,7 @@
 # include <goo_exception.hpp>
 
 # include <cstring>
+# include <cassert>
 
 # include <unistd.h>
 
@@ -35,8 +36,8 @@ PeerConnection::PeerConnection() : _sockID(0) {
     bzero( &_addr, sizeof(_addr) );
 }
 
-PeerConnection::PeerConnection( const struct sockaddr_in & o ) :
-                _sockID(0) {
+PeerConnection::PeerConnection( int sockID, const struct sockaddr_in & o ) :
+                _sockID(sockID) {
     set_sockaddr( o );
 }
 
@@ -45,7 +46,7 @@ PeerConnection::~PeerConnection() {
 
 size_t
 PeerConnection::send( const char * data, size_t length ) {
-    ssize_t ret = ::send( _sockID, data, length, 0);
+    ssize_t ret = ::send( socket_id(), data, length, 0);
     if( ret < 0 ) {
         emraise( nwGeneric, "send(): %s.", strerror(errno) );
     }
@@ -54,7 +55,8 @@ PeerConnection::send( const char * data, size_t length ) {
 
 size_t
 PeerConnection::recieve( char * output, size_t maxLength ) {
-    ssize_t ret = recv( _sockID, output, maxLength, 0 );
+    assert( _sockID );
+    ssize_t ret = recv( socket_id(), output, maxLength, 0 );
     if( ret < 0 ) {
         emraise( nwGeneric, "recv(): %s.", strerror(errno) );
     }
@@ -75,8 +77,10 @@ PeerConnection::socket_status_code( int socketID ) {
 
 void
 PeerConnection::close() {
-    ::close(_sockID);
-    reset_socket_id();
+    if( _sockID ) {
+        ::close( socket_id() );
+        reset_socket_id();
+    }
 }
 
 void
@@ -91,6 +95,15 @@ PeerConnection::socket_id( int val ) {
             "instead.", this );
     }
     _sockID = val;
+}
+
+int
+PeerConnection::socket_id() const {
+    if( !_sockID ) {
+        emraise( badState, "Socket identifier is null. Connection wasn't "
+            "initialized." );
+    }
+    return _sockID;
 }
 
 void

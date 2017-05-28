@@ -33,6 +33,7 @@
 
 # include <goo_app.hpp>
 # include <goo_dict/parameters/path_parameter.hpp>
+# include <goo_dict/configuration.hpp>
 
 static void __static_disable_damn_root_handlers() __attribute__ ((constructor(101)));
 void __static_disable_damn_root_handlers() {
@@ -72,10 +73,7 @@ RootApplication::RootApplication(
 
 RootApplication::~RootApplication() {
     if( _t_argc ) {
-        // TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-        // or ::goo::dict::Configuration::free_tokens()
-        // when goo/appParameters branch will be merged to goo/master:
-        ::sV::aux::goo_XXX_free_tokens( _t_argc, _t_argv );
+        ::goo::dict::Configuration::free_tokens( _t_argc, _t_argv );
     }
 }
 
@@ -84,7 +82,7 @@ RootApplication::_create_TApplication( const std::string & rootAppArguments ) {
     if( rootAppArguments.empty() ) {
         _tApp = new TApplication( _appClassName.c_str(), nullptr, nullptr, nullptr, 0 );
     } else {
-        _t_argc = ::sV::aux::goo_XXX_tokenize_argstring(
+        _t_argc = ::goo::dict::Configuration::tokenize_string(
                     rootAppArguments,
                     _t_argv );
         _tApp = new TApplication( _appClassName.c_str(), &_t_argc, _t_argv, nullptr, 0 );

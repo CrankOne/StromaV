@@ -25,8 +25,6 @@
 
 # include "sV_config.h"
 
-# ifdef RPC_PROTOCOLS
-
 # include "app/app.h"
 
 # include <goo_dict/dict.hpp>
@@ -294,6 +292,5 @@ StromaV_DEFINE_CONSTRUCTABLE( cxxBaseClass,                                 \
                         name,                                               \
                         StromaV_DEFAULT_CONSTRUCTOR_NAME( cxxClassName ) )
 
-# endif  // RPC_PROTOCOLS
 # endif  // H_STROMA_V_CONSTRUCTORS_DICTIONARY_H
 

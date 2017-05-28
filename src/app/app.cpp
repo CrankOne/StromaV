@@ -48,7 +48,7 @@ sV_C_message( const int8_t level, const char * fmt, ... ) {
         vsnprintf(dest, GOO_EMERGENCY_BUFLEN, fmt, argptr);
     va_end(argptr);
     if( sV::AbstractApplication::exists() ) {
-        goo::app<sV::AbstractApplication>().message( level, dest );
+        goo::app<sV::AbstractApplication>().log_msg( (::sV::logging::LogLevel) level, dest );
     } else {
         if( -2 == level ) {
             eprintf( "StromaV : %s", dest );

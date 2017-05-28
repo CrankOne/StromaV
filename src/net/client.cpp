@@ -88,6 +88,9 @@ ClientConnection::_setup_destination_host( const std::string & hostname ) {
 
 void
 ClientConnection::connect() {
+    if( !is_socket_set() ) {
+        socket_id( socket(AF_INET, SOCK_STREAM, 0) );
+    }
     if( 0 > (::connect( socket_id(), (struct sockaddr *) &_addr, sizeof(_addr))) ) {
         emraise( nwGeneric, "connect(): %s.", strerror(errno) );
     }
