@@ -77,7 +77,7 @@ public:
 };  // class StreamBuffer
 
 
-/**@class LoggingFamily
+/**@class iLoggingFamily
  * @brief Thmeatic section for logging usually referring to certain set of
  *        classes.
  *
@@ -85,21 +85,21 @@ public:
  * IndexOfConstructables class. Besides of that all created instances are
  * indexed at the common static map.
  * */
-class LoggingFamily {
+class iLoggingFamily {
 private:
     const std::string _name;
     /// Logging level set for family.
     LogLevel _lvl;
-    /// Stream references set for family.
-    std::ostream * _streamPtrs[7];
 
     /// Static dictionary of all constructed family objects.
-    static std::unordered_map<std::string, LoggingFamily *> * _families;
+    static std::unordered_map<std::string, iLoggingFamily *> * _families;
+    /// Static set of dictionary config parameters. TODO: do we need this?
+    //static std::unordered_map<std::string, goo::dict::Dictionary> * _familyConfigs;
 public:
     /// Ctr. Sets all stream ptrs to null.
-    LoggingFamily( const std::string &, LogLevel );
+    iLoggingFamily( const std::string &, LogLevel );
     /// Dtr.
-    virtual ~LoggingFamily() {}
+    virtual ~iLoggingFamily() {}
     /// Log level getter.
     LogLevel log_level() const { return _lvl; }
     /// Log level setter.
@@ -108,15 +108,35 @@ public:
     /// is lesser than provided). May be
     /// overriden by descendant classes to provide dedicated stream for errors
     /// and messages.
-    virtual std::ostream & stream_for( LogLevel );
+    virtual std::ostream & stream_for( LogLevel ) = 0;
     /// Returns prefix string appropriate for referred level.
-    virtual std::string get_prefix_for_loglevel( LogLevel ) const;
+    virtual std::string get_prefix_for_loglevel( LogLevel ) const = 0;
     /// Returns const ref to current family name.
     virtual const std::string & family_name() const { return _name; }
     /// Returns logging family instance. If it does not exist, it will be
     /// created using virtual ctr facility.
-    static LoggingFamily & get_instance( const std::string & );
-};  // class LoggingFamily
+    static iLoggingFamily & get_instance( const std::string & );
+};  // class iLoggingFamily
+
+/// Shortcut for define virtual ctr for logging family classes without common
+/// config mapping.
+# define StromaV_LOGGING_CLASS_DEFINE( cxxClassName, name )                 \
+StromaV_DEFINE_STD_CONSTRUCTABLE( cxxClassName, name, sV::logging::iLoggingFamily )
+
+/// Shortcut for define virtual ctr for logging family classes with common
+/// config mapping.
+# define StromaV_LOGGING_CLASS_DEFINE_MCONF( cxxClassName, name )           \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::logging::iLoggingFamily )
+
+class CommonLoggingFamily : public iLoggingFamily {
+private:
+    /// Stream references set for family.
+    std::ostream * _streamPtrs[7];
+public:
+    CommonLoggingFamily( const goo::dict::Dictionary &, LogLevel l=loquacious );
+    virtual std::ostream & stream_for( LogLevel ) override;
+    virtual std::string get_prefix_for_loglevel( LogLevel ) const override;
+};
 
 /**@class Logger
  * @brief A utility class for dedicated logging.
@@ -140,11 +160,11 @@ private:
     std::string _prefix;
 
     /// Family to which this instance belongs.
-    LoggingFamily & _family;
+    iLoggingFamily & _family;
 public:
     /// Creates new instance that may access logging functions via own methods
     /// automatically dispatching message to the certain logging section
-    /// (LoggingFamily). Second argument describes format string for current
+    /// (iLoggingFamily). Second argument describes format string for current
     /// instance that, if non-empty, will be printed before any message issued
     /// by this instance, after common section prefix.
     Logger( const std::string & familyName,
@@ -159,9 +179,9 @@ public:
     /// Returns logging prefix related to this particular instance.
     const std::string & logging_prefix() const { return _prefix; }
     /// Returns reference to logging family (mutable).
-    LoggingFamily & log_family() { return _family; }
+    iLoggingFamily & log_family() { return _family; }
     /// Returns reference to logging family (const).
-    const LoggingFamily & log_family() const { return _family; }
+    const iLoggingFamily & log_family() const { return _family; }
 };
 
 }  // namespace logging

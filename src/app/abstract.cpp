@@ -329,7 +329,7 @@ AbstractApplication::_append_common_config( Config & ) {
                         commonPath.c_str(), entry.path.c_str() );
                     }
                 } else {
-                    // // compare types for existing parameter
+                    // compare types for existing parameter
                     if( commonParameterPtr->target_type_info()
                         != concreteCfg.parameter( entry.path ).target_type_info() ) {
                         emraise( inconsistentConfig, "Type mismatch for VCtr "

@@ -68,6 +68,10 @@ read_yaml_node_to_goo_dict( goo::dict::Dictionary & D,
                     read_yaml_node_to_goo_dict( *dPtr,
                                                 subNode.second,
                                                 nodePath + "." );
+                } else if( D.probe_parameter( nName.c_str() ) ) {
+                    // Means dynamic node: iSingularParameter<YAML::Node>
+                    static_cast<::goo::dict::Parameter<YAML::Node>&>(D.parameter(nName))
+                            .assign_copy_of( node );
                 } else {
                     sV_log3( "Unused config subsection: \"%s\".\n",
                                 nodePath.c_str() );
@@ -106,7 +110,7 @@ read_yaml_node_to_goo_dict( goo::dict::Dictionary & D,
 void
 read_yaml_node_to_goo_list( goo::dict::iSingularParameter & genList,
                             const YAML::Node & node,
-                            const std::string nameprefix ) {
+                            const std::string /*nameprefix*/ ) {
     for( auto subNode : node ) {
         if( !subNode.IsScalar() ) {
             emraise( badParameter, "sV YAML config parser doesn't support "
@@ -118,4 +122,34 @@ read_yaml_node_to_goo_list( goo::dict::iSingularParameter & genList,
 
 }  // namespace aux
 }  // namespace sV
+
+namespace goo {
+namespace dict {
+
+
+Parameter<YAML::Node>::Parameter( const char * name_,
+               const char * description_ ) : DuplicableParent( name_,
+                              description_,
+                              0x0 | iAbstractParameter::atomic
+                                  | iAbstractParameter::singular,
+                              '\0' ) {}
+
+Parameter<YAML::Node>::Value
+Parameter<YAML::Node>::_V_parse( const char * ) const {
+    _FORBIDDEN_CALL_  // TODO
+}
+
+std::string
+Parameter<YAML::Node>::_V_stringify_value( const Value & ) const {
+    // todo: stringify YMAL node
+    return "<YAML-node>";
+}
+
+void
+Parameter<YAML::Node>::assign_copy_of( const YAML::Node & ) {
+    _TODO_  // TODO
+}
+
+}  // namespace ::goo::dict
+}  // namespace goo
 

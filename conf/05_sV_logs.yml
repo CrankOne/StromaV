@@ -22,11 +22,20 @@
 ---
 
 logging:
-    sections:
+    # The logging.families.(...) parameters has to be treated in a special way.
+    # The VCtr dictionary does not define topology of this dictionary.
+    families:
         application:
             class: Common
         buckets-reading:
             class: Common
+    Extended:  # Draft for future...
+       ePrefix : "[\\033[1;31mEE\\033[0m $(time)/$(family)/$(pointer)/$(file):$(line)]: $(message)"
+       wPrefix : "[\\033[1;33mWW\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
+       l1Prefix: "[\\033[1;36mL1\\033[0m $(time)]: $(message)"
+       l2Prefix: "[\\033[1;36mL2\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
+       l3Prefix: "[\\033[1;32mL3\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
+       dPrefix : "[\\033[1;35mL3\\033[0m $(time)/$(family)/$(pointer)/$(file):$(line)]: $(message)"
 ...
 
 

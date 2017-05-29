@@ -155,21 +155,55 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
 
 
 //
-// LoggingFamily
+// iLoggingFamily
 ///////////////
 
-std::unordered_map<std::string, LoggingFamily *> * LoggingFamily::_families = nullptr;
+std::unordered_map<std::string, iLoggingFamily *> * iLoggingFamily::_families = nullptr;
 
-LoggingFamily::LoggingFamily( const std::string & nm, LogLevel l ) : _name(nm), _lvl(l) {
+iLoggingFamily::iLoggingFamily( const std::string & nm, LogLevel l ) : _name(nm), _lvl(l) {
 }
 
 void
-LoggingFamily::log_level( LogLevel l ) {
+iLoggingFamily::log_level( LogLevel l ) {
     _lvl = l;
 }
 
+iLoggingFamily &
+iLoggingFamily::get_instance( const std::string & nm ) {
+    if( !_families ) {
+        _families = new std::unordered_map<std::string, iLoggingFamily *>();
+    }
+    auto it = _families->find( nm );
+    if( _families->end() == it ) {
+        if( !AbstractApplication::exists() ) {
+            sV_logw( "Unable to acquire \"class\" parameter for logging "
+                    "family \"%s\" since app. instance wasn't initialized "
+                    "up to this time, so \"Common\" class will be set.\n",
+                    nm.c_str() );
+            it = _families->emplace( nm, generic_new<iLoggingFamily>(
+                    "Common" ) ).first;
+        } else {
+            it = _families->emplace( nm, generic_new<iLoggingFamily>(
+                    goo::app<AbstractApplication>().cfg_option<std::string>(
+                            "logging.sections." + nm + "class" ) ) ).first;
+        }
+    }
+    return *(it->second);
+}
+
+//
+// CommonLoggingFamily
+/////////////////////
+
+CommonLoggingFamily::CommonLoggingFamily(
+                const goo::dict::Dictionary & dct,
+                LogLevel l ) :
+        iLoggingFamily( "Common", l ) {
+    bzero( _streamPtrs, sizeof(_streamPtrs) );
+}
+
 std::ostream &
-LoggingFamily::stream_for( LogLevel l ) {
+CommonLoggingFamily::stream_for( LogLevel l ) {
     int8_t n = l + 2;
     if( _streamPtrs[n] ) {
         return *_streamPtrs[n];
@@ -191,7 +225,7 @@ static const char _static_logPrefixes[][64] = {
 };
 
 std::string
-LoggingFamily::get_prefix_for_loglevel( LogLevel l ) const {
+CommonLoggingFamily::get_prefix_for_loglevel( LogLevel l ) const {
     const char * fmt;
     char prefixBf[128];
     switch(l) {
@@ -206,27 +240,8 @@ LoggingFamily::get_prefix_for_loglevel( LogLevel l ) const {
     return prefixBf;
 }
 
-LoggingFamily &
-LoggingFamily::get_instance( const std::string & nm ) {
-    if( !_families ) {
-        _families = new std::unordered_map<std::string, LoggingFamily *>();
-    }
-    auto it = _families->find( nm );
-    if( _families->end() == it ) {
-        if( !AbstractApplication::exists() ) {
-            sV_logw( "Unable to acquire \"class\" parameter for logging "
-                    "family \"%s\" since app. instance wasn't initialized "
-                    "up to this time, so \"Common\" class will be set.\n",
-                    nm.c_str() );
-            it = _families->emplace( nm, generic_new<LoggingFamily>(
-                    "Common" ) ).first;
-        } else {
-            it = _families->emplace( nm, generic_new<LoggingFamily>(
-                    goo::app<AbstractApplication>().cfg_option<std::string>(
-                            "logging.sections." + nm + "class" ) ) ).first;
-        }
-    }
-    return *(it->second);
+StromaV_LOGGING_CLASS_DEFINE( CommonLoggingFamily, "Common" ) {
+    return goo::dict::Dictionary( NULL, "Common logging family class." );
 }
 
 //
@@ -235,7 +250,7 @@ LoggingFamily::get_instance( const std::string & nm ) {
 
 Logger::Logger( const std::string & familyName,
                 const std::string & prfx ) :
-                        _family( LoggingFamily::get_instance( familyName ) ) {
+                        _family( iLoggingFamily::get_instance( familyName ) ) {
     _prefix=prfx;
     // TODO: process $(this)/$(PID)/whatever...
 }
@@ -264,7 +279,7 @@ Logger::log_msg(    LogLevel lvl,
     char bf[GOO_EMERGENCY_BUFLEN+32];
     snprintf( bf, sizeof(bf), "%s %s:%s",
         log_family().get_prefix_for_loglevel(lvl).c_str(), _prefix.c_str(), _bf );
-    const_cast<LoggingFamily &>(log_family())
+    const_cast<iLoggingFamily &>(log_family())
         .stream_for(lvl) << bf;
 }
 

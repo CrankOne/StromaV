@@ -27,10 +27,10 @@
 
 # include "goo_dict/dict.hpp"
 
-# include "yaml.h"
+# include <yaml.h>
 
 namespace sV {
-namespace aux {
+namespace aux { 
 
 void read_yaml_config_file_to_goo_dict( goo::dict::Dictionary &,
                                         const std::string filename );
@@ -43,8 +43,39 @@ void read_yaml_node_to_goo_list( goo::dict::iSingularParameter &,
                                  const YAML::Node &,
                                  const std::string nameprefix="" );
 
-}  // namespace aux
+}  // namespace ::sV::aux
 }  // namespace sV
+
+namespace goo {
+namespace dict {
+
+template<>
+class Parameter<YAML::Node> : public
+                        mixins::iDuplicable< iAbstractParameter,
+                        Parameter<YAML::Node>,
+                        iParameter<YAML::Node> > {
+public:
+    typedef typename DuplicableParent::Parent::Value Value;
+public:
+    /// Only long option ctr.
+    Parameter( const char * name_,
+               const char * description_ );
+
+    Parameter( const Parameter<YAML::Node> & o ) : DuplicableParent( o ) {}
+    friend class ::goo::dict::InsertionProxy;
+protected:
+    /// Sets parameter value from given string.
+    virtual Value _V_parse( const char * ) const override;
+    /// Returns set value.
+    virtual std::string _V_stringify_value( const Value & ) const override;
+public:
+    /// Sets the internal YAML node value to copy of given one.
+    void assign_copy_of( const YAML::Node & );
+};
+
+}  // namespace ::goo::dict
+}  // namespace goo
+
 
 # endif  // H_STROMA_V_YAML_CPP_CONFIG_PARSER_ADAPTER_H
 
