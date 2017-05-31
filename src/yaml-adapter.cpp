@@ -146,8 +146,8 @@ Parameter<YAML::Node>::_V_stringify_value( const Value & ) const {
 }
 
 void
-Parameter<YAML::Node>::assign_copy_of( const YAML::Node & ) {
-    _TODO_  // TODO
+Parameter<YAML::Node>::assign_copy_of( const YAML::Node & orig ) {
+    _set_value( YAML::Clone( orig ) );
 }
 
 }  // namespace ::goo::dict

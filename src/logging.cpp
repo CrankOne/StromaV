@@ -22,13 +22,7 @@
 
 # include "logging.hpp"
 
-# ifdef STANDALONE_BUILD
-# include <cstdlib>
-# include <iostream>
-# include <goo_ansi_escseq.h>
-# else
 # include "app/abstract.hpp"
-# endif
 
 # include <TGText.h>
 # include <TGCommandPlugin.h>
@@ -43,6 +37,10 @@
 
 # include <regex>
 # include <iostream>
+
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+#   include "ctemplate/template.h"
+# endif
 
 namespace sV {
 
@@ -160,7 +158,8 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
 
 std::unordered_map<std::string, iLoggingFamily *> * iLoggingFamily::_families = nullptr;
 
-iLoggingFamily::iLoggingFamily( const std::string & nm, LogLevel l ) : _name(nm), _lvl(l) {
+iLoggingFamily::iLoggingFamily( const std::string & nm,
+                                LogLevel l ) : _name(nm), _lvl(l) {
 }
 
 void
@@ -195,15 +194,67 @@ iLoggingFamily::get_instance( const std::string & nm ) {
 // CommonLoggingFamily
 /////////////////////
 
+const char CommonLoggingFamily::templateNames[8][64] = {
+            "common-log-tpl-error",  "common-log-tpl-warning",
+            "common-log-tpl-log-msg",
+            "common-log-tpl-log-msg-1", "common-log-tpl-log-msg-2", "common-log-tpl-log-msg-3"
+            "common-log-tpl-debug-msg", "common-log-tpl-other"};
+
+// Default prefixes.
+const char CommonLoggingFamily::logPrefixes[8][32] = {
+    ESC_BLDRED      "EE" ESC_CLRCLEAR,
+    ESC_BLDYELLOW   "WW" ESC_CLRCLEAR,
+    ESC_BLDYELLOW   "--" ESC_CLRCLEAR,
+    ESC_BLDBLUE     "L1" ESC_CLRCLEAR,
+    ESC_CLRCYAN     "L2" ESC_CLRCLEAR,
+    ESC_CLRBLUE     "L3" ESC_CLRCLEAR,
+    ESC_BLDVIOLET   "DD" ESC_CLRCLEAR,
+    ESC_CLRCYAN     "??" ESC_CLRCLEAR,
+};
+
 CommonLoggingFamily::CommonLoggingFamily(
                 const goo::dict::Dictionary & dct,
                 LogLevel l ) :
         iLoggingFamily( "Common", l ) {
     bzero( _streamPtrs, sizeof(_streamPtrs) );
+    if(!dct.parameters().empty()) {
+        CommonLoggingFamily::_V_configure( dct );
+    }
+}
+
+void
+CommonLoggingFamily::_V_configure( const goo::dict::Dictionary & dct ) {
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    ctemplate::StringToTemplateCache( "common-log-tpl-error",
+        dct["ePrefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-warning",
+        dct["wPrefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg",
+        dct["msgPrefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-1",
+        dct["l1Prefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-2",
+        dct["l2Prefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-3",
+        dct["l3Prefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-debug-msg",
+        dct["dPrefix"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    ctemplate::StringToTemplateCache( "common-log-tpl-other",
+        dct["other"].as<std::string>(),
+        ctemplate::DO_NOT_STRIP );
+    # endif  // defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    set_customized();
 }
 
 std::ostream &
-CommonLoggingFamily::stream_for( LogLevel l ) {
+CommonLoggingFamily::_V_stream_for( LogLevel l ) {
     int8_t n = l + 2;
     if( _streamPtrs[n] ) {
         return *_streamPtrs[n];
@@ -214,34 +265,89 @@ CommonLoggingFamily::stream_for( LogLevel l ) {
     }
 }
 
-// Default prefixes.
-static const char _static_logPrefixes[][64] = {
-    "[%7s" ESC_BLDRED "EE" ESC_CLRCLEAR "] %s: ",
-    "[%7s" ESC_BLDYELLOW "WW" ESC_CLRCLEAR "] %s: ",
-    "[%7s" ESC_BLDBLUE "L1" ESC_CLRCLEAR "] %s: ",
-    "[%7s" ESC_CLRCYAN "L2" ESC_CLRCLEAR "] %s: ",
-    "[%7s" ESC_CLRBLUE "L3" ESC_CLRCLEAR "] %s: ",
-    "[%7s" ESC_CLRCYAN "??" ESC_CLRCLEAR "] %s: ",
-};
-
 std::string
 CommonLoggingFamily::get_prefix_for_loglevel( LogLevel l ) const {
     const char * fmt;
-    char prefixBf[128];
     switch(l) {
-        case      error: fmt = _static_logPrefixes[0]; break;
-        case    warning: fmt = _static_logPrefixes[1]; break;
-        case      quiet: fmt = _static_logPrefixes[2]; break;
-        case    laconic: fmt = _static_logPrefixes[3]; break;
-        case loquacious: fmt = _static_logPrefixes[4]; break;
-        default: fmt = _static_logPrefixes[5];
+        case      error: fmt = logPrefixes[0]; break;
+        case    warning: fmt = logPrefixes[1]; break;
+        case      quiet: fmt = logPrefixes[2]; break;
+        case    laconic: fmt = logPrefixes[3]; break;
+        case loquacious: fmt = logPrefixes[4]; break;
+        default: fmt = logPrefixes[5];
     };
-    snprintf( prefixBf, sizeof(prefixBf), fmt, hctime(), family_name().c_str() );
-    return prefixBf;
+    return fmt;
 }
 
-StromaV_LOGGING_CLASS_DEFINE( CommonLoggingFamily, "Common" ) {
-    return goo::dict::Dictionary( NULL, "Common logging family class." );
+void
+CommonLoggingFamily::_V_message( LogLevel lvl,
+                              const std::string & instanceID,
+                              const std::string & msg ) const {
+    char bf[GOO_EMERGENCY_BUFLEN+32];
+    snprintf( bf, sizeof(bf), "%7s/%s/%s %s:%s",
+        hctime(),
+        get_prefix_for_loglevel(lvl).c_str(),
+        family_name().c_str(),
+        instanceID.c_str(),
+        msg.c_str() );
+
+    const_cast<CommonLoggingFamily *>(this)->stream_for(lvl) << bf;
+}
+
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+void
+CommonLoggingFamily::_V_message( ctemplate::TemplateDictionary & ldct, LogLevel lvl ) const {
+    ldct.SetValue( "hctime",    hctime() );
+    ldct.SetValue( "family",    family_name() );
+    std::string errorText;
+    ctemplate::ExpandTemplate( templateNames[(int) lvl + 2],
+                               ctemplate::DO_NOT_STRIP,
+                               &ldct,   &errorText );
+    const_cast<CommonLoggingFamily *>(this)->stream_for(lvl) << errorText;
+}
+# endif  //defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+
+StromaV_LOGGING_CLASS_DEFINE_MCONF( CommonLoggingFamily, "Common" ) {
+    goo::dict::Dictionary dct( "CommonLogging", "Common logging family class." );
+    dct.insertion_proxy()
+            .p<std::string>("ePrefix",
+                    "Template prefix for error messages.",
+                "EE: {{message}}" )
+            .p<std::string>("wPrefix",
+                    "Template prefix for warning messages.",
+                "WW: {{message}}" )
+            .p<std::string>("msgPrefix",
+                    "Template prefix for user notification messages that can "
+                    "not be turned off (i.e. ones which reserved for "
+                    "interactive input).",
+                "{{message}}" )
+            .p<std::string>("l1Prefix",
+                    "Template prefix for laconic diagnostic messages.",
+                "L1: {{message}}" )
+            .p<std::string>("l2Prefix",
+                    "Template prefix for verbose diagnostic messages.",
+                "L2: {{message}}" )
+            .p<std::string>("l3Prefix",
+                    "Template prefix for loquacious diagnostic messages.",
+                "L3: {{message}}" )
+            .p<std::string>("dPrefix",
+                    "Template prefix for debugging messages.",
+                "DD: {{message}}" )
+            .p<std::string>("other",
+                    "Template prefix for uncathegorized messages.",
+                "??: {{message}}" )
+        ;
+    goo::dict::DictionaryInjectionMap injM;
+        injM( "ePrefix",        "logging.Common.ePrefix" )
+            ( "wPrefix",        "logging.Common.wPrefix" )
+            ( "msgPrefix",      "logging.Common.msgPrefix" )
+            ( "l1Prefix",       "logging.Common.l1Prefix" )
+            ( "l2Prefix",       "logging.Common.l2Prefix" )
+            ( "l3Prefix",       "logging.Common.l3Prefix" )
+            ( "dPrefix",        "logging.Common.dPrefix" )
+            ( "other",          "logging.Common.other" )
+            ;
+    return std::make_pair( dct, injM );
 }
 
 //
@@ -252,14 +358,13 @@ Logger::Logger( const std::string & familyName,
                 const std::string & prfx ) :
                         _family( iLoggingFamily::get_instance( familyName ) ) {
     _prefix=prfx;
-    // TODO: process $(this)/$(PID)/whatever...
 }
 
 Logger::~Logger() {}
 
 void
-Logger::log_msg(    LogLevel lvl,
-                    const char * fmt, ... ) const {
+Logger::log_msg( LogLevel lvl,
+                 const char * fmt, ... ) const {
     if( log_level() < lvl ) {
         return;
     }
@@ -276,12 +381,36 @@ Logger::log_msg(    LogLevel lvl,
             break;
         }
     }
-    char bf[GOO_EMERGENCY_BUFLEN+32];
-    snprintf( bf, sizeof(bf), "%s %s:%s",
-        log_family().get_prefix_for_loglevel(lvl).c_str(), _prefix.c_str(), _bf );
-    const_cast<iLoggingFamily &>(log_family())
-        .stream_for(lvl) << bf;
+    log_family().message( lvl, _prefix, _bf );
 }
+
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+void
+Logger::log_msg( ctemplate::TemplateDictionary & ldct,
+                 LogLevel lvl,
+                 const char * fmt, ... ) const {
+    if( log_level() < lvl ) {
+        return;
+    }
+    int final_n, n = strlen(fmt);
+    va_list ap;
+    while( 1 ) {
+        strcpy( _bf, fmt );
+        va_start( ap, fmt );
+            final_n = vsnprintf( _bf, sizeof( _bf ), fmt, ap );
+        va_end(ap);
+        if( final_n < 0 || final_n >= (int) sizeof(_bf) ) {
+            n += abs(final_n - n + 1);
+        } else {
+            break;
+        }
+    }
+    ldct.SetFormattedValue( "this", "%p", this );
+    ldct.SetValue( "message", _bf );
+
+    log_family().message( ldct, lvl );
+}
+# endif
 
 }  // namespace ::sV::logging
 }  // namespace sV

@@ -47,7 +47,7 @@ extern "C" {
  * Note, that if there is no the sV::AbstractApplication instance, all
  * output will be done to `stdout`/`stderr`.
  */
-void sV_C_message( const int8_t level, const char * fmt, ... );
+void sV_C_message( const char * file, unsigned int line, const int8_t level, const char * fmt, ... );
 
 /**@brief Returns current verbosity level.
  *
@@ -60,11 +60,11 @@ uint8_t sV_get_verbosity();
  * moment. */
 uint8_t sV_is_app_initialized();
 
-# define sV_log1(...) sV_C_message(  1, __VA_ARGS__ )
-# define sV_log2(...) sV_C_message(  2, __VA_ARGS__ )
-# define sV_log3(...) sV_C_message(  3, __VA_ARGS__ )
-# define sV_logw(...) sV_C_message( -1, __VA_ARGS__ )
-# define sV_loge(...) sV_C_message( -2, __VA_ARGS__ )
+# define sV_log1(...) sV_C_message( __FILE__, __LINE__,  1, __VA_ARGS__ )
+# define sV_log2(...) sV_C_message( __FILE__, __LINE__,  2, __VA_ARGS__ )
+# define sV_log3(...) sV_C_message( __FILE__, __LINE__,  3, __VA_ARGS__ )
+# define sV_logw(...) sV_C_message( __FILE__, __LINE__, -1, __VA_ARGS__ )
+# define sV_loge(...) sV_C_message( __FILE__, __LINE__, -2, __VA_ARGS__ )
 
 # ifdef __cplusplus
 }

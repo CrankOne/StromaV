@@ -223,14 +223,18 @@ template<typename T> T *
 generic_new( const std::string & name ) {
     const auto & vctrEntry = sV::sys::IndexOfConstructables::self().find<T>( name );
     goo::dict::Dictionary ownCfg( vctrEntry.arguments );
-    if( ownCfg.name() ) {
+    if( ownCfg.name() && goo::aux::iApp::exists() ) {
         // Unnamed conf dicts has to be understood as ones without any config
         // options.
         AbstractApplication::ConstructableConfMapping::self()
             .own_conf_for<T>( name, goo::app<AbstractApplication>().common_co(),
                                     ownCfg );
     }
-    if( goo::app<AbstractApplication>().verbosity() > 2 ) {
+    int verbositySet = goo::aux::iApp::exists()
+                     ? goo::app<AbstractApplication>().verbosity()
+                     : 3
+                     ;
+    if( verbositySet > 2 ) {
         sV_log3( "generic_new(): own config for \"%s\":\n", name.c_str() );
         std::list<std::string> lst;
         if( ownCfg.name() ) {

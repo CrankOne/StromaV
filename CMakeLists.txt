@@ -226,6 +226,17 @@ find_package( LibLZMA )  # LIBLZMA_FOUND
 # OpenSSL is used for computing advanced hashes
 find_package( OpenSSL REQUIRED )
 
+# Tries to find Ctemplate library and headers:
+include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCtemplate.cmake )
+if( NOT CTEMPLATE_FOUND )
+    message( WARNING "Ctemplate library wasn't found. That is not fatal, but \
+    some template options within logging facility will not be available \
+    yielding much less informative output." )
+    set( TEMPLATED_LOGGING FALSE )
+else( NOT CTEMPLATE_FOUND )
+    set( TEMPLATED_LOGGING TRUE )
+endif( NOT CTEMPLATE_FOUND )
+
 #
 # SET-UP BUILD-TIME PARAMETERS
 #############################
@@ -301,6 +312,7 @@ include_directories( "inc"
                      ${CMAKE_CURRENT_BINARY_DIR}/inc
                      ${yaml-cpp_INCLUDE_DIRS}
                      ${OPENSSL_INCLUDE_DIR}
+                     ${CTEMPLATE_INCLUDE_DIR}
                      $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
@@ -503,12 +515,14 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
          DESTINATION include/StromaV )
 
-target_link_libraries( ${StromaV_LIB} ${Goo_LIBRARIES}   )
-target_link_libraries( ${StromaV_LIB} ${Boost_LIBRARIES} )
-target_link_libraries( ${StromaV_LIB} ${ROOT_LIBRARIES}  )
-target_link_libraries( ${StromaV_LIB} ${extGDML_LIBRARIES} )
-target_link_libraries( ${StromaV_LIB} ${yaml-cpp_LIBRARIES} )
-target_link_libraries( ${StromaV_LIB} ${OPENSSL_LIBRARIES} )
+target_link_libraries( ${StromaV_LIB}
+                            ${Goo_LIBRARIES}
+                            ${Boost_LIBRARIES}
+                            ${ROOT_LIBRARIES}
+                            ${extGDML_LIBRARIES}
+                            ${yaml-cpp_LIBRARIES}
+                            ${OPENSSL_LIBRARIES}
+                            ${CTEMPLATE_LIBRARIES} )
 if( GEANT4_MC_MODEL )
     target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )

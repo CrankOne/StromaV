@@ -30,6 +30,10 @@
 # include <list>
 # include <sstream>
 
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+#   include "ctemplate/template.h"
+# endif
+
 // fwd
 class TGCommandPlugin;
 
@@ -90,32 +94,63 @@ private:
     const std::string _name;
     /// Logging level set for family.
     LogLevel _lvl;
-
     /// Static dictionary of all constructed family objects.
     static std::unordered_map<std::string, iLoggingFamily *> * _families;
-    /// Static set of dictionary config parameters. TODO: do we need this?
-    //static std::unordered_map<std::string, goo::dict::Dictionary> * _familyConfigs;
+    /// True, when instance was initialized with dictionary and false.
+    bool _customized;
+protected:
+    /// (IM) Will be invoked by application instance on the parsing config stage.
+    virtual void _V_configure( const goo::dict::Dictionary & ) = 0;
+    /// (IM) Has to return stream appropriate to the level provided (even if set log
+    /// level is lesser than provided). May be used by descendant classes to
+    /// provide dedicated stream for errors and messages.
+    virtual std::ostream & _V_stream_for( LogLevel l ) = 0;
+    /// (IM) Has to prepends a common (plain, not templated) prefix and print
+    /// message into appropriate stream.
+    virtual void _V_message( LogLevel lvl, const std::string & instanceID, const std::string & ) const = 0;
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    /// (IM) This version of logging method is only available when templated logging
+    /// is enabled (Ctemplate library was found on system). May accept arbitrary
+    /// information defined in template dictionary (context).
+    virtual void _V_message( ctemplate::TemplateDictionary & ldct, LogLevel lvl) const = 0;
+    # endif
+
+    /// May be called by ctr of descendant classes when constructor handles the
+    /// dictionary. Sets _customized = true.
+    void set_customized() { _customized = true; }
 public:
     /// Ctr. Sets all stream ptrs to null.
+    /// Since the logging families are almost always created before the
+    /// configs read, the config dictionary in this ctr may be empty. At this
+    /// case, please, provision using the configure() function.
     iLoggingFamily( const std::string &, LogLevel );
     /// Dtr.
     virtual ~iLoggingFamily() {}
+    /// Returns logging family instance. If it does not exist, it will be
+    /// created using virtual ctr facility.
+    static iLoggingFamily & get_instance( const std::string & );
+
     /// Log level getter.
     LogLevel log_level() const { return _lvl; }
     /// Log level setter.
     virtual void log_level( LogLevel );
-    /// Returns stream appropriate to the level provided (even if set log level
-    /// is lesser than provided). May be
-    /// overriden by descendant classes to provide dedicated stream for errors
-    /// and messages.
-    virtual std::ostream & stream_for( LogLevel ) = 0;
-    /// Returns prefix string appropriate for referred level.
-    virtual std::string get_prefix_for_loglevel( LogLevel ) const = 0;
+    /// Forwards call to _V_stream_for() interfacing method.
+    virtual std::ostream & stream_for( LogLevel l ) {
+        return _V_stream_for(l); }
     /// Returns const ref to current family name.
     virtual const std::string & family_name() const { return _name; }
-    /// Returns logging family instance. If it does not exist, it will be
-    /// created using virtual ctr facility.
-    static iLoggingFamily & get_instance( const std::string & );
+    /// Has to be invoked by application instance after the parsing config stage.
+    virtual void configure( const goo::dict::Dictionary & d ) {
+        _V_configure(d); set_customized(); }
+    /// Forwards invokation to interfacing method _V_message().
+    virtual void message( LogLevel lvl, const std::string & instanceID, const std::string & msg ) const {
+        _V_message( lvl, instanceID, msg ); }
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    /// Forwards invokation to interfacing method _V_message() with Ctemplate
+    /// dict.
+    virtual void message( ctemplate::TemplateDictionary & ldct, LogLevel lvl) const {
+        _V_message( ldct, lvl ); }
+    # endif
 };  // class iLoggingFamily
 
 /// Shortcut for define virtual ctr for logging family classes without common
@@ -131,11 +166,36 @@ StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, sV::logging::iLoggin
 class CommonLoggingFamily : public iLoggingFamily {
 private:
     /// Stream references set for family.
-    std::ostream * _streamPtrs[7];
+    std::ostream * _streamPtrs[8];
+protected:
+    static const char templateNames[8][64];
+    static const char logPrefixes[8][32];
+
+    /// Returns stream appropriate to the level provided (even if set log level
+    /// is lesser than provided). May be overriden by descendant classes to
+    /// provide dedicated stream for errors and messages.
+    virtual std::ostream & _V_stream_for( LogLevel ) override;
+    /// Configures logging family instance (mostly sets the prefixes).
+    void _V_configure( const goo::dict::Dictionary & ) override;
+    /// Just prepends a common (plain, not templated) prefix and prints to
+    /// appropriate stream. Uses statically-defined prefixes declared within
+    /// this class.
+    virtual void _V_message( LogLevel lvl, const std::string & instanceID, const std::string & ) const override;
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    /// This version of logging method is only available when templated logging
+    /// is enabled (Ctemplate library was found on system). May accept arbitrary
+    /// information defined in template dictionary (context). Uses global
+    /// Ctemplates cached templates.
+    virtual void _V_message( ctemplate::TemplateDictionary & ldct, LogLevel lvl) const override;
+    # endif
 public:
-    CommonLoggingFamily( const goo::dict::Dictionary &, LogLevel l=loquacious );
-    virtual std::ostream & stream_for( LogLevel ) override;
-    virtual std::string get_prefix_for_loglevel( LogLevel ) const override;
+    /// Since the "Common" logging family is almost always created before the
+    /// configs read, the config dictionary in this ctr is almost never used.
+    CommonLoggingFamily( const goo::dict::Dictionary &,
+                         LogLevel l=loquacious );
+    /// Returns plain (non-template) prefix string appropriate for referred
+    /// level.
+    virtual std::string get_prefix_for_loglevel( LogLevel ) const;
 };
 
 /**@class Logger
@@ -150,6 +210,15 @@ public:
  * codes are reserved for warnings (-1) and errors (-2). Logging an error has
  * no effect besides printing an error message to the proper stream (i.e., no
  * abort, termination or exceptions thrown).
+ *
+ * Depending on whether the Ctemplates library was found on the host system,
+ * the behaviour of this class may vary in two ways:
+ *  - When Ctemplates was not found, this class will merely forward the
+ *    log_msg() invokation to the corresponding family instance adding just a
+ *    static prefix.
+ *  - When Ctemplates was found, in addition to extra log_msg() method, the
+ *    template rendering facility will be involved supporting some additional
+ *    information.
  */
 class Logger {
 private:
@@ -176,6 +245,15 @@ public:
     /// message into logging stream if given lvl is equal to or less than
     /// current for this Logger instance.
     virtual void log_msg( LogLevel lvl, const char * fmt, ... ) const;
+
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    /// This version of logging method is only available when templated logging
+    /// is enabled (Ctemplate library was found on system). May accept arbitrary
+    /// information defined in template dictionary (context).
+    virtual void log_msg( ctemplate::TemplateDictionary & ldct,
+                          LogLevel lvl, const char * fmt, ... ) const;
+    # endif
+
     /// Returns logging prefix related to this particular instance.
     const std::string & logging_prefix() const { return _prefix; }
     /// Returns reference to logging family (mutable).

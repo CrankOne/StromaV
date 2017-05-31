@@ -88,7 +88,13 @@ void __static_custom_segfault_handler( int signum ) {
 # endif
 
 AbstractApplication::AbstractApplication( Config * cfg ) :
-            logging::Logger( "application", "app$(this)" ),
+            logging::Logger( "application",
+                # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+                "app-{{PID}}/{{this}}"
+                # else
+                "app"
+                # endif
+            ),
             _eStr(nullptr),
             _appCfg( cfg ),
             _configuration( "sV-config", "StromaV app-managed config" ),
@@ -168,7 +174,6 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
                 "accompanied with descriptive reference information for each "
                 "parameter. Application will be terminated after dump.")
         ;
-
     // This paths are related to StromaV and may be used for in-config
     // substitution.
     _configuration.insertion_proxy()
@@ -181,6 +186,17 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
             .p<goo::filesystem::Path>( "root-plugins",
                             "Path to sV's ROOT plugins dir." )
         .end_sect( "sV-paths" )
+        .bgn_sect( "logging", "sV's logging facility configuration parameters." )
+            .p<YAML::Node>( "families", "List of logging families. Each C++ "
+                "class that is supposed to produce logging messages affiliated "
+                "with particular instance must inherit the sV::logging::Logger "
+                "class that, further, has to be included in a certain thematic "
+                "group. Such groups are called \"families\" and may be "
+                "parameterised using this config section hash. The keys become "
+                "a name of particular group which must include at least the "
+                "\"class\" entry referring to VCtr of \"iLoggingFamily\" "
+                "descendants.")
+        .end_sect( "logging" )
         ;
 }
 

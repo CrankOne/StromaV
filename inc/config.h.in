@@ -44,6 +44,7 @@
 #cmakedefine ALIGNMENT_ROUTINES         7
 #cmakedefine DSuL                       8
 #cmakedefine PYTHON_BINDINGS            9
+#cmakedefine TEMPLATED_LOGGING          10
 
 /* Some third-party libraries require this macro to be set.
  */

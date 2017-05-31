@@ -32,6 +32,10 @@
 
 # include "utils.hpp"
 
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+#   include "ctemplate/template.h"
+# endif
+
 //
 // C wrappers
 ////////////
@@ -41,22 +45,38 @@ extern "C" {
 # endif
 
 void
-sV_C_message( const int8_t level, const char * fmt, ... ) {
+sV_C_message( const char * file, unsigned int lineNo,
+              const int8_t level, const char * fmt, ... ) {
     char dest[GOO_EMERGENCY_BUFLEN];
     va_list argptr;
     va_start(argptr, fmt);
         vsnprintf(dest, GOO_EMERGENCY_BUFLEN, fmt, argptr);
     va_end(argptr);
     if( sV::AbstractApplication::exists() ) {
+        if( goo::app<sV::AbstractApplication>().verbosity() < level ) {
+            return;
+        }
+        # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+        ctemplate::TemplateDictionary dict("sV_C_message");
+        dict.SetValue( "file", file );
+        dict.SetIntValue( "line", lineNo );
+        goo::app<sV::AbstractApplication>().log_msg(
+            dict, (::sV::logging::LogLevel) level, dest );
+        # else
         goo::app<sV::AbstractApplication>().log_msg( (::sV::logging::LogLevel) level, dest );
+        # endif
     } else {
+        // todo: positional info?
         if( -2 == level ) {
             eprintf( "StromaV : %s", dest );
         } else if( -1 == level ) {
             wprintf( "StromaV : %s", dest );
         } else {
-            char  prfxBf[512];
-            snprintf(prfxBf, 256, ESC_BLDCYAN "[%d%7s]" ESC_CLRCLEAR " %s", (int) level, hctime(), dest );
+            char  prfxBf[1024];
+            snprintf(prfxBf, 256, ESC_BLDCYAN "[%d%7s]" ESC_CLRCLEAR " %s:%d : %s",
+                (int) level, hctime(),
+                file, lineNo,
+                dest );
             fputs(prfxBf, stdout);
         }
     }

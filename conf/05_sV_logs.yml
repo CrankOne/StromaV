@@ -29,13 +29,17 @@ logging:
             class: Common
         buckets-reading:
             class: Common
-    Extended:  # Draft for future...
-       ePrefix : "[\\033[1;31mEE\\033[0m $(time)/$(family)/$(pointer)/$(file):$(line)]: $(message)"
-       wPrefix : "[\\033[1;33mWW\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
-       l1Prefix: "[\\033[1;36mL1\\033[0m $(time)]: $(message)"
-       l2Prefix: "[\\033[1;36mL2\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
-       l3Prefix: "[\\033[1;32mL3\\033[0m $(time)/$(family)/$(pointer)]: $(message)"
-       dPrefix : "[\\033[1;35mL3\\033[0m $(time)/$(family)/$(pointer)/$(file):$(line)]: $(message)"
+    Common:
+        # NOTE this prefixes are used ONLY when Ctemplates library was found
+        # within build procedures. Otherwise, default hctime/class/family format
+        # will be used.
+        ePrefix : "[\\033[1;31mError\\033[0m {{hctime}}/{{family}}/{{pointer}}/{{file}}:{{line}}]: {{message}}"
+        wPrefix : "[\\033[1;33mWarning\\033[0m {{hctime}}/{{family}}/{{pointer}}: {{message}}"
+        msgPrefix: ""
+        l1Prefix: "[\\033[1;36mMsg1\\033[0m {{hctime}}]:{{message}}"
+        l2Prefix: "[\\033[1;36mMsg2\\033[0m {{hctime}}/{{family}}/{{pointer}}]: {{message}}"
+        l3Prefix: "[\\033[1;32mMsg3\\033[0m {{hctime}}/{{family}}/{{pointer}}]: {{message}}"
+        dPrefix : "[\\033[1;35mDebug\\033[0m {{hctime}}/{{family}}/{{pointer}}/{{file}}:{{line}}]: ${{message}}"
 ...
 
 
