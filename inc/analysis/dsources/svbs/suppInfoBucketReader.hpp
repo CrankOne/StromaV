@@ -107,8 +107,7 @@ public:
     /// reentrant buffers. For performance, one probably would prefer to
     /// allocate them using protobuf's arena.
     SuppInfoBucketReader( events::Bucket * bucketPtr,
-                          events::BucketInfo * bucketInfoPtr,
-                          std::ostream * logStream=nullptr );
+                          events::BucketInfo * bucketInfoPtr );
     /// Returns immutable reference to supplementary info container of current
     /// bucket.
     const events::BucketInfo & supp_info_entries() const;

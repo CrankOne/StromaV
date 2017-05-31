@@ -35,11 +35,16 @@ namespace buckets {
 
 SuppInfoBucketReader::SuppInfoBucketReader(
                         events::Bucket * bucketPtr,
-                        events::BucketInfo * bucketInfoPtr,
-                        std::ostream * logStream ) :
+                        events::BucketInfo * bucketInfoPtr ) :
                                         iEventSequence( 0x0 ),
                                         BucketReader( bucketPtr ),
-                                        logging::Logger( "buckets-reading", "SuppInfoBucketReader $(this)" ),
+                                        logging::Logger( "buckets-reading",
+                                                # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+                                                "SuppInfoBucketReader {{this}}"
+                                                # else
+                                                "SuppInfoBucketReader"
+                                                # endif
+                                            ),
                                         _bucketInfo( bucketInfoPtr ) {}
 
 void
@@ -48,8 +53,7 @@ SuppInfoBucketReader::invalidate_supp_info_caches() const {
     for( auto & p : _miCache ) {
         p.second.positionInMetaInfo = USHRT_MAX;
     }
-    log_msg( logging::laconic,
-        "supp. info caches invalidated.\n", this );
+    sV_mylog1( "supp. info caches invalidated.\n", this );
 }
 
 const events::BucketInfoEntry &
@@ -69,11 +73,11 @@ SuppInfoBucketReader::_recache_supp_info() const {
             cacheEntryIt = _miCache.emplace( tIdx,
                         _V_new_cache_entry( miRef.infotype() ) ).first;
             ++nInserted;
-            log_msg( logging::loquacious, "insertion of type %s (%x)\n",
+            sV_mylog3( "insertion of type %s (%x)\n",
                 miRef.infotype().c_str(), tIdx );
         } else {
             ++nRenewed;
-            log_msg( logging::loquacious, "renewal of type %s (%x)\n",
+            sV_mylog3( "renewal of type %s (%x)\n",
                 miRef.infotype().c_str(), tIdx );
         }
         MetaInfoCache & micRef = cacheEntryIt->second;
@@ -86,7 +90,7 @@ SuppInfoBucketReader::_recache_supp_info() const {
         micRef.positionInMetaInfo = i;
     }
     _cacheValid = true;
-    log_msg( logging::verbose, "SuppInfoBucketReader %p: %zu supp. info caches renewed, "
+    sV_mylog2( "SuppInfoBucketReader %p: %zu supp. info caches renewed, "
         "%zu inserted from %d entries.\n", this, nRenewed, nInserted,
         _bucketInfo->entries_size() );
 }

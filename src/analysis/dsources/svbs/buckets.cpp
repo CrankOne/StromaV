@@ -63,7 +63,7 @@ Buckets::Buckets(
         _pbParameters->full = _maxEventsNumber;
     }
     _sourcesIt = _paths.end();
-    log_msg( logging::laconic, "Buckets %p: constructed.\n", this );
+    sV_mylog1( "Buckets %p: constructed.\n", this );
 }
 
 Buckets::Buckets( const goo::dict::Dictionary & dct ) : Buckets(
@@ -156,20 +156,17 @@ Buckets::_V_acquire_next_bucket( BucketReader::Event *& epr ) {
         return _lastEvReadingWasGood = false;
     }
     if( Parent::_V_acquire_next_bucket( epr ) ) {
-        log_msg( logging::verbose,
-            "Next bucket in a queue acquired.\n" );
+        sV_mylog2( "Next bucket in a queue acquired.\n" );
         return _lastEvReadingWasGood = true;
     }
     if( _paths.end() == ++_sourcesIt ) {
-        log_msg( logging::verbose,
-            "Buckets %p: has no more sources in queue of %zu entries. Done.\n",
+        sV_mylog2( "Buckets %p: has no more sources in queue of %zu entries. Done.\n",
             this, _paths.size() );
         return _lastEvReadingWasGood = false;
     }
     _file.close();
     _open_source( *_sourcesIt/*->interpolated()*/ );
-    log_msg( logging::laconic,
-        "Buckets %p: switched to next source in a queue: \"%s\".\n",
+    sV_mylog1( "Buckets %p: switched to next source in a queue: \"%s\".\n",
         this, _sourcesIt->/*interpolated().*/c_str() );
     return _lastEvReadingWasGood = Parent::_V_acquire_next_bucket( epr );
 }
@@ -182,12 +179,12 @@ Buckets::_recieve_incoming_bucket(net::PeerConnection * clientConnectionPtr ) {
     // Recieve the incoming data into buffer:
     size_t nBytesRecieved = 0,
            nBytesOverall = 0;
-    self.log_msg( logging::verbose, "Buckets %p: recieving incoming data.\n", &self );
+    # define this (&self)
+    sV_mylog3( "Recieving incoming data.\n" );
     do {
         nBytesRecieved = cc.recieve( const_cast<char*>(self._recvBuffer.data() + nBytesOverall),
                                      self._recvBufferSize );
-        self.log_msg( logging::verbose,
-                "Buckets %p: recv() fetched %zu bytes.\n",
+        sV_mylog2( "Buckets %p: recv() fetched %zu bytes.\n",
                 &self, nBytesRecieved);
         nBytesOverall += nBytesRecieved;
         if( nBytesRecieved ) {
@@ -196,10 +193,11 @@ Buckets::_recieve_incoming_bucket(net::PeerConnection * clientConnectionPtr ) {
         }
     } while( nBytesRecieved );
     self._recvBuffer.resize( nBytesOverall );
-    self.log_msg( logging::laconic, "Buckets %p: recieved incoming "
+    sV_mylog1( "Buckets %p: recieved incoming "
         "data of size %zu.\n", &self, nBytesOverall );
     // Switch the stream:
     self.set_stream( self._recvStream );
+    # undef this
 }
 
 void

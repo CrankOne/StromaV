@@ -42,6 +42,8 @@
 #   include "ctemplate/template.h"
 # endif
 
+# include "yaml-adapter.hpp"
+
 namespace sV {
 
 namespace aux {
@@ -159,7 +161,7 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
 std::unordered_map<std::string, iLoggingFamily *> * iLoggingFamily::_families = nullptr;
 
 iLoggingFamily::iLoggingFamily( const std::string & nm,
-                                LogLevel l ) : _name(nm), _lvl(l) {
+                                LogLevel l ) : _name(nm), _lvl(l), _customized(false) {
 }
 
 void
@@ -182,12 +184,65 @@ iLoggingFamily::get_instance( const std::string & nm ) {
             it = _families->emplace( nm, generic_new<iLoggingFamily>(
                     "Common" ) ).first;
         } else {
-            it = _families->emplace( nm, generic_new<iLoggingFamily>(
-                    goo::app<AbstractApplication>().cfg_option<std::string>(
-                            "logging.sections." + nm + "class" ) ) ).first;
+            // Create pre-configured family instance.
+            const ::YAML::Node & familiesParameter = 
+                    goo::app<AbstractApplication>().cfg_option<YAML::Node>( "logging.families" ),
+                thisFamilyParameter = familiesParameter[nm]
+                ;
+            // Fake loop.
+            do {
+                std::string className = "Common";
+                if( thisFamilyParameter && thisFamilyParameter["class"] ) {
+                    // no config, use generic and that's all.
+                    //return vctrEntry.constructor( ownCfg );
+                    className = thisFamilyParameter["class"].as<std::string>();
+                }
+                const auto & vctrEntry = sV::sys::IndexOfConstructables::self()
+                                                        .find<iLoggingFamily>( className );
+                goo::dict::Dictionary ownCfg( vctrEntry.arguments );
+                if( !ownCfg.name() ) {
+                    // No config imposed for this family.
+                    it = _families->emplace( nm, vctrEntry.constructor( ownCfg ) ).first;
+                    break;
+                }
+                AbstractApplication::ConstructableConfMapping::self()
+                    .own_conf_for<iLoggingFamily>(
+                                        className,
+                                        goo::app<AbstractApplication>().common_co(),
+                                        ownCfg );
+                if( ! familiesParameter.IsMap() ) {
+                    emraise( inconsistentConfig,
+                        "Parameter \"logging.families.%s\" expected to be a map.",
+                        nm.c_str() );
+                }
+                sV::aux::read_yaml_node_to_goo_dict( ownCfg, thisFamilyParameter, "logging.families." + nm );
+                it = _families->emplace( nm, vctrEntry.constructor( ownCfg ) ).first;
+            } while(false);
         }
     }
     return *(it->second);
+}
+
+void
+iLoggingFamily::initialize_families() {
+    if( !_families || goo::aux::iApp::exists() ) {
+        return;
+    }    
+    for( auto p : *_families ) {
+        if( !p.second->customized() ) {
+            const auto & vctrEntry = sV::sys::IndexOfConstructables::self().find<iLoggingFamily>( p.first );
+            goo::dict::Dictionary ownCfg( vctrEntry.arguments );
+            if( !ownCfg.name() ) {
+                continue;
+            }
+            AbstractApplication::ConstructableConfMapping::self()
+                    .own_conf_for<iLoggingFamily>(
+                                    vctrEntry.arguments.name(),
+                                    goo::app<AbstractApplication>().common_co(),
+                                    ownCfg );
+            p.second->configure( ownCfg );
+        }
+    }
 }
 
 //
@@ -197,7 +252,7 @@ iLoggingFamily::get_instance( const std::string & nm ) {
 const char CommonLoggingFamily::templateNames[8][64] = {
             "common-log-tpl-error",  "common-log-tpl-warning",
             "common-log-tpl-log-msg",
-            "common-log-tpl-log-msg-1", "common-log-tpl-log-msg-2", "common-log-tpl-log-msg-3"
+            "common-log-tpl-log-msg-1", "common-log-tpl-log-msg-2", "common-log-tpl-log-msg-3",
             "common-log-tpl-debug-msg", "common-log-tpl-other"};
 
 // Default prefixes.
@@ -225,30 +280,24 @@ CommonLoggingFamily::CommonLoggingFamily(
 void
 CommonLoggingFamily::_V_configure( const goo::dict::Dictionary & dct ) {
     # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
-    ctemplate::StringToTemplateCache( "common-log-tpl-error",
-        dct["ePrefix"].as<std::string>(),
+
+    # define subst_tmpl( tmlName, prmName )                         \
+    ctemplate::mutable_default_template_cache()->Delete( tmlName ); \
+    ctemplate::StringToTemplateCache( tmlName,                      \
+        dct[prmName].as<std::string>(),                             \
         ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-warning",
-        dct["wPrefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg",
-        dct["msgPrefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-1",
-        dct["l1Prefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-2",
-        dct["l2Prefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-log-msg-3",
-        dct["l3Prefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-debug-msg",
-        dct["dPrefix"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
-    ctemplate::StringToTemplateCache( "common-log-tpl-other",
-        dct["other"].as<std::string>(),
-        ctemplate::DO_NOT_STRIP );
+
+    subst_tmpl( "common-log-tpl-error",     "ePrefix" );
+    subst_tmpl( "common-log-tpl-warning",   "wPrefix" );
+    subst_tmpl( "common-log-tpl-log-msg",   "msgPrefix" );
+    subst_tmpl( "common-log-tpl-log-msg-1", "l1Prefix" );
+    subst_tmpl( "common-log-tpl-log-msg-2", "l2Prefix" );
+    subst_tmpl( "common-log-tpl-log-msg-3", "l3Prefix" );
+    subst_tmpl( "common-log-tpl-debug-msg", "dPrefix" );
+    subst_tmpl( "common-log-tpl-other",     "other" );
+    # undef subst_tmpl
+    # else
+    (void)(dct);  // suppress "unused" warning
     # endif  // defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
     set_customized();
 }
@@ -284,7 +333,7 @@ CommonLoggingFamily::_V_message( LogLevel lvl,
                               const std::string & instanceID,
                               const std::string & msg ) const {
     char bf[GOO_EMERGENCY_BUFLEN+32];
-    snprintf( bf, sizeof(bf), "%7s/%s/%s %s:%s",
+    snprintf( bf, sizeof(bf), "%7s/%s/%s::" ESC_CLRBOLD "%s" ESC_CLRCLEAR ": %s",
         hctime(),
         get_prefix_for_loglevel(lvl).c_str(),
         family_name().c_str(),
@@ -363,7 +412,9 @@ Logger::Logger( const std::string & familyName,
 Logger::~Logger() {}
 
 void
-Logger::log_msg( LogLevel lvl,
+Logger::log_msg( const char * /*filename*/,
+                 size_t /*lineNo*/ ,
+                 LogLevel lvl,
                  const char * fmt, ... ) const {
     if( log_level() < lvl ) {
         return;

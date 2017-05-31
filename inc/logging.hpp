@@ -151,6 +151,12 @@ public:
     virtual void message( ctemplate::TemplateDictionary & ldct, LogLevel lvl) const {
         _V_message( ldct, lvl ); }
     # endif
+
+    bool customized() const { return _customized; }
+
+    /// Has to be called after config is parsed to re-initialize already
+    /// created family instances.
+    static void initialize_families();
 };  // class iLoggingFamily
 
 /// Shortcut for define virtual ctr for logging family classes without common
@@ -244,7 +250,7 @@ public:
     /// Method with functionality similar to native C printf(), putting the
     /// message into logging stream if given lvl is equal to or less than
     /// current for this Logger instance.
-    virtual void log_msg( LogLevel lvl, const char * fmt, ... ) const;
+    virtual void log_msg( const char *, size_t, LogLevel lvl, const char * fmt, ... ) const;
 
     # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
     /// This version of logging method is only available when templated logging
@@ -261,6 +267,26 @@ public:
     /// Returns reference to logging family (const).
     const iLoggingFamily & log_family() const { return _family; }
 };
+
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+#   define _sV_mylog( file, line, lvl, ... ) do {   \
+if( this->log_level() < lvl ) break;                        \
+    ctemplate::TemplateDictionary dict("sV_mylog");         \
+    dict.SetValue( "file", file );                          \
+    dict.SetIntValue( "line", line );                       \
+    this->log_msg( dict, (::sV::logging::LogLevel) lvl, __VA_ARGS__ );  \
+} while(false);
+# else
+#   define _sV_mylog( file, line, lvl, __VA_ARGS__ )        \
+        this->log_msg( file, line, (::sV::logging::LogLevel) lvl, __VA_ARGS__ );
+# endif
+
+# define sV_mylog1(...) _sV_mylog( __FILE__, __LINE__,  1, __VA_ARGS__ )
+# define sV_mylog2(...) _sV_mylog( __FILE__, __LINE__,  2, __VA_ARGS__ )
+# define sV_mylog3(...) _sV_mylog( __FILE__, __LINE__,  3, __VA_ARGS__ )
+# define sV_mylogd(...) _sV_mylog( __FILE__, __LINE__,  4, __VA_ARGS__ )
+# define sV_mylogw(...) _sV_mylog( __FILE__, __LINE__, -1, __VA_ARGS__ )
+# define sV_myloge(...) _sV_mylog( __FILE__, __LINE__, -2, __VA_ARGS__ )
 
 }  // namespace logging
 

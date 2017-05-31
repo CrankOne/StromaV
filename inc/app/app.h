@@ -63,6 +63,7 @@ uint8_t sV_is_app_initialized();
 # define sV_log1(...) sV_C_message( __FILE__, __LINE__,  1, __VA_ARGS__ )
 # define sV_log2(...) sV_C_message( __FILE__, __LINE__,  2, __VA_ARGS__ )
 # define sV_log3(...) sV_C_message( __FILE__, __LINE__,  3, __VA_ARGS__ )
+# define sV_logd(...) sV_C_message( __FILE__, __LINE__,  4, __VA_ARGS__ )
 # define sV_logw(...) sV_C_message( __FILE__, __LINE__, -1, __VA_ARGS__ )
 # define sV_loge(...) sV_C_message( __FILE__, __LINE__, -2, __VA_ARGS__ )
 

@@ -312,7 +312,7 @@ include_directories( "inc"
                      ${CMAKE_CURRENT_BINARY_DIR}/inc
                      ${yaml-cpp_INCLUDE_DIRS}
                      ${OPENSSL_INCLUDE_DIR}
-                     ${CTEMPLATE_INCLUDE_DIR}
+                     $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_INCLUDE_DIR}>
                      $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
                      $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
@@ -522,7 +522,7 @@ target_link_libraries( ${StromaV_LIB}
                             ${extGDML_LIBRARIES}
                             ${yaml-cpp_LIBRARIES}
                             ${OPENSSL_LIBRARIES}
-                            ${CTEMPLATE_LIBRARIES} )
+                            $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_LIBRARIES}> )
 if( GEANT4_MC_MODEL )
     target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )
