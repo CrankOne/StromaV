@@ -160,8 +160,10 @@ set_font_of_TGCommandPlugin( TGCommandPlugin * plPtr, const std::string & fontID
 
 std::unordered_map<std::string, iLoggingFamily *> * iLoggingFamily::_families = nullptr;
 
-iLoggingFamily::iLoggingFamily( const std::string & nm,
-                                LogLevel l ) : _name(nm), _lvl(l), _customized(false) {
+iLoggingFamily::iLoggingFamily( const std::string & className,
+                                LogLevel l ) :
+                _className( className ),
+                _lvl(l), _customized(false) {
 }
 
 void
@@ -177,10 +179,13 @@ iLoggingFamily::get_instance( const std::string & nm ) {
     auto it = _families->find( nm );
     if( _families->end() == it ) {
         if( !AbstractApplication::exists() ) {
-            sV_logw( "Unable to acquire \"class\" parameter for logging "
-                    "family \"%s\" since app. instance wasn't initialized "
-                    "up to this time, so \"Common\" class will be set.\n",
-                    nm.c_str() );
+            if( "application" != nm ) {
+                sV_logw( "Unable to determine which class for logging family "
+                        "\"%s\" has to be used since application instance "
+                        "wasn't initialized up to this moment, so \"Common\" "
+                        "class will be supposed.\n",
+                        nm.c_str() );
+            }
             it = _families->emplace( nm, generic_new<iLoggingFamily>(
                     "Common" ) ).first;
         } else {
@@ -203,6 +208,7 @@ iLoggingFamily::get_instance( const std::string & nm ) {
                 if( !ownCfg.name() ) {
                     // No config imposed for this family.
                     it = _families->emplace( nm, vctrEntry.constructor( ownCfg ) ).first;
+                    it->second->set_customized();
                     break;
                 }
                 AbstractApplication::ConstructableConfMapping::self()
@@ -215,22 +221,27 @@ iLoggingFamily::get_instance( const std::string & nm ) {
                         "Parameter \"logging.families.%s\" expected to be a map.",
                         nm.c_str() );
                 }
-                sV::aux::read_yaml_node_to_goo_dict( ownCfg, thisFamilyParameter, "logging.families." + nm );
+                sV::aux::read_yaml_node_to_goo_dict(
+                        ownCfg, thisFamilyParameter, "logging.families." + nm );
                 it = _families->emplace( nm, vctrEntry.constructor( ownCfg ) ).first;
+                it->second->set_customized();
             } while(false);
         }
     }
+    it->second->set_name( nm );
     return *(it->second);
 }
 
-void
+size_t
 iLoggingFamily::initialize_families() {
-    if( !_families || goo::aux::iApp::exists() ) {
-        return;
-    }    
+    size_t n = 0;
+    if( !_families || !goo::aux::iApp::exists() ) {
+        return n;
+    }
     for( auto p : *_families ) {
         if( !p.second->customized() ) {
-            const auto & vctrEntry = sV::sys::IndexOfConstructables::self().find<iLoggingFamily>( p.first );
+            const auto & vctrEntry = sV::sys::IndexOfConstructables::self()
+                                .find<iLoggingFamily>( p.second->logging_class_name() );
             goo::dict::Dictionary ownCfg( vctrEntry.arguments );
             if( !ownCfg.name() ) {
                 continue;
@@ -241,8 +252,20 @@ iLoggingFamily::initialize_families() {
                                     goo::app<AbstractApplication>().common_co(),
                                     ownCfg );
             p.second->configure( ownCfg );
+            p.second->set_customized();
+            ++n;
+            sV_log3( "Logging family \"%s\"::%s::%s has been re-initialized.\n",
+                p.first.c_str(),
+                p.second->family_name().c_str(),
+                p.second->logging_class_name().c_str() );
+        } else {
+            sV_log3( "Logging family \"%s\"::%s::%s has been kept as is.\n",
+                p.first.c_str(),
+                p.second->family_name().c_str(),
+                p.second->logging_class_name().c_str() );
         }
     }
+    return n;
 }
 
 //
@@ -299,7 +322,7 @@ CommonLoggingFamily::_V_configure( const goo::dict::Dictionary & dct ) {
     # else
     (void)(dct);  // suppress "unused" warning
     # endif  // defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
-    set_customized();
+    //std::cout << "*** XXX ***"  << std::endl;  //XXX
 }
 
 std::ostream &
@@ -348,6 +371,10 @@ void
 CommonLoggingFamily::_V_message( ctemplate::TemplateDictionary & ldct, LogLevel lvl ) const {
     ldct.SetValue( "hctime",    hctime() );
     ldct.SetValue( "family",    family_name() );
+    ldct.SetValue( "class",     logging_class_name() );
+    if( sV::AbstractApplication::exists() ) {
+        ldct.SetIntValue( "PID", sV::AbstractApplication::PID() );
+    }
     std::string errorText;
     ctemplate::ExpandTemplate( templateNames[(int) lvl + 2],
                                ctemplate::DO_NOT_STRIP,
@@ -357,7 +384,7 @@ CommonLoggingFamily::_V_message( ctemplate::TemplateDictionary & ldct, LogLevel 
 # endif  //defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
 
 StromaV_LOGGING_CLASS_DEFINE_MCONF( CommonLoggingFamily, "Common" ) {
-    goo::dict::Dictionary dct( "CommonLogging", "Common logging family class." );
+    goo::dict::Dictionary dct( "Common", "Common logging family class." );
     dct.insertion_proxy()
             .p<std::string>("ePrefix",
                     "Template prefix for error messages.",

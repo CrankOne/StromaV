@@ -58,8 +58,17 @@ sV_C_message( const char * file, unsigned int lineNo,
         }
         # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
         ctemplate::TemplateDictionary dict("sV_C_message");
-        dict.SetValue( "file", file );
-        dict.SetIntValue( "line", lineNo );
+        if( file ) {
+            dict.SetValue( "file", file );
+        }
+        if( lineNo ) {
+            dict.SetIntValue( "line", lineNo );
+        }
+        std::string fileName( file );
+        const char * lstDlmPtr;
+        if( !fileName.empty() && ( '\0' != *(lstDlmPtr = strrchr(file, '/')) ) ) {
+            dict.SetValue( "shortFile", ++lstDlmPtr );
+        }
         goo::app<sV::AbstractApplication>().log_msg(
             dict, (::sV::logging::LogLevel) level, dest );
         # else

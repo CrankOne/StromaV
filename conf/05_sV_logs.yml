@@ -33,13 +33,13 @@ logging:
         # NOTE this prefixes are used ONLY when Ctemplates library was found
         # within build procedures. Otherwise, default hctime/class/family format
         # will be used.
-        ePrefix : "\e[1;31m!Error\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}/{{file}}:{{line}}\e[1;37m:\e[0m {{message}}"
-        wPrefix : "\e[1;33m!Warning\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}\e[1;37m:\e[0m {{message}}"
+        ePrefix : "\e[1;31mError\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}/{{shortFile}}:{{line}}\e[1;37m:\e[0m {{message}}"
+        wPrefix : "\e[1;33mWarning\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}\e[1;37m:\e[0m {{message}}"
         msgPrefix: "{{message}}"
         l1Prefix: "\e[0;36mL1\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}\e[1;37m:\e[0m {{message}}"
         l2Prefix: "\e[0;36mL2\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}\e[1;37m:\e[0m {{message}}"
         l3Prefix: "\e[0;32mL3\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}\e[1;37m:\e[0m {{message}}"
-        dPrefix : "\e[1;35m+Debug\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}/{{file}}:{{line}}\e[1;37m:\e[0m ${{message}}"
+        dPrefix : "\e[1;35m+Debug\e[0m {{hctime}}/\e[0;1m{{family}}\e[0m-{{this}}/{{shortFile}}:{{line}}\e[1;37m:\e[0m ${{message}}"
 ...
 
 

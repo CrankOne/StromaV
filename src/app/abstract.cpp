@@ -472,8 +472,11 @@ AbstractApplication::_V_acquire_errstream() {
 
 void
 AbstractApplication::_process_options( const Config * ) {
-    // Apply logging families configuration at this point.
-    logging::iLoggingFamily::initialize_families();
+    {   // Apply logging families configuration at this point.
+        size_t nFamsInitd = logging::iLoggingFamily::initialize_families();
+        sV_log1( "Existing %zu logging families have been re-initialized.\n",
+                 nFamsInitd );
+    }
 
     # if 0
     {   // Try dynamic_cast<RootApplication*>() and initialize ROOT's mixin:

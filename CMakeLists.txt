@@ -516,36 +516,39 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
          DESTINATION include/StromaV )
 
 target_link_libraries( ${StromaV_LIB}
-                            ${Goo_LIBRARIES}
-                            ${Boost_LIBRARIES}
-                            ${ROOT_LIBRARIES}
-                            ${extGDML_LIBRARIES}
-                            ${yaml-cpp_LIBRARIES}
-                            ${OPENSSL_LIBRARIES}
-                            $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_LIBRARIES}> )
+                        PUBLIC ${Goo_LIBRARIES}
+                        PUBLIC ${Boost_LIBRARIES}
+                        PUBLIC ${ROOT_LIBRARIES}
+                        PUBLIC ${extGDML_LIBRARIES}
+                        PUBLIC ${yaml-cpp_LIBRARIES}
+                        PRIVATE ${OPENSSL_LIBRARIES} )
+if( CTEMPLATE_FOUND )
+    target_link_libraries( ${StromaV_LIB} PUBLIC ${CTEMPLATE_LIBRARIES})
+endif( CTEMPLATE_FOUND )
+
 if( GEANT4_MC_MODEL )
-    target_link_libraries( ${StromaV_LIB} ${Geant4_LIBRARIES})
+    target_link_libraries( ${StromaV_LIB} PUBLIC ${Geant4_LIBRARIES})
     if( G4_MDL_GUI )
-        target_link_libraries( ${StromaV_LIB} ${QT_LIBRARIES})
+        target_link_libraries( ${StromaV_LIB} PRIVATE ${QT_LIBRARIES})
     endif( G4_MDL_GUI )
 endif( GEANT4_MC_MODEL )
 if( ANALYSIS_ROUTINES )
-    target_link_libraries( ${StromaV_LIB} ${GSL_LIBRARIES} )
+    target_link_libraries( ${StromaV_LIB} PRIVATE ${GSL_LIBRARIES} )
 endif( ANALYSIS_ROUTINES )
 if( RPC_PROTOCOLS )
     set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES COMPILE_FLAGS -Wno-shadow)
-    target_link_libraries( ${StromaV_LIB} ${PROTOBUF_LIBRARIES} )
+    target_link_libraries( ${StromaV_LIB} PUBLIC ${PROTOBUF_LIBRARIES} )
     if( RFIO_AKA_SHIFT_LIB )
         message( STATUS "Found RFIO library: "  )
-        target_link_libraries( ${StromaV_LIB} ${RFIO_AKA_SHIFT_LIB} )
+        target_link_libraries( ${StromaV_LIB} PUBLIC ${RFIO_AKA_SHIFT_LIB} )
     endif(RFIO_AKA_SHIFT_LIB )
     if( DATE_LIBMONITOR )
         message( STATUS "Found DATE/libmonitor library: " ${DATE_LIBMONITOR} )
-        target_link_libraries( ${StromaV_LIB} ${DATE_LIBMONITOR} )
+        target_link_libraries( ${StromaV_LIB} PUBLIC ${DATE_LIBMONITOR} )
     endif( DATE_LIBMONITOR )
 endif( RPC_PROTOCOLS )
 if( genfit_LIBRARIES )
-    target_link_libraries( ${StromaV_LIB} ${genfit_LIBRARIES} )
+    target_link_libraries( ${StromaV_LIB} PUBLIC ${genfit_LIBRARIES} )
 endif( genfit_LIBRARIES )
 
 if( DOC_HTML )

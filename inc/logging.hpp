@@ -91,7 +91,8 @@ public:
  * */
 class iLoggingFamily {
 private:
-    const std::string _name;
+    std::string _name;
+    const std::string _className;
     /// Logging level set for family.
     LogLevel _lvl;
     /// Static dictionary of all constructed family objects.
@@ -118,12 +119,18 @@ protected:
     /// May be called by ctr of descendant classes when constructor handles the
     /// dictionary. Sets _customized = true.
     void set_customized() { _customized = true; }
+    /// Invalidates customization flag.
+    void unset_customized() { _customized = false; }
+
+    /// Protected family name setter.
+    void set_name( const std::string & fn ) { _name = fn; }
 public:
     /// Ctr. Sets all stream ptrs to null.
     /// Since the logging families are almost always created before the
     /// configs read, the config dictionary in this ctr may be empty. At this
     /// case, please, provision using the configure() function.
-    iLoggingFamily( const std::string &, LogLevel );
+    iLoggingFamily( const std::string & className,
+                    LogLevel );
     /// Dtr.
     virtual ~iLoggingFamily() {}
     /// Returns logging family instance. If it does not exist, it will be
@@ -139,6 +146,7 @@ public:
         return _V_stream_for(l); }
     /// Returns const ref to current family name.
     virtual const std::string & family_name() const { return _name; }
+    virtual const std::string & logging_class_name() const { return _className; }
     /// Has to be invoked by application instance after the parsing config stage.
     virtual void configure( const goo::dict::Dictionary & d ) {
         _V_configure(d); set_customized(); }
@@ -152,11 +160,13 @@ public:
         _V_message( ldct, lvl ); }
     # endif
 
+    /// Returns true, when this instance was correctly configured (i.e.,
+    /// configured after config loaded).
     bool customized() const { return _customized; }
 
     /// Has to be called after config is parsed to re-initialize already
     /// created family instances.
-    static void initialize_families();
+    static size_t initialize_families();
 };  // class iLoggingFamily
 
 /// Shortcut for define virtual ctr for logging family classes without common
@@ -274,6 +284,11 @@ if( this->log_level() < lvl ) break;                        \
     ctemplate::TemplateDictionary dict("sV_mylog");         \
     dict.SetValue( "file", file );                          \
     dict.SetIntValue( "line", line );                       \
+    std::string fileName( file );                           \
+    const char * lstDlmPtr;                                 \
+    if( !fileName.empty() && ( '\0' != *(lstDlmPtr = strrchr(file, '/')) ) ) {  \
+        dict.SetValue( "shortFile", ++lstDlmPtr );          \
+    }                                                       \
     this->log_msg( dict, (::sV::logging::LogLevel) lvl, __VA_ARGS__ );  \
 } while(false);
 # else
