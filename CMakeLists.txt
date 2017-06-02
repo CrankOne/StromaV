@@ -243,13 +243,6 @@ endif( NOT CTEMPLATE_FOUND )
 
 site_name( BUILDER_HOSTNAME )
 
-# Insist to make CMake do not cache these variables:
-mark_as_advanced( BUILDER_HOSTNAME DAQDECODING_INCLUDE_DIR DAQDECODING_LIB
-    DESIRED_QT_VERSION GSL_CONFIG_EXECUTABLE
-    Geant4_DIR QT_QMAKE_EXECUTABLE
-    ROOT_CINT_EXECUTABLE ROOT_CONFIG_EXECUTABLE
-    Goo_INCLUDE_DIRS Goo_LIBRARIES )
-
 # Obtain versioning parameters
 EXECUTE_PROCESS(COMMAND date +"%x %x"
                 OUTPUT_VARIABLE BUILD_TIMESTAMP
@@ -257,13 +250,12 @@ EXECUTE_PROCESS(COMMAND date +"%x %x"
 set( StromaV_LIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/inc/" )
 
 # Configure compiler -- base flags
-set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -D_GNU_SOURCE -fexceptions -pthread -D_FILE_OFFSET_BITS=64 -DHAVE_INLINE -std=c99" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -D_GNU_SOURCE -fexceptions -pthread -D_FILE_OFFSET_BITS=64 -std=gnu++11 -Wno-c99-extensions" )
-
-if( CMAKE_COMPILER_IS_GNUCXX )
-    set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -rdynamic" )
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic" )
-endif( CMAKE_COMPILER_IS_GNUCXX )
+#set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall -D_GNU_SOURCE -fexceptions -pthread -D_FILE_OFFSET_BITS=64 -DHAVE_INLINE -std=c99" )
+#set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -D_GNU_SOURCE -fexceptions -pthread -D_FILE_OFFSET_BITS=64 -std=gnu++11 -Wno-c99-extensions" )
+#if( CMAKE_COMPILER_IS_GNUCXX )
+#    set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -rdynamic" )
+#    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic" )
+#endif( CMAKE_COMPILER_IS_GNUCXX )
 
 set( CMAKE_C_FLAGS_DEBUG            "${CMAKE_C_FLAGS_DEBUG}     -fno-omit-frame-pointer" ) # -Wfatal-errors -fprofile-use? -fprofile-correction
 set( CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG}   -fno-omit-frame-pointer" )
@@ -290,7 +282,7 @@ set( StromaV_LIB StromaV${StromaV_BUILD_POSTFIX} )
 # INTERFACE_SYSTEM_INCLUDE_DIRECTORIES.
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES "")
-include_directories( SYSTEM ${dirs} )
+include_directories( SYSTEM PUBLIC ${dirs} )
 # This lines is used for dev needs. Print out all the include dirs:
 #get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 #foreach(dir ${dirs})
@@ -301,22 +293,6 @@ include_directories( SYSTEM ${dirs} )
 #    message(STATUS "S-dir='${dir}'")
 #endforeach()
 
-# Why does CLANG ignores this sometimes?
-include_directories( "inc"
-                     "rootPlugins"
-                     SYSTEM ${Goo_INCLUDE_DIRS}
-                     ${extGDML_INCLUDE_DIRS}/..
-                     ${GSL_INCLUDE_DIRS}
-                     ${Boost_INCLUDE_DIRS}
-                     ${ROOT_INCLUDE_DIRS}
-                     ${CMAKE_CURRENT_BINARY_DIR}/inc
-                     ${yaml-cpp_INCLUDE_DIRS}
-                     ${OPENSSL_INCLUDE_DIR}
-                     $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_INCLUDE_DIR}>
-                     $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
-                     $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
-                     $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
-                     $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
 if( genfit_INCLUDE_DIRS )
     include_directories( ${genfit_INCLUDE_DIRS} )
 endif( genfit_INCLUDE_DIRS )
@@ -330,7 +306,6 @@ endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 # Link directories
 #################
 
-link_directories( ${Goo_LIBRARY_DIR} )
 link_directories( ${extGDML_LIBRARY_DIR} )
 if( genfit_LIBRARY_DIR )
     link_directories( ${genfit_LIBRARY_DIR} )
@@ -426,15 +401,21 @@ if( GEANT4_MC_MODEL )
             your Geant4 installation." )
         endif( G4PHYSICS )
     endif( GEANT4_DYNAMIC_PHYSICS )
+
+    # Remove this dirty things outta my compiler options!
+    string(REPLACE "-pedantic"              "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+    string(REGEX REPLACE "-Wno-[^\ ]*"      "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
 endif( GEANT4_MC_MODEL )
-
-# Remove this dirty things outta my compiler options!
-string(REPLACE "-pedantic"              "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-string(REGEX REPLACE "-Wno-[^\ ]*"      "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-
 
 # Add ROOT dictionaries
 if( ANALYSIS_ROUTINES )
+    # TODO: figure out which target does the ROOT_GENERATE_DICTIONARY add
+    # to change it to the target_include_directories()
+    get_target_property( _Goo_INCS ${Goo_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES )
+    include_directories( TrackingGroupDict.cxx
+                         "inc"
+                         ${_Goo_INCS}
+                         ${CMAKE_CURRENT_BINARY_DIR}/inc )
     ROOT_GENERATE_DICTIONARY( TrackingGroupDict
         ${PROJECT_SOURCE_DIR}/inc/alignment/TrackingGroup*
         LINKDEF alignment/TrackingGroupLinkDef.h )
@@ -495,25 +476,53 @@ file(GLOB_RECURSE StromaV_LIB_SOURCES src/*.c*)
 
 add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
-        $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_LIBRARIES}>
         $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
         $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
         $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>
         $<$<BOOL:${DSuL}>:${FLEX_DSuL_Lexer_OUTPUTS}>
     )
-
+# Why does CLANG ignores this sometimes?
+target_include_directories( ${StromaV_LIB}
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/rootPlugins>
+            $<INSTALL_INTERFACE:include/StromaV>
+    SYSTEM
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/inc>
+        PUBLIC
+            ${extGDML_INCLUDE_DIRS}/..
+            ${GSL_INCLUDE_DIRS}
+            ${Boost_INCLUDE_DIRS}
+            ${ROOT_INCLUDE_DIRS}
+            ${CMAKE_CURRENT_BINARY_DIR}/inc
+            ${yaml-cpp_INCLUDE_DIRS}
+            ${OPENSSL_INCLUDE_DIR}
+            $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_INCLUDE_DIR}>
+            $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
+            $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
+            $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
+            $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
 #add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX
-
 set_target_properties( ${StromaV_LIB} PROPERTIES VERSION ${StromaV_VERSION}
                        SOVERSION ${StromaV_VERSION_MAJOR} )
+target_compile_features( ${StromaV_LIB} PUBLIC
+            cxx_constexpr
+            cxx_final
+            cxx_delegating_constructors
+            cxx_variadic_templates
+            cxx_template_template_parameters )
 
-install( TARGETS ${StromaV_LIB} LIBRARY DESTINATION lib/StromaV )
+
+install( TARGETS ${StromaV_LIB} EXPORT StromaV LIBRARY DESTINATION lib/StromaV )
 install( DIRECTORY inc/ DESTINATION include/StromaV FILES_MATCHING PATTERN
     "*.h" PATTERN "*.hpp" PATTERN "*.tcc" PATTERN "*.itcc" )
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/inc/sV_config.h
          DESTINATION include/StromaV )
-install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
-         DESTINATION include/StromaV )
+if( RPC_PROTOCOLS )
+    install( FILES ${CMAKE_CURRENT_BINARY_DIR}/event.pb.h
+             DESTINATION include/StromaV )
+endif( RPC_PROTOCOLS )
 
 target_link_libraries( ${StromaV_LIB}
                         PUBLIC ${Goo_LIBRARIES}
@@ -536,7 +545,8 @@ if( ANALYSIS_ROUTINES )
     target_link_libraries( ${StromaV_LIB} PRIVATE ${GSL_LIBRARIES} )
 endif( ANALYSIS_ROUTINES )
 if( RPC_PROTOCOLS )
-    set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES COMPILE_FLAGS -Wno-shadow)
+    set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES COMPILE_FLAGS -w )
+    set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES GENERATED TRUE )
     target_link_libraries( ${StromaV_LIB} PUBLIC ${PROTOBUF_LIBRARIES} )
     if( RFIO_AKA_SHIFT_LIB )
         message( STATUS "Found RFIO library: "  )
@@ -591,7 +601,7 @@ configure_file (
 #\project-subdir:
 add_subdirectory( apps )
 
-options_list()
+options_list()  #< collects the ${PKG_NAME}_OPTIONS_STR variable
 
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/StromaVConfig.cmake.in"
@@ -605,6 +615,15 @@ configure_file (
     @ONLY
 )
 
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/StromaVConfigVersion.cmake
+    VERSION ${StromaV_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+export( EXPORT StromaV
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/StromaVTargets.cmake"
+)
 install( FILES
     "${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake"
          DESTINATION lib/cmake/StromaV )
@@ -612,13 +631,12 @@ install( FILES
 install( FILES
     ${CMAKE_CURRENT_BINARY_DIR}/00_sV.yml
          DESTINATION ${StromaV_CONFIG_INSTALL_PATH} )
-
 install( DIRECTORY conf/ DESTINATION ${StromaV_CONFIG_INSTALL_PATH} FILES_MATCHING PATTERN
     "*.yml" PATTERN "*.yaml" PATTERN "*.conf" )
 
 install( FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/event.proto"
-         DESTINATION usr/share/StromaV )
+         DESTINATION share/StromaV )
 
 install( FILES
          ${CMAKE_CURRENT_BINARY_DIR}/StromaV-plugins.rootrc

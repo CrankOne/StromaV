@@ -42,6 +42,6 @@ target_link_libraries( ${afpipe_implem} ${StromaV_LIB} )
 add_executable( ${afpipe_exec} ${afpipe_SRCS} )
 target_link_libraries( ${afpipe_exec} ${afpipe_implem} )
 
-install( TARGETS ${afpipe_exec}     RUNTIME DESTINATION bin )
-install( TARGETS ${afpipe_implem}   LIBRARY DESTINATION lib/StromaV )
+install( TARGETS ${afpipe_exec}     EXPORT StromaVRUNTIME DESTINATION bin )
+install( TARGETS ${afpipe_implem}   EXPORT StromaVLIBRARY DESTINATION lib/StromaV )
 

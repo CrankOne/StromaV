@@ -41,8 +41,8 @@ target_link_libraries( ${mdlv_implem} ${StromaV_LIB} )
 add_executable( ${mdlv_exec} ${mdlv_SRCS} )
 target_link_libraries( ${mdlv_exec} ${mdlv_implem} )
 
-install( TARGETS ${mdlv_exec}     RUNTIME DESTINATION bin )
-install( TARGETS ${mdlv_implem}   LIBRARY DESTINATION lib/StromaV )
+install( TARGETS ${mdlv_exec}     EXPORT StromaV RUNTIME DESTINATION bin )
+install( TARGETS ${mdlv_implem}   EXPORT StromaV LIBRARY DESTINATION lib/StromaV )
 
 
 

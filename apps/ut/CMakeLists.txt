@@ -31,5 +31,5 @@ target_link_libraries( StromaV_ut${StromaV_BUILD_POSTFIX} ${StromaV_LIB} )
 set_target_properties( StromaV_ut${StromaV_BUILD_POSTFIX}
         PROPERTIES LINK_FLAGS "-Wl,--no-as-needed")
 
-install( TARGETS StromaV_ut${StromaV_BUILD_POSTFIX} RUNTIME DESTINATION bin )
+install( TARGETS StromaV_ut${StromaV_BUILD_POSTFIX} EXPORT StromaV RUNTIME DESTINATION bin )
 

@@ -44,6 +44,6 @@ target_link_libraries( ${svmc_implem} ${afNA64_LIB} )
 add_executable( ${svmc_exec} ${svmc_SRCS} )
 target_link_libraries( ${svmc_exec} ${svmc_implem} )
 
-install( TARGETS ${svmc_implem}   LIBRARY DESTINATION lib/na64 )
-install( TARGETS ${svmc_exec}     RUNTIME DESTINATION bin )
+install( TARGETS ${svmc_implem}   EXPORT StromaV LIBRARY DESTINATION lib/na64 )
+install( TARGETS ${svmc_exec}     EXPORT StromaV RUNTIME DESTINATION bin )
 

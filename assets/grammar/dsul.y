@@ -211,7 +211,7 @@ DSuL_compile_selector_expression( const char * exprStrPtr ) {
     if( !exprStrPtr ) {
         return NULL;
     }
-    YY_BUFFER_STATE buffer = yy_scan_string( exprStrPtr );
+    YY_BUFFER_STATE buffer = yy_scan_string( (char *) exprStrPtr );
     /* - The value returned by yyparse is 0 if parsing was successful (return
      * is due to end-of-input).
      * - The value is 1 if parsing failed because of invalid input, i.e.,

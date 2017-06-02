@@ -24,7 +24,7 @@
 
 # ifdef RPC_PROTOCOLS
 
-# include "event.pb.h"
+# include "uevent.hpp"
 
 namespace sV {
 namespace mixins {
