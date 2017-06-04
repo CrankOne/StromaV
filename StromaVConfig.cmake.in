@@ -31,6 +31,11 @@
 #  StromaV_SWIG_IFACES_DIR   - StromaV SWIG interfaces path (when
 #                            PYTHON_BINDINGS was enabled)
 
+#  Compute the installation prefix relative to this file.
+get_filename_component(_CURRENT_LOCATION "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include( ${_CURRENT_LOCATION}/sV_find_pkgs.cmake )
+include( ${_CURRENT_LOCATION}/StromaVTargets.cmake )
+
 set( StromaV_INCLUDE_DIRS   "@CMAKE_INSTALL_PREFIX@/include/StromaV" )
 set( StromaV_LIBRARIES      @StromaV_LIB@ )
 set( StromaV_LIBRARY_DIR    @CMAKE_INSTALL_PREFIX@/lib/StromaV )

@@ -41,10 +41,12 @@ if ( StromaV_PYMODULES )
                        WRAPPER_SOUCES WRAPPER_SRCS
                        SETUP_TEMPLATE setup.py.in
                        INIT_TEMPLATE __init__.py.in )
+    #target_include_directories( _events
+            #PUBLIC $<TARGET_PROPERTY:${StromaV_LIB},INCLUDE_DIRECTORIES>
+        #)
     # Create symlink to make python's eggs mechanics happy:
     add_custom_target( py_link_target ALL
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/py ${CMAKE_BINARY_DIR}/StromaV)
-    
 
     # Note: workarounds for recent C++ compiler warnings
     set_source_files_properties( ${WRAPPER_SRCS}

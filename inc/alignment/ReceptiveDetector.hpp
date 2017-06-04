@@ -29,7 +29,7 @@
 
 # include "alignment/iDetector.hpp"
 # include "../detector_ids.h"
-# include "../uevent.hpp"
+# include "uevent.hpp"
 
 # include "alignment/TrackingVolume.tcc"
 

@@ -41,7 +41,6 @@ list(APPEND CMAKE_MODULE_PATH "${ROOT_DIR}/etc/root/cmake"
 # logic: logging, config files, exception handling, etc. We need to find Goo
 # right here because of a subset of its useful CMake-modules.
 find_package( Goo REQUIRED )
-find_package( extGDML REQUIRED )
 # This will define a dependant-options check function upon build:
 include(${Goo_CMAKE_MODULES_DIR}/OptionDepend.cmake)
 # This will check for out-of-source build:
@@ -108,92 +107,26 @@ option_depend( GEANT4_DYNAMIC_PHYSICS   GEANT4_MC_MODEL )
 #\opt-dep
 option_depend( ALIGNMENT_ROUTINES       RPC_PROTOCOLS )
 
+
 #
-# THIRD-PARTY LIBRARIES AND PACKAGES
+# Third-party libraries and packages
 ###################################
 
-# YAML-cpp provides config parsing facility dealing with flexible YAML fmt
-find_package( yaml-cpp )
-if( NOT yaml-cpp_FOUND )
-    find_package( PkgConfig )
-    if( PKG_CONFIG_FOUND )
-        pkg_search_module( yaml-cpp REQUIRED yaml-cpp )
-    endif( PKG_CONFIG_FOUND )
-    if( NOT PKG_CONFIG_FOUND OR NOT yaml-cpp_FOUND )
-        message( FATAL_ERROR "
-        Unable to locate required package yaml-cpp.
-        Please submit the path to yaml-cpp-config.cmake with
-        -Dyaml-cpp_DIR=..." )
-    else()
-        message( STATUS "yaml-cpp found with pkg-config: ${yaml-cpp_INCLUDE_DIRS}" )
-    endif()
-endif()
-# ROOT framework is a major data analysis toolkit used in many applications
-# inside of StromaV
-find_package( ROOT
-              COMPONENTS Eve Gui Ged Geom RGL EG REQUIRED )
-if( ROOT_FOUND )
-    message( STATUS "ROOT Core library found: ${ROOT_Core_LIBRARY}" )
+include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/sV_find_pkgs.cmake )
+
+if( NOT PKG_CONFIG_FOUND OR NOT yaml-cpp_FOUND )
+    message( FATAL_ERROR "
+    Unable to locate required package yaml-cpp.
+    Please submit the path to yaml-cpp-config.cmake with
+    -Dyaml-cpp_DIR=..." )
+else()
+    message( STATUS "yaml-cpp found with pkg-config: ${yaml-cpp_INCLUDE_DIRS}" )
 endif()
 
-# Boost library is common for most modern Linux distros. Implements a lot
-# of extended functionality: containers, threading, I/O, etc.
-find_package( Boost ${Boost_FORCE_VERSION}
-              COMPONENTS program_options
-                         system
-                         thread
-                         unit_test_framework
-                         iostreams
-              REQUIRED )
-
-# StromaV uses Google Protocol Buffers as a base layer for event structure
-# representation. This dependency is optional.
 if( RPC_PROTOCOLS )
-    find_package( Protobuf REQUIRED )
-    #set(PROTOBUF_GENERATE_CPP_APPEND_PATH FALSE)
     protobuf_generate_cpp(GPROTO_MSGS_SRCS GPROTO_MSGS_HDRS
                           event.proto)
 endif( RPC_PROTOCOLS )
-
-# GEANT4 is a framework for Monte-Carlo simulations in high-energy and nuclear
-# physics. This dependency is optional and have to be enabled only if you're
-# planning to perform simulations.
-if( GEANT4_MC_MODEL )
-    find_package(Geant4)
-    if( G4_MDL_GUI )
-        find_package(Geant4 REQUIRED ui_all vis_all)
-    else( G4_MDL_GUI )
-        find_package(Geant4 REQUIRED)
-    endif( G4_MDL_GUI )
-    include(${Geant4_USE_FILE})
-endif( GEANT4_MC_MODEL )
-
-# Qt is a GUI widgets framework available in most of modern distributives. It
-# is somehow bound to Geant4 on its GUI layer, so one have to link against it
-# if planning to integrate Geant4's GUI.
-if( GEANT4_MC_MODEL )
-    if( G4_MDL_GUI )
-        set( DESIRED_QT_VERSION "4" )
-        find_package(Qt)
-    endif( G4_MDL_GUI )
-endif( GEANT4_MC_MODEL )
-
-# Genfit (optional) is a track reconstruction software utilizing Kalman
-# filter. It is not a common package and should be built in a custom way.
-# We have a fork for it here: https://github.com/GenFit/GenFit providing
-# the CMake configuration module.
-if( ANALYSIS_ROUTINES )
-    find_package( GenFit REQUIRED )
-endif( ANALYSIS_ROUTINES )
-
-# GSL (GNU Scientific Library) is a common package available on most modern
-# Linux distributives. Provides a wide set of fast, robust and well-tested
-# scientific numerical routines for interpolation, approximation, linear
-# algebra and so on. It is only required if StromaV's analysis routines is
-# needed.
-if( ANALYSIS_ROUTINES )
-    find_package(GSL REQUIRED)
-endif( ANALYSIS_ROUTINES )
 
 # Doxygen is a nice and robust software for automated creation of
 # documentation.
@@ -204,8 +137,6 @@ endif( DOC_HTML )
 # Detector selector micro-language may be generated if BISON/FLEX are
 # available
 if( DSuL )
-    find_package(BISON REQUIRED)
-    find_package(FLEX REQUIRED)
     BISON_TARGET(DSuL_Parser assets/grammar/dsul.y
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_parser_generated.c
         VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
@@ -216,26 +147,14 @@ if( DSuL )
     #message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
 endif( DSuL )
 
-# Compression formats
-find_package( ZLIB )  # ZLIB_FOUND
-find_package( BZip2 )  # BZIP2_FOUND
-find_package( LibLZMA )  # LIBLZMA_FOUND
-# ^^^ Note: the project is now called XZ utils, but library, headers, and all
-# the CMake name suffixes are still keeping the name LZMA.
-
-# OpenSSL is used for computing advanced hashes
-find_package( OpenSSL REQUIRED )
-
-# Tries to find Ctemplate library and headers:
-include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCtemplate.cmake )
-if( NOT CTEMPLATE_FOUND )
+if( CTEMPLATE_FOUND )
+    set( TEMPLATED_LOGGING TRUE )
+else( CTEMPLATE_FOUND )
     message( WARNING "Ctemplate library wasn't found. That is not fatal, but \
     some template options within logging facility will not be available \
     yielding much less informative output." )
     set( TEMPLATED_LOGGING FALSE )
-else( NOT CTEMPLATE_FOUND )
-    set( TEMPLATED_LOGGING TRUE )
-endif( NOT CTEMPLATE_FOUND )
+endif( CTEMPLATE_FOUND )
 
 #
 # SET-UP BUILD-TIME PARAMETERS
@@ -280,9 +199,8 @@ set( StromaV_LIB StromaV${StromaV_BUILD_POSTFIX} )
 # tweak will move all the include dir previously pushed by third-party
 # modules from usual INCLUDE_DIRECTORIES list to
 # INTERFACE_SYSTEM_INCLUDE_DIRECTORIES.
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+get_property(_supp_inc_dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES "")
-include_directories( SYSTEM PUBLIC ${dirs} )
 # This lines is used for dev needs. Print out all the include dirs:
 #get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 #foreach(dir ${dirs})
@@ -293,24 +211,19 @@ include_directories( SYSTEM PUBLIC ${dirs} )
 #    message(STATUS "S-dir='${dir}'")
 #endforeach()
 
-if( genfit_INCLUDE_DIRS )
-    include_directories( ${genfit_INCLUDE_DIRS} )
-endif( genfit_INCLUDE_DIRS )
-
 if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
     find_package( PythonLibs REQUIRED )
-    include_directories( SYSTEM ${PYTHON_INCLUDE_DIRS} )
 endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 
 #
 # Link directories
 #################
 
-link_directories( ${extGDML_LIBRARY_DIR} )
+#link_directories( ${extGDML_LIBRARY_DIR} )
 if( genfit_LIBRARY_DIR )
     link_directories( ${genfit_LIBRARY_DIR} )
 endif( genfit_LIBRARY_DIR )
-link_directories( ${yaml-cpp_LIBRARY_DIRS} )
+#link_directories( ${yaml-cpp_LIBRARY_DIRS} )
 
 #
 # Configure sources
@@ -485,34 +398,45 @@ add_library( ${StromaV_LIB} SHARED
 target_include_directories( ${StromaV_LIB}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/inc>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/rootPlugins>
-            $<INSTALL_INTERFACE:include/StromaV>
-    SYSTEM
-        PRIVATE
+            $<INSTALL_INTERFACE:include/StromaV> )
+target_include_directories( ${StromaV_LIB} SYSTEM
+        PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/inc>
         PUBLIC
-            ${extGDML_INCLUDE_DIRS}/..
+            #${extGDML_INCLUDE_DIRS}/..
             ${GSL_INCLUDE_DIRS}
             ${Boost_INCLUDE_DIRS}
             ${ROOT_INCLUDE_DIRS}
-            ${CMAKE_CURRENT_BINARY_DIR}/inc
             ${yaml-cpp_INCLUDE_DIRS}
             ${OPENSSL_INCLUDE_DIR}
             $<$<BOOL:${CTEMPLATE_FOUND}>:${CTEMPLATE_INCLUDE_DIR}>
             $<$<BOOL:${ZLIB_FOUND}>:${ZLIB_INCLUDE_DIRS}>
             $<$<BOOL:${RPC_PROTOCOLS}>:${PROTOBUF_INCLUDE_DIRS}>
-            $<$<BOOL:${RPC_PROTOCOLS}>:${CMAKE_CURRENT_BINARY_DIR}>
-            $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}> )
+            $<$<BOOL:${GEANT4_MC_MODEL}>:${Geant4_INCLUDE_DIR}>
+            ${_supp_inc_dirs} )
+
+if( genfit_FOUND )
+    target_include_directories( ${StromaV_LIB} PUBLIC ${genfit_INCLUDE_DIRS} )
+endif( genfit_FOUND )
+
+if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
+    target_include_directories( ${StromaV_LIB} SYSTEM PUBLIC ${PYTHON_INCLUDE_DIRS} )
+endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
+
 #add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX
 set_target_properties( ${StromaV_LIB} PROPERTIES VERSION ${StromaV_VERSION}
                        SOVERSION ${StromaV_VERSION_MAJOR} )
 target_compile_features( ${StromaV_LIB} PUBLIC
+            c_variadic_macros
             cxx_constexpr
             cxx_final
             cxx_delegating_constructors
+            cxx_variadic_macros
             cxx_variadic_templates
             cxx_template_template_parameters )
-
 
 install( TARGETS ${StromaV_LIB} EXPORT StromaV LIBRARY DESTINATION lib/StromaV )
 install( DIRECTORY inc/ DESTINATION include/StromaV FILES_MATCHING PATTERN
@@ -525,12 +449,12 @@ if( RPC_PROTOCOLS )
 endif( RPC_PROTOCOLS )
 
 target_link_libraries( ${StromaV_LIB}
-                        PUBLIC ${Goo_LIBRARIES}
-                        PUBLIC ${Boost_LIBRARIES}
-                        PUBLIC ${ROOT_LIBRARIES}
-                        PUBLIC ${extGDML_LIBRARIES}
-                        PUBLIC ${yaml-cpp_LIBRARIES}
-                        PRIVATE ${OPENSSL_LIBRARIES} )
+    PUBLIC ${Goo_LIBRARIES}
+    PUBLIC ${Boost_LIBRARIES}
+    PUBLIC ${ROOT_LIBRARIES}
+    PUBLIC ${extGDML_LIBRARIES}
+    PUBLIC ${yaml-cpp_LIBRARIES}
+    PRIVATE ${OPENSSL_LIBRARIES} )
 if( CTEMPLATE_FOUND )
     target_link_libraries( ${StromaV_LIB} PUBLIC ${CTEMPLATE_LIBRARIES})
 endif( CTEMPLATE_FOUND )
@@ -557,6 +481,7 @@ if( RPC_PROTOCOLS )
         target_link_libraries( ${StromaV_LIB} PUBLIC ${DATE_LIBMONITOR} )
     endif( DATE_LIBMONITOR )
 endif( RPC_PROTOCOLS )
+
 if( genfit_LIBRARIES )
     target_link_libraries( ${StromaV_LIB} PUBLIC ${genfit_LIBRARIES} )
 endif( genfit_LIBRARIES )
@@ -622,11 +547,15 @@ write_basic_package_version_file(
   COMPATIBILITY AnyNewerVersion
 )
 export( EXPORT StromaV
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/StromaVTargets.cmake"
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/StromaVTargets.cmake
 )
 install( FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake"
-         DESTINATION lib/cmake/StromaV )
+    ${CMAKE_CURRENT_BINARY_DIR}/StromaVConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/StromaVTargets.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/StromaVConfigVersion.cmake
+    cmake/FindCtemplate.cmake
+    cmake/sV_find_pkgs.cmake
+    DESTINATION lib/cmake/StromaV )
 
 install( FILES
     ${CMAKE_CURRENT_BINARY_DIR}/00_sV.yml
@@ -646,4 +575,7 @@ install(
     CODE "file( GLOB _GeneratedROOTDicts \"${CMAKE_CURRENT_BINARY_DIR}/*.pcm\" )"
     CODE "file( INSTALL \${_GeneratedROOTDicts} DESTINATION \"${StromaV_ROOT_PLUGINS_INSTALL_PATH}\" )"
 )
+
+install( EXPORT StromaV DESTINATION lib/cmake/StromaV
+    FILE StromaVTargets.cmake )
 

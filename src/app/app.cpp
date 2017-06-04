@@ -72,7 +72,8 @@ sV_C_message( const char * file, unsigned int lineNo,
         goo::app<sV::AbstractApplication>().log_msg(
             dict, (::sV::logging::LogLevel) level, dest );
         # else
-        goo::app<sV::AbstractApplication>().log_msg( (::sV::logging::LogLevel) level, dest );
+        goo::app<sV::AbstractApplication>().log_msg(
+            file, lineNo, (::sV::logging::LogLevel) level, dest );
         # endif
     } else {
         // todo: positional info?

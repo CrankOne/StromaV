@@ -292,7 +292,7 @@ if( this->log_level() < lvl ) break;                        \
     this->log_msg( dict, (::sV::logging::LogLevel) lvl, __VA_ARGS__ );  \
 } while(false);
 # else
-#   define _sV_mylog( file, line, lvl, __VA_ARGS__ )        \
+#   define _sV_mylog( file, line, lvl, ... )        \
         this->log_msg( file, line, (::sV::logging::LogLevel) lvl, __VA_ARGS__ );
 # endif
 
