@@ -220,9 +220,9 @@ endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 #################
 
 #link_directories( ${extGDML_LIBRARY_DIR} )
-if( genfit_LIBRARY_DIR )
-    link_directories( ${genfit_LIBRARY_DIR} )
-endif( genfit_LIBRARY_DIR )
+#if( genfit_LIBRARY_DIR )
+#    link_directories( ${genfit_LIBRARY_DIR} )
+#endif( genfit_LIBRARY_DIR )
 #link_directories( ${yaml-cpp_LIBRARY_DIRS} )
 
 #
@@ -482,9 +482,9 @@ if( RPC_PROTOCOLS )
     endif( DATE_LIBMONITOR )
 endif( RPC_PROTOCOLS )
 
-if( genfit_LIBRARIES )
+if( genfit_FOUND )
     target_link_libraries( ${StromaV_LIB} PUBLIC ${genfit_LIBRARIES} )
-endif( genfit_LIBRARIES )
+endif( genfit_FOUND )
 
 if( DOC_HTML )
     configure_file (
