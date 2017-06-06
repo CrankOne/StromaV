@@ -36,12 +36,11 @@
 
 //# pragma GCC diagnostic push
 //# pragma GCC diagnostic ignored "-Wdeprecated-register"  // "register" is depr-d
-@G4_PHYSICS_INCLUDES_STR@
+@_INCLUDES_STR@
 //# pragma GCC diagnostic pop
 
 # define for_each_physics( m ) \
-@G4_PHYSICS_DEFINES_STR@
-    /* ... */
+@_DEFINES_STR@    /* ... */
 
 # endif  // GEANT4_DYNAMIC_PHYSICS
 # endif  // GEANT4_MC_MODEL

@@ -35,12 +35,11 @@
 
 // # pragma GCC diagnostic push
 // # pragma GCC diagnostic ignored "-Wdeprecated-register"  // "register" is depr-d
-@G4_PHLIST_INCLUDES_STR@
+@_INCLUDES_STR@
 // # pragma GCC diagnostic pop
 
 # define for_each_physlist( m ) \
-@G4_PHLIST_DEFINES_STR@
-    /* ... */
+@_DEFINES_STR@    /* ... */
 
 # endif  // GEANT4_MC_MODEL
 

@@ -234,86 +234,24 @@ if( GEANT4_MC_MODEL )
     if( NOT DEFINED Geant4_PHLIST_INCLUDE_DIR )
         set( Geant4_PHLIST_INCLUDE_DIR ${Geant4_INCLUDE_DIR} )
     endif(NOT DEFINED Geant4_PHLIST_INCLUDE_DIR )
-    execute_process(COMMAND
+
+    include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/g4_dynamic_physics.cmake )
+
+    # Phys. lists:
+    collect_Geant4_definitions(
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/get_phLists.sh
-        ${Geant4_PHLIST_INCLUDE_DIR}
-        OUTPUT_VARIABLE G4PHYSLISTS )
-    # Gather physics list:
-    if( G4PHYSLISTS )
-        string(REPLACE "\n" "," G4PHYSLISTS ${G4PHYSLISTS})
-        message( STATUS "Found pre-defined PhysLists: \n" ${G4PHYSLISTS} )
-        string(REPLACE ","  ";" G4PHYSLISTS ${G4PHYSLISTS})
-        foreach( phLst ${G4PHYSLISTS} )
-            set( G4_PHLIST_INCLUDES_STR
-                "${G4_PHLIST_INCLUDES_STR}\n# include <${phLst}.hh>" )
-            set( G4_PHLIST_DEFINES_STR
-                "${G4_PHLIST_DEFINES_STR}    m(${phLst}) \\\n" )
-            # TODO: conditionally determine if we really need to re-generate
-            # it as now each `$ make' invokation causes rebuild.
-            configure_file (
-                "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/PhysList.ihpp.in"
-                "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/PhysList.ihpp"
-            )
-        endforeach( phLst )
-    else( G4PHYSLISTS )
-        message( SEND_ERROR "No physics list found in \
-        ${Geant4_INCLUDE_DIR}. May indicate problems with \
-        your Geant4 installation." )
-    endif( G4PHYSLISTS )
-    if( GEANT4_DYNAMIC_PHYSICS )
-        # Gather particles:
-        execute_process(COMMAND
-            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/get_g4Particles.sh
-            ${Geant4_INCLUDE_DIR}
-            OUTPUT_VARIABLE G4PARTICLES )
-        if( G4PARTICLES )
-            string(REPLACE "\n" "," G4PARTICLES ${G4PARTICLES})
-            message( STATUS "Found pre-defined Particles: \n" ${G4PARTICLES} )
-            string(REPLACE ","  ";" G4PARTICLES ${G4PARTICLES})
-            foreach( particle ${G4PARTICLES} )
-                set( G4_PARTICLES_INCLUDES_STR
-                    "${G4_PARTICLES_INCLUDES_STR}\n# include <G4${particle}.hh>" )
-                set( G4_PARTICLES_DEFINES_STR
-                    "${G4_PARTICLES_DEFINES_STR}    m(${particle}) \\\n" )
-                # TODO: conditionally determine if we really need to re-generate
-                # it as now each `$ make' invokation causes rebuild.
-                configure_file (
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Particles.ihpp.in"
-                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Particles.ihpp"
-                )
-            endforeach( particle )
-        else( G4PARTICLES )
-            message( SEND_ERROR "No particle definitions found in \
-            ${Geant4_INCLUDE_DIR}. May indicate problems with \
-            your Geant4 installation." )
-        endif( G4PARTICLES )
-        # Gather physics modules:
-        execute_process(COMMAND
-            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/get_physics.sh
-            ${Geant4_INCLUDE_DIR}
-            OUTPUT_VARIABLE G4PHYSICS )
-        if( G4PHYSICS )
-            string(REPLACE "\n" "," G4PHYSICS ${G4PHYSICS})
-            message( STATUS "Found pre-defined Physics: \n" ${G4PHYSICS} )
-            string(REPLACE ","  ";" G4PHYSICS ${G4PHYSICS})
-            foreach( physics ${G4PHYSICS} )
-                set( G4_PHYSICS_INCLUDES_STR
-                    "${G4_PHYSICS_INCLUDES_STR}\n# include <${physics}.hh>" )
-                set( G4_PHYSICS_DEFINES_STR
-                    "${G4_PHYSICS_DEFINES_STR}    m(${physics}) \\\n" )
-                # TODO: conditionally determine if we really need to re-generate
-                # it as now each `$ make' invokation causes rebuild.
-                configure_file (
-                    "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Physics.ihpp.in"
-                    "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Physics.ihpp"
-                )
-            endforeach( physics )
-        else( G4PHYSICS )
-            message( SEND_ERROR "No physics definitions found in \
-            ${Geant4_INCLUDE_DIR}. May indicate problems with \
-            your Geant4 installation." )
-        endif( G4PHYSICS )
-    endif( GEANT4_DYNAMIC_PHYSICS )
+        "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/PhysList.ihpp.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/PhysList.ihpp" "" )
+    # Particles:
+    collect_Geant4_definitions(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/get_g4Particles.sh
+        "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Particles.ihpp.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Particles.ihpp" G4 )
+    # Physics modules:
+    collect_Geant4_definitions(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/get_physics.sh
+        "${StromaV_LIB_INCLUDE_DIR}/g4extras/auto.in/Physics.ihpp.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/inc/g4extras/auto.out/Physics.ihpp" "" )
 
     # Remove this dirty things outta my compiler options!
     string(REPLACE "-pedantic"              "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )

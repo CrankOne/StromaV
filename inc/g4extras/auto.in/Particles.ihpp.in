@@ -34,11 +34,10 @@
 # ifdef GEANT4_MC_MODEL
 # ifdef GEANT4_DYNAMIC_PHYSICS
 
-@G4_PARTICLES_INCLUDES_STR@
+@_INCLUDES_STR@
 
 # define for_each_particle( m ) \
-@G4_PARTICLES_DEFINES_STR@
-    /* ... */
+@_DEFINES_STR@    /* ... */
 
 # endif  // GEANT4_DYNAMIC_PHYSICS
 # endif  // GEANT4_MC_MODEL
