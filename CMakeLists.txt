@@ -320,20 +320,6 @@ if( GEANT4_MC_MODEL )
     string(REGEX REPLACE "-Wno-[^\ ]*"      "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
 endif( GEANT4_MC_MODEL )
 
-# Add ROOT dictionaries
-if( ANALYSIS_ROUTINES )
-    # TODO: figure out which target does the ROOT_GENERATE_DICTIONARY add
-    # to change it to the target_include_directories()
-    get_target_property( _Goo_INCS ${Goo_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES )
-    include_directories( TrackingGroupDict.cxx
-                         "inc"
-                         ${_Goo_INCS}
-                         ${CMAKE_CURRENT_BINARY_DIR}/inc )
-    ROOT_GENERATE_DICTIONARY( TrackingGroupDict
-        ${PROJECT_SOURCE_DIR}/inc/alignment/TrackingGroup*
-        LINKDEF alignment/TrackingGroupLinkDef.h )
-endif( ANALYSIS_ROUTINES )
-
 # TARGETS
 ########
 
@@ -390,7 +376,7 @@ file(GLOB_RECURSE StromaV_LIB_SOURCES src/*.c*)
 add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
         $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
-        $<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
+        #$<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
         $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>
         $<$<BOOL:${DSuL}>:${FLEX_DSuL_Lexer_OUTPUTS}>
     )
@@ -505,6 +491,26 @@ if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
     # Can fix possible issue with target visibility:
     set_source_files_properties( ${PY_MSG_MODULES} PROPERTIES GENERATED TRUE )
 endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
+
+#
+# ROOT bindings
+if( ANALYSIS_ROUTINES )
+    ## TODO: figure out which target does the ROOT_GENERATE_DICTIONARY add
+    ## to change it to the target_include_directories()
+    #get_target_property( _Goo_INCS ${Goo_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES )
+    #include_directories( TrackingGroupDict.cxx
+    #                     "inc"
+    #                     ${_Goo_INCS}
+    #                     ${CMAKE_CURRENT_BINARY_DIR}/inc )
+    #ROOT_GENERATE_DICTIONARY( TrackingGroupDict
+    #    ${PROJECT_SOURCE_DIR}/inc/alignment/TrackingGroup*
+    #    LINKDEF alignment/TrackingGroupLinkDef.h )
+    include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ROOTAuxDicts.cmake )
+    sV_ROOT_dictionaries( TrackingGroupDict
+        HEADERS inc/alignment/TrackingGroup*
+        LINKDEF ${CMAKE_CURRENT_SOURCE_DIR}/inc/alignment/TrackingGroupLinkDef.h
+        TARGET_LIB ${StromaV_LIB} )
+endif( ANALYSIS_ROUTINES )
 
 # Build ROOT plugins
 #\project-subdir:
