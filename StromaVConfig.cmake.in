@@ -33,8 +33,8 @@
 
 #  Compute the installation prefix relative to this file.
 get_filename_component(_CURRENT_LOCATION "${CMAKE_CURRENT_LIST_FILE}" PATH)
-include( ${_CURRENT_LOCATION}/sV_find_pkgs.cmake )
 include( ${_CURRENT_LOCATION}/StromaVTargets.cmake )
+include( ${_CURRENT_LOCATION}/sV_find_pkgs.cmake )
 
 set( StromaV_INCLUDE_DIRS   "@CMAKE_INSTALL_PREFIX@/include/StromaV" )
 set( StromaV_LIBRARIES      @StromaV_LIB@ )

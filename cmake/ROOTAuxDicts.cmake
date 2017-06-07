@@ -77,19 +77,26 @@ is not a CMake target, so no include directories will be obtained." )
     endif()
     get_directory_property( _THIS_DIR_INCDIRS INCLUDE_DIRECTORIES )
     foreach( incdir IN LISTS _THIS_DIR_INCDIRS _LIB_INCS _LIB_SINCS ROOT_dict__ARGS_INCLUDE_DIRS )
-        list( APPEND _INCLUDE_DIRS ${incdir} )
+        if( incdir )
+            list( APPEND _INCLUDE_DIRS ${incdir} )
+        endif()
     endforeach()
 
     # Check, whether any include directory were provided:
     if( NOT _INCLUDE_DIRS )
-        message( WARNING "No include directories will be provided to rootcling." )
+        message( SEND_ERROR "No include directories will be provided to rootcling." )
     else()
         list( REMOVE_DUPLICATES _INCLUDE_DIRS )
     endif()
 
     foreach( d ${_INCLUDE_DIRS})
-        set(includedirs_str ${includedirs_str} -I${d})
+        if(d)
+            #list(APPEND includedirs_str $<$<BOOL:${d}>:-I${d}>)
+            set( includedirs_str ${includedirs_str} $<$<BOOL:${d}>:-I${d}> )
+        endif(d)
     endforeach()
+    #set(hlprVar _INCLUDE_DIRS)
+    #set(includedirs_str $<$<BOOL:${hlprVar}>:-I$<JOIN:${hlprVar}, -I>>)
 
     # Form the input headers list:
     foreach( hdr IN LISTS ${ROOT_dict__ARGS_HEADERS} )
@@ -97,7 +104,7 @@ is not a CMake target, so no include directories will be obtained." )
             file( GLOB_RECURSE _hdrs ${hdr} FOLLOW_SYMLINKS )
             foreach(f ${_hdrs})
                 if(NOT f MATCHES LinkDef) # skip LinkDefs from globbing result
-                    set(headerfiles ${headerfiles} ${f})
+                    list(APPEND headerfiles ${f})
                 endif()
             endforeach()
         else()
@@ -115,12 +122,12 @@ is not a CMake target, so no include directories will be obtained." )
         unset( _LINKDEF_FILE CACHE )
         get_filename_component( _PRFX ${ROOT_dict__ARGS_LINKDEF} DIRECTORY )
         get_filename_component( _FNME ${ROOT_dict__ARGS_LINKDEF} NAME )
-        message( STATUS "DBG1: ${_PRFX} :: ${_FNME} :: ${_INCLUDE_DIRS}" )
+        #message( STATUS "DBG1: ${_PRFX} :: ${_FNME} :: ${_INCLUDE_DIRS}" )
         find_file( _LINKDEF_FILE NAMES ${_FNME} ${ROOT_dict__ARGS_LINKDEF}
             PATHS ${_INCLUDE_DIRS}
             PATH_SUFFIXES ${_PRFX}
             NO_DEFAULT_PATH )
-        message( "DBG2: ${_LINKDEF_FILE}" )
+        #message( "DBG2: ${_LINKDEF_FILE}" )
     endif()
 
     if( NOT _LINKDEF_FILE )
@@ -142,6 +149,8 @@ for dictionary \"${dictionary}\" specified as \"${ROOT_dict__ARGS_LINKDEF}\"." )
         COMMAND ${ROOTCLING_EXECUTABLE} -f ${dictionary}.cxx
             -c ${OTPS} ${includedirs_str} ${headerfiles} ${_LINKDEF_FILE}
         DEPENDS ${headerfiles} ${linkdefs} ${ROOT_dict__ARGS_TAGET_LIB}
-        VERBATIM )
+        #VERBATIM --- causes empty generator inject a "" which is erroneously
+        # interpreted by rootcling
+        )
 endfunction( )
 

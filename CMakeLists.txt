@@ -499,6 +499,7 @@ install( FILES
     ${CMAKE_CURRENT_BINARY_DIR}/StromaVConfigVersion.cmake
     cmake/FindCtemplate.cmake
     cmake/sV_find_pkgs.cmake
+    cmake/ROOTAuxDicts.cmake
     DESTINATION lib/cmake/StromaV )
 
 install( FILES
