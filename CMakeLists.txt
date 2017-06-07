@@ -139,7 +139,7 @@ endif( DOC_HTML )
 if( DSuL )
     BISON_TARGET(DSuL_Parser assets/grammar/dsul.y
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_parser_generated.c
-        VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
+        #VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
         COMPILE_FLAGS "--graph=${CMAKE_CURRENT_BINARY_DIR}/dsul.dot" )
     FLEX_TARGET(DSuL_Lexer   assets/grammar/dsul.l
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_lexer_generated.c)

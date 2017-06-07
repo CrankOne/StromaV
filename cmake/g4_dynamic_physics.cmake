@@ -37,7 +37,7 @@ macro( collect_Geant4_definitions FILTERING_SCRIPT TEMPLATE_IN HEADER_OUT HDRPRF
                 "${_DEFINES_STR}    m(${entry}) \\\n" )
         endforeach( entry )
         # TODO: conditionally determine if we really need to re-generate
-        # it as now each `$ make' invokation causes rebuild.
+        # it as now each `$ cmake' invokation causes rebuild.
         configure_file( ${TEMPLATE_IN} ${HEADER_OUT} @ONLY )
     else( _DYNAMIC_ENTRIES )
         message( SEND_ERROR "No dynamic entries found by ${FILTERING_SCRIPT}." )

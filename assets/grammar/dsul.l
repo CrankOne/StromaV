@@ -13,6 +13,8 @@ DTNAME      {UL}
 
 #define YY_DECL int yylex()
 
+void yyerror (char const *s);
+
 %}
 
 %%
