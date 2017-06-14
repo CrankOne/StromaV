@@ -45,7 +45,7 @@ void __static_disable_damn_root_handlers() {
     // Default resetting signal handlers behaviour can be overriden by
     // environment variable which is checked here.
     if( ::goo::aux::iApp::envvar_as_logical(PRESERVE_ROOT_SIGNAL_HANDLERS_ENVVAR) ) {
-        std::cerr << "Keeping ROOT signal handlers in place." << std::endl;
+        std::cerr << "ROOT signal handlers preserved (kept in place)." << std::endl;
     } else {
         sV::mixins::RootApplication::reset_ROOT_signal_handlers();
     }
@@ -68,7 +68,7 @@ RootApplication::RootApplication(
             _appClassName(appClassName),
             _t_argc(0),
             _t_argv(nullptr) {
-    AbstractApplication::_enable_ROOT_feature( enableTApplication );
+    _enable_ROOT_feature( enableTApplication );
 }
 
 RootApplication::~RootApplication() {
@@ -78,45 +78,39 @@ RootApplication::~RootApplication() {
 }
 
 void
-RootApplication::_create_TApplication( const std::string & rootAppArguments ) {
-    if( rootAppArguments.empty() ) {
-        _tApp = new TApplication( _appClassName.c_str(), nullptr, nullptr, nullptr, 0 );
-    } else {
-        _t_argc = ::goo::dict::Configuration::tokenize_string(
-                    rootAppArguments,
-                    _t_argv );
-        _tApp = new TApplication( _appClassName.c_str(), &_t_argc, _t_argv, nullptr, 0 );
-    }
-    _tApp->SetReturnFromRun(kTRUE);
-    _tApp->Init();
+RootApplication::_enable_ROOT_feature( uint8_t ftCode ) {
+    _ROOTAppFeatures |= ftCode;
 }
 
 void
 RootApplication::append_ROOT_config_options(
-                goo::dict::Dictionary & rootAppCfg,
-                uint8_t featuresEnabled ) {
-    auto ip = rootAppCfg.insertion_proxy().bgn_sect(
+                uint8_t rootFts,
+                goo::dict::Dictionary & commonCfg ) {
+    commonCfg.subsection("sV-paths").insertion_proxy()
+        .p<goo::filesystem::Path>( "root-plugins",
+            "Path to sV's ROOT plugins dir." )
+        ;
+    auto ip = commonCfg.insertion_proxy().bgn_sect(
             "ROOT",
             "CERN ROOT analysis framework integration runtime options." );
-    if( enableCommonFile && featuresEnabled ) {
+    if( enableCommonFile && rootFts ) {
         ip.p<goo::filesystem::Path>("output-file",
                 "output ROOT-file path for current session. Set to \"none\" "
                 "to omit.",
             "none" );
     }
-    if( enablePlugins && featuresEnabled ) {
+    if( enablePlugins && rootFts ) {
         ip.p<goo::filesystem::Path>("plugin-handlers-file",
                 "Path to file containing ROOT plugin handlers (see reference "
                 "to TPluginManager for syntax).",
             "sV-plugins.rootrc" );
     }
-    if( enableDynamicPath && featuresEnabled ) {
-        // TODO: Make it list!
+    if( enableDynamicPath && rootFts ) {
         ip.list<goo::filesystem::Path>("dynamic-path",
                 "Additional dynamic path to extend ROOT TSystem "
                 "(search path for shared libraries).");
     }
-    if( enableTApplication && featuresEnabled ) {
+    if( enableTApplication && rootFts ) {
         ip.p<std::string>("TApplication-args",
                 "A string to be parsed as TApplication command line. "
                 "See TApplication::GetOptions() reference for your "
@@ -136,28 +130,43 @@ RootApplication::reset_ROOT_signal_handlers() {
 }
 
 void
-RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
+RootApplication::initialize_ROOT_system(
+                    uint8_t rootFts,
+                    goo::dict::Dictionary & commonCfg,
+                    int argc &, const char **& argv ) {
     using goo::filesystem::Path;
-    AbstractApplication & thisApp = goo::app<AbstractApplication>();
-    ConfigPathInterpolator * pathIpPtr = thisApp.path_interpolator();
-    if( featuresEnabled & enableDynamicPath ) {
-        if( !thisApp.cfg_option<Path>("ROOT.dynamic-path").empty()
-         && !thisApp.do_immediate_exit() ) {
-            for( auto additionalPath : thisApp.cfg_options_list<Path>("ROOT.dynamic-path") ) {
-                additionalPath.interpolator( pathIpPtr );
+
+    bool doImmediateExit = false;
+    ConfigPathInterpolator * pathIpPtr = nullptr;
+    if( goo::aux::iApp::exists() ) {
+        pathIpPtr = goo::app<AbstractApplication>().path_interpolator();
+        doImmediateExit = goo::app<AbstractApplication>().do_immediate_exit();
+    }
+
+    if( rootFts & enableDynamicPath ) {
+        const iSingularParameter & dynPath = commonCfg["ROOT.dynamic-path"];
+        if( !dynPath.as_list_of<Path>().empty()
+         && !doImmediateExit ) {
+            for( auto additionalPath : dynPath.as_list_of<Path>() ) {
+                if( !! pathIpPtr ) {
+                    additionalPath.interpolator( pathIpPtr );
+                }
                 if( !additionalPath.empty() ) {
-                    gSystem->AddDynamicPath( additionalPath.interpolated().c_str() );
-                    sV_log2( "Added ROOT's dynamic path: %s.\n", 
+                    sV_log2( "Adding ROOT's dynamic path: %s.\n", 
                             additionalPath.interpolated().c_str() );
+                    gSystem->AddDynamicPath( additionalPath.interpolated().c_str() );
                 }
             }
         }
     }
-    if( featuresEnabled & enablePlugins ) {
-        Path path = thisApp.cfg_option<Path>("ROOT.plugin-handlers-file");
-        path.interpolator( pathIpPtr );
+
+    if( rootFts & enablePlugins ) {
+        Path path = commonCfg["ROOT.plugin-handlers-file"].as<Path>();
+        if( !! pathIpPtr ) {
+            path.interpolator( pathIpPtr );
+        }
         if( !path.interpolated().empty() ) {
-            sV_log2( "Adding ROOT plugins handlers file \"%s\".\n",
+            sV_log2( "Adding ROOT's plugins handlers file \"%s\".\n",
                 path.interpolated().c_str() );
             // Set plugin handlers:
             TEnv * env = new TEnv( path.interpolated().c_str() );
@@ -173,18 +182,25 @@ RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
             # endif
         }
     }
-    if( featuresEnabled & enableTApplication ) {
-        goo::app<RootApplication>()._create_TApplication(
-            thisApp.cfg_option<std::string>("ROOT.TApplication-args") );
+
+    if( rootFts & enableTApplication ) {
+        new_native_ROOT_application_instance( 
+            commonCfg["ROOT.TApplication-args"].as<std::string>()
+            argc, argv );
     }
-    if( featuresEnabled & enableCommonFile ) {
-        Path path = thisApp.cfg_option<Path>("ROOT.output-file");
-        path.interpolator( pathIpPtr );
+
+    if( rootFts & enableCommonFile ) {
+        Path path = commonCfg["ROOT.output-file"].as<Path>();
+        if( pathIpPtr ) {
+            path.interpolator( pathIpPtr );
+        }
         // Try to open ROOT file, if provided:
         if( !path.interpolated().empty()
-         && "none" != path.interpolated()
-         && !thisApp.do_immediate_exit() ) {
-            // will be closed as gFile
+             && "none" != path.interpolated()
+             && !doImmediateExit ) {
+            sV_log2( "Opening ROOT output file \"%s\".\n",
+                path.interpolated().c_str() );
+            // Will be closed as gFile
             auto f = new TFile( path.interpolated().c_str(), "RECREATE" );
             if( f->IsZombie() ) {
                 sV_logw( "Error opening file \"%s\".\n",
@@ -195,6 +211,34 @@ RootApplication::initialize_ROOT_system( uint8_t featuresEnabled ) {
             }
         }
     }
+}
+
+TApplication *
+RootApplication::new_native_ROOT_application_instance(
+            const std::string & rooAppArgsStr, int & argc, const char **& argv ) {
+    TApplication * ret = nullptr;
+    if( rooAppArgsStr.empty() ) {
+        ret = new TApplication( "sV-app", nullptr, nullptr, nullptr, 0 );
+    } else {
+        argc = ::goo::dict::Configuration::tokenize_string(
+                    rooAppArgsStr,
+                    argv );
+        ret = new TApplication( _appClassName.c_str(), &argc, argv, nullptr, 0 );
+    }
+    ret->SetReturnFromRun(kTRUE);
+    ret->Init();
+    return ret;
+}
+
+
+void
+RootApplication::_append_ROOT_config_options( goo::dict::Dictionary & commonCfg ) {
+    append_ROOT_config_options( ROOT_features(), commonCfg );
+}
+
+void
+RootApplication::_initialize_ROOT_system( goo::dict::Dictionary & commonCfg ) {
+    initialize_ROOT_system( ROOT_features(), commonCfg, _t_argc, _t_argv );
 }
 
 }  // namespace mixins

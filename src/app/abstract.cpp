@@ -21,6 +21,9 @@
  */
 
 # include "app/abstract.hpp"
+# include "app/mixins/alignment.hpp"
+# include "app/mixins/geant4.hpp"
+# include "app/mixins/protobuf.hpp"
 # include "app/mixins/root.hpp"
 # include "yaml-adapter.hpp"
 # include "detector_ids.h"
@@ -99,8 +102,7 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
             _appCfg( cfg ),
             _configuration( "sV-config", "StromaV app-managed config" ),
             _immediateExit(false),
-            _pathInterpolator( _configuration ),
-            _ROOTAppFeatures(0x0) {
+            _pathInterpolator( _configuration ) {
     // Initialize log dispatching to standard streams by
     // default:
     // (todo: may be it is useful to prevent it by getenv(NO_OUT)?)
@@ -183,8 +185,6 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
                             StromaV_MODULES_INSTALL_PATH )
             .p<goo::filesystem::Path>( "assets",
                             "Path to StromaV assests directory" )
-            .p<goo::filesystem::Path>( "root-plugins",
-                            "Path to sV's ROOT plugins dir." )
         .end_sect( "sV-paths" )
         .bgn_sect( "logging", "sV's logging facility configuration parameters." )
             .p<YAML::Node>( "families", "List of logging families. Each C++ "
@@ -198,11 +198,6 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
                 "descendants.")
         .end_sect( "logging" )
         ;
-}
-
-void
-AbstractApplication::_enable_ROOT_feature( uint8_t ftCode ) {
-    _ROOTAppFeatures |= ftCode;
 }
 
 AbstractApplication::Config *
@@ -257,7 +252,7 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
 }
 
 void
-AbstractApplication::_append_common_config( Config & ) {
+AbstractApplication::_append_common_config_w_vctr( Config & ) {
     // Upon module loding is performed, one may fill common config with
     // supplementary options subsections. Each constructible has its own
     // configuration options definition stored in \ref IndexOfConstructables .
@@ -398,23 +393,26 @@ AbstractApplication::_append_common_config( Config & ) {
 
 void
 AbstractApplication::_V_configure_application( const Config * cfg ) {
+    const Config & conf = *cfg;
     if( _immediateExit ) {
         return;
     }
-
-    if( ROOT_features() ) {
-        mixins::RootApplication
-              ::append_ROOT_config_options( _configuration, ROOT_features() );
+    // Append mixins configuration:
+    mixins::RootApplication myRootMixin =
+            dynamic_cast<RootApplication *>(this);
+    Geant4Application * myGeant4Mixin =
+            dynamic_cast<Geant4Application *>(this);
+    if( myRootMixin ) {
+        myRootMixin->_append_ROOT_config_options( conf );
     }
-
-    const Config & conf = *cfg;
-
+    if( mygeant4Mixin ) {
+        myGeant4Mixin->_append_Geant4_config_options( conf );
+    }
+    // ... more mixins here.
     // Before config files will be parsed --- finalize the common config.
-    _append_common_config( _configuration );
-
+    _append_common_config_w_vctr( _configuration );
     // Load configuration files
     _parse_configs( conf["config"].as<goo::filesystem::Path>() );
-
     // Override configuration with command-line ones specified with
     // -O|--override-opt
     const auto & overridenOpts = conf["override-opt"].as_list_of<std::string>();
@@ -422,7 +420,7 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
         std::size_t eqPos = overridenOpt.find('=');
         if( std::string::npos == eqPos ) {
             emraise( badParameter, "Unable to interpret expression "
-                "\"%s\" (no equal sign in token). Please, use the notation "
+                "\"%s\" (no equal sign found). Please, use the notation "
                 "\"-O<opt-name>=<opt-val>\" to override option from common "
                 "config.", overridenOpt.c_str() );
         }
@@ -432,12 +430,30 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
         _set_common_option( path, strVal );
     }
 
-    _process_options( cfg );
-
     if( conf["inspect-config"].as<bool>() ) {
         // TODO: support various help renderers from Goo.
         _configuration.print_ASCII_tree( std::cout );
         _immediateExit = true;
+    }
+
+    {   // Apply logging families configuration at this point.
+        size_t nFamsInitd = logging::iLoggingFamily::initialize_families();
+        sV_log1( "Existing %zu logging families have been re-initialized.\n",
+                 nFamsInitd );
+    }
+    // Configure mixins:
+    if( myRootMixin && !do_immediate_exit() ) {
+        myRootMixin->_initialize_ROOT_system( conf );
+    }
+    if( myGeant4Mixin && !do_immediate_exit() ) {
+        myGeant4Mixin->_initialize_Geant4_system( conf );
+    }
+    // ... more mixins here.
+    // Configure particular application:
+    _V_configure_concrete_app();
+    // Configure ASCII display prior to run:
+    if( _appCfg->parameter("ascii-display").as<bool>() ) {
+        aux::ASCII_Display::enable_ASCII_display();
     }
 }
 
@@ -468,58 +484,6 @@ AbstractApplication::_V_acquire_errstream() {
     }
 
     return new std::ostream( &_eBuffer );
-}
-
-void
-AbstractApplication::_process_options( const Config * ) {
-    {   // Apply logging families configuration at this point.
-        size_t nFamsInitd = logging::iLoggingFamily::initialize_families();
-        sV_log1( "Existing %zu logging families have been re-initialized.\n",
-                 nFamsInitd );
-    }
-
-    # if 0
-    {   // Try dynamic_cast<RootApplication*>() and initialize ROOT's mixin:
-        mixins::RootApplication * ra;
-        if( NULL != (ra = dynamic_cast<mixins::RootApplication *>(this)) ) {
-            // upon successful cast:
-            const std::string & cmdArgs = vm["TApplication-args"].as<std::string>();
-            if( !cmdArgs.empty() ) {
-                // TODO: to be replaced by goo's ::goo::dict::Configuration::tokenize_string()
-                // or ::goo::dict::Configuration::free_tokens()
-                // when goo/appParameters branch will be merged to goo/master:
-                ra->_t_argc = ::sV::aux::goo_XXX_tokenize_argstring(
-                    cmdArgs,
-                    ra->_t_argv );
-                ra->create_TApplication(
-                        &(ra->_t_argc),
-                        ra->_t_argv,
-                        nullptr,
-                        0 );
-            } else {
-                ra->create_TApplication();
-            }
-        }
-    }
-
-    if(vmPtr->count("root.dynamic-path") && !_immediateExit ) {
-        for( auto additionalPath : cfg_option<std::vector<std::string>>("root.dynamic-path") ) {
-            if( !additionalPath.empty() ) {
-                gSystem->AddDynamicPath( additionalPath.c_str() );
-            }
-        }
-    }
-    # endif
-
-    if( _ROOTAppFeatures && !do_immediate_exit() ) {
-        mixins::RootApplication::initialize_ROOT_system( _ROOTAppFeatures );
-    }
-
-    _V_configure_concrete_app();
-
-    if( _appCfg->parameter("ascii-display").as<bool>() ) {
-        aux::ASCII_Display::enable_ASCII_display();
-    }
 }
 
 void

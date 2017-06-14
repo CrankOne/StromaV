@@ -149,7 +149,7 @@ protected:
 
     /// Appends common config with various options from dynamically loaded
     /// modules. See implementation for details.
-    virtual void _append_common_config( Config & cfg );
+    virtual void _append_common_config_w_vctr( Config & cfg );
     /// Performs configs parsing if path in dir, or just forwards execution to
     /// _parse_config_file() if it is a file.
     void _parse_configs( const goo::filesystem::Path & path );

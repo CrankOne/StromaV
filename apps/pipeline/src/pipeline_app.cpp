@@ -36,8 +36,7 @@ App::_V_run() {
         return EXIT_FAILURE;
     }
 
-    AnalysisPipeline::iEventSequence * evseq
-        = dynamic_cast<AnalysisPipeline::iEventSequence*>( event_sequence() );
+    AnalysisPipeline::iEventSequence * evseq = event_sequence();
 
     int rc = this->AnalysisPipeline::process( evseq );
 

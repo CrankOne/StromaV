@@ -103,8 +103,12 @@ public:
         { return _processorsChain; }
 
     /// Current event sequence getter.
-    iEventSequence * event_sequence()
+    iEventSequence * event_sequence()  // TODO: return ref instead of ptr
         { return _evSeq; }
+
+    // TODO: iEventSequence & event_sequence() const;
+    // TODO: bool event_sequence_set() const { return !!_evSeq; }
+    // TODO: void event_sequence( iEventSequence * ) const;
 
     /// Evaluates pipeline on the single event. If event was denied,
     /// returns the ordering number of processor which did the discrimination
@@ -271,7 +275,7 @@ protected:
 
     /// Should return 'false' if processing in chain has to be aborted.
     virtual bool _V_process_event( Event * uEventPtr ) override {
-        if( uEventPtr->has_experimental() ) {
+        if( uEventPtr->has_experimental() ) {  // TODO: has_simulated()?
             if( ! uEventPtr->mutable_experimental()
                            ->mutable_payload()
                            ->Is<PayloadT>() ) {

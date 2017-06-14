@@ -48,56 +48,57 @@ namespace mixins {
  */
 class Geant4Application : public virtual AbstractApplication {
 protected:
-    // Overrides Geant4 default logging behaviour. TODO: further
-    // development of this stream-redirection class to not only
-    // store the messages in stringstreams.
+    // Overrides Geant4 default logging behaviour.
+    // TODO: supersede its functions with sV::logging::*
     class AppSession;
-private:
-    static Geant4Application * _self_Geant4ApplicationPtr;
 protected:
+    /// A ptr to internal sV's implementation of Geant4 session.
     AppSession * _session;
+    /// Pointer to NIST material manager (if enabled).
     G4NistManager * _NISTMatMan;
-    G4GDMLParser  * _parser;
+    /// A GDML parser instance pointer.
+    G4GDMLParser  * _parser;  // TODO: delete in dtr?
+    /// G4 vis manager instance pointer (if enabled).
     G4VisManager * _visManagerPtr;
-
-    int _argc;
-    char * const * _argv;
-
+    /// The name of currently viewing setup.
     std::string _setupName;
-
-    /// Used in overriden _V_construct_config_object() in order to
-    /// remember args for G4 executive.
-    void _set_cmd_args( int argc, char * const argv[] ) const;
 protected:
-    virtual goo::dict::Dictionary _geant4_options() const;
-    virtual goo::dict::Dictionary _geant4_gdml_options() const;
-    virtual void _treat_geant4_options(         const goo::dict::Dictionary & );
-    virtual void _treat_geant4_gdml_options(    const goo::dict::Dictionary & );
-    void _clear_geant4_options(         const goo::dict::Dictionary & );
-    void _clear_geant4_gdml_options(    const goo::dict::Dictionary & );
+    /// Forwards execution to Geant4 system. Designed to be invoked from
+    /// AbstractApplication::_V_run() directly, without any additional
+    /// preparations.
+    virtual int _run_session( bool isBatch, const std::string & macroFilePath );
 
+    /// Performs acquizition of the setup name, initializes geometry, physics
+    /// and PGA. Requires G4RunManager to be created upon invokation.
+    /// Called by _run_session().
+    virtual void _build_up_run();
+    /// Called by _run_session().
+    virtual int _interactive_run( const std::string & macroFilePath );  // can be empty
+    /// Called by _run_session().
+    virtual int _batch_run( const std::string & macroFilePath );  // can NOT be empty
+
+    /// Called by _build_up_run().
     virtual void _initialize_geometry();
+    /// Called by _build_up_run().
     virtual void _initialize_physics();
-    // Doubtfull. Follow the Geant4 manual there are three manatory user
-    // classes:
-    // 1) G4VUserDetectorConstruction -> _initialize_geometry
-    // 2) G4VUserPhysicsList          -> _initialize_physics
-    // 3) G4VUserActionInitialization which should include atleast
-    // G4VUserPrimaryGeneratorAction
+    /// Called by _build_up_run().
     virtual void _initialize_primary_generator_action();
 
-    /// Note: do not be misleaded by name --- may run terminal-interactive mode
-    /// also.
-    virtual int _gui_run( const std::string & macroFilePath );  // can be empty
-    virtual void _build_up_run();
-    virtual int _batch_run( const std::string & macroFilePath );  // can not be empty
-    virtual int _run_session( bool isBatch, const std::string & macroFilePath );
+    /// Called from AbstractApplication once this mixin was included in
+    /// inheritance chain: appends common config with Geant4-specific options.
+    void _append_Geant4_config_options( goo::dict::Dictionary & commonCfg );
+    /// Called from AbstractApplication once this mixin was included in
+    /// inheritance chain: configures Geant4 system routines. Allocates GDML
+    /// parser instance (G4GDMLParser class).
+    void _initialize_Geant4_system( goo::dict::Dictionary & commonCfg );
 public:
     Geant4Application( AbstractApplication::Config * );
     virtual ~Geant4Application();
     G4GDMLParser * gdml_parser_ptr() { return _parser; }
-    int g4_verbosity();  // TODO: cfg_option<int>("Geant4.verbosity") : "application"
+    int g4_verbosity();
     static void g4_abort();
+
+    friend class AbstractApplication;
 };  // class Geant4Application
 /**@}*/
 

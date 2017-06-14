@@ -69,8 +69,6 @@
 namespace sV {
 namespace mixins {
 
-Geant4Application * Geant4Application::_self_Geant4ApplicationPtr = nullptr;
-
 class Geant4Application::AppSession : public G4UIsession {
 protected:
     std::stringstream _g4ls, _g4es;
@@ -94,59 +92,89 @@ Geant4Application::Geant4Application( AbstractApplication::Config * c ) :
                       _NISTMatMan(nullptr),
                       _parser(nullptr),
                       _visManagerPtr(nullptr) {
-    Geant4Application::_self_Geant4ApplicationPtr = this;
     _session = new AppSession();
     G4UImanager::GetUIpointer()->SetCoutDestination(_session);
+
+    c->insertion_proxy()
+        .flag( "list-physics",
+            "List physics lists which are available at current build." )
+        .flag( "list-sensitive-detectors",
+            "Prints list of registered sensitive detectors that may be "
+            "associated within GDML detector description." )
+        .flag( "list-aux-tags",
+            "Prints list of registered auxilliary tags that may be "
+            "put within GDML geometry description to provide some extra "
+            "behaviour (e.g. sensitive detector association, appearance "
+            "styling, etc)." )
+        .flag( "list-PGAs",
+            "Prints list of registered primary generator classes that produces "
+            "initial particles during Geant4 MC event simulation." )
+        .p<goo::filesystem::Path>( "geometry",
+            "GDML source to be parsed. May refer to file or network "
+            "address." ) //.required_argument() ?
+        .p<goo::filesystem::Path>( "visMacroFile",
+                "Geant4 .mac script that usually steers the actual "
+                "simulation in non-interactive mode, or prior to it."
+            ) //.required_argument() ?
+        .p<bool>( "customExceptionHandler",
+                "enable custom exception handler for G4 (behaves similar to "
+                "ordinary one, but a bit fancier)",
+            true )
+    ;
+
+    # if 0
+    AbstractApplication::ConstructableConfMapping::self()
+        .set_basetype_description<...>( "sensitive-detectors",
+            "Sensitive detectors that may be associated with volumes to "
+            "provide reactive behaviour." )
+        ;
+    AbstractApplication::ConstructableConfMapping::self()
+        .set_basetype_description<...>( "aux-tags",
+            "Auxilliary tags introducing additional information into GDML "
+            "file." )
+        ;
+    # endif
 }
 
 Geant4Application::~Geant4Application() {
-    delete _session;
+    if( _parser ) {
+        delete _parser;
+    }
+    if( _session ) {
+        delete _session;
+    }
 }
 
-# if 0
-std::ostream &
-Geant4Application::g4_log_stream() {
-    return G4cout;
-}
-
-std::ostream &
-Geant4Application::g4_err_stream() {
-    return G4cerr;
-}
-# endif
-
-goo::dict::Dictionary
-Geant4Application::_geant4_options() const {
-    goo::dict::Dictionary g4cfg("Geant4", "Geant4 model options");
-    g4cfg.insertion_proxy()
+void
+Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & commonCfg ) {
+    commonCfg.insertion_proxy()
+    .bgn_sect("Geant4", "Major Geant4 framework integration "
+        "options. Includes number of various pre-initialization parameters "
+        "including .vis macros path, verbosity level, etc.")
         .p<bool>( "useNIST",
-                "use NIST materials (have prefix G4_ in GDML files).",
+                "Whether to use NIST materials database (have prefix G4_* in "
+                "Geant4 geometry).",
             true)
-        .p<int>( "verbosity",
-                "Geant4 core system verbosity (set before any .mac processing "
-                "starts and further can be overriden by them).",
-            2 )
+        .p<std::string>( "verbosity",
+                "Geant4 core system verbosity level to start with. Will be set "
+                "before any .mac script will be processed --- they can further "
+                "override this level. May be set to \"application\" to "
+                "indicate that initial Geant4 verbosity level matches sV's "
+                "common.",
+            "application" )
         .p<unsigned int>( "randomSeed",
                 "Random generator seed to be used with CLHEP::HepRandom. "
                 "Note, that null seed means no manual setting.",
             0 )
-        .p<std::string>( "visMacroFile",
-                "'vis' run-time script",
-            "vis.mac" )
-        .p<bool>( "customExceptionHandler",
-                "enable custom exception handler for G4 (behves just like "
-                "ordinary one, but fancier)",
-            true )
         .flag( "batch",
-                "If given, runs model without a GUI." )
+                "Disables a GUI session." )
         .p<std::string>( "primaryGenerator",
-                "Primary particles generator type specification.",
+                "Primary particles generator name (from VCtr index).",
             "SimpleGun" )
         .p<std::string>( "physicsList",
-                "Set physics list defining the entire MC simulation.",
+                "Set physics list defining the entire MC simulation "
+                "(from VCtr index).",
             "FTFP_BERT" )
-        .flag( "list-physics",
-            "List physics lists which are available at current build." )
         .bgn_sect( "extraPhysics", "Modular physics configuration section." )
             .list<std::string>( "module",
                     "Physics module to be included in modular physics list." )
@@ -159,30 +187,85 @@ Geant4Application::_geant4_options() const {
                     "Name of G4PhysListFactory product. See Geant4 manual for "
                     "guide how this name can be composed.",
                 "FTFP_BERT_EMV" )
-            .p<bool>( "physicsSR-considerMaterials",
-                    "Take into consideration material parameters while "
-                    "modelling synchrotron radiation physics.",
-                false )
+            //.p<bool>( "physicsSR-considerMaterials",
+            //        "Take into consideration material parameters while "
+            //        "modelling synchrotron radiation physics.",
+            //    false )
         .end_sect("extraPhysics")
-        .flag("sensitiveDetectorsList",
-            "List sensitive detectors which are available at current build.")
-        .bgn_sect("simpleGun", "Simple primary particle gun configuration.")
-            .p<std::string>("particleType",
-                    "Default particle type (can be overriden in messenger).",
-                "e-" )
-            .p<std::string>("position-cm",
-                    "Gun position vector, cm (can be further overriden in "
-                    "messenger).",
-                "{0.,0.,-3.}" )
-            .p<std::string>("direction",
-                    "Gun orientation vector (can be overriden in messenger).",
-                "{0.,0.,1.}" )
-            .p<double>("energy-MeV",
-                "Gun energy, MeV (can be further overriden in messenger).",
-                2e+5 )
-        .end_sect("simpleGun")
-        ;
-    return g4cfg;
+        .bgn_sect("gdml", "A GDML-related set of parameters. The GDML acronym "
+            "comes for \"Geometry Description Mark-up Language\" which is "
+            "merely a well-defined XML supplied within modern Geant4 "
+            "distributions.")
+                .p<bool>( "overlapCheck",
+                        "Whether to perform overlap checking during GDML "
+                        "parsing stage.",
+                    true )
+                .p<std::string>( "setup-name",
+                        "Setup name to be used from GDML given description.",
+                    "Default" )
+                .p<std::string>( "defaultStyle",
+                        "Default appearance style for drawable geometry when "
+                        "no style is specified",
+                    "dft:#777777aa,!wireframe" )
+                .p<bool>( "enableXMLSchemaValidation",
+                        "Enables GDML's XML schema validation.",
+                    true )
+                .list<std::string>( "enable-tag",
+                        "GDML auxilliary tags to be enabled for processing")
+        .end_sect("gdml")
+        //.flag("sensitiveDetectorsList",
+        //    "List sensitive detectors which are available at current build.")
+        //.bgn_sect("simpleGun", "Simple primary particle gun configuration.")
+        //    .p<std::string>("particleType",
+        //            "Default particle type (can be overriden in messenger).",
+        //        "e-" )
+        //    .p<std::string>("position-cm",
+        //            "Gun position vector, cm (can be further overriden in "
+        //            "messenger).",
+        //        "{0.,0.,-3.}" )
+        //    .p<std::string>("direction",
+        //            "Gun orientation vector (can be overriden in messenger).",
+        //        "{0.,0.,1.}" )
+        //    .p<double>("energy-MeV",
+        //        "Gun energy, MeV (can be further overriden in messenger).",
+        //        2e+5 )
+        //.end_sect("simpleGun")
+    .end_sect( "Geant4" )
+    ;
+}
+
+void
+Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg ) {
+    if( app_option<bool>("customExceptionHandler")() ) {
+        sV::aux::ExceptionHandler::enable();
+    }
+
+    goo::filesystem::Path geomPath = app_option("geometry").as<goo::filesystem::Path>();
+    geomPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
+
+    sV_log2("Reading a GDML geometry from \"%s\".\n",
+            geomPath.interpolated().c_str());
+
+    _parser->Read( geomPath.interpolated(),
+                   commonCfg["Geant4.gdml.enableXMLSchemaValidation"].as<bool>() );
+
+    if( commonCfg["Geant4.useNIST"].as<bool>() ) {
+        sV_log2("Enabling NIST.\n");
+        (_NISTMatMan = G4NistManager::Instance())->SetVerbose( g4_verbosity() );
+    }
+    {
+        unsigned int seed = commonCfg["Geant4.randomSeed"].as<unsigned int>();
+        if( seed ) {
+            sV_log2( "Setting HEP random seed to %u.\n", seed );
+            CLHEP::HepRandom::setTheSeed( seed );
+        }
+    }
+    _parser = new G4GDMLParser();
+    if( commonCfg["overlapCheck"].as<bool>() ) {
+        _parser->SetOverlapCheck( true );
+    } else {
+        _parser->SetOverlapCheck( false );
+    }
 }
 
 int
@@ -195,125 +278,33 @@ Geant4Application::g4_verbosity() {
     }
 }
 
-goo::dict::Dictionary
-Geant4Application::_geant4_gdml_options() const {
-    goo::dict::Dictionary gdmlCfg("gdml", "GDML-relevant options");
-    gdmlCfg.insertion_proxy()
-        .p<std::string>( "geometry",
-                "GDML file to treat." ).required_argument()
-        .p<bool>( "overlapCheck",
-                "Do or not overlap checking at parsing stage.",
-            true )
-        .p<std::string>( "setup",
-                "Default setup to be used from GDML description.",
-            "Default" )
-        .p<std::string>( "defaultStyle",
-                "Default style for drawable items.",
-            "dft:#777777aa,!wireframe" )
-        .p<bool>( "enableXMLSchemaValidation",
-                "Enable GDML's XML schema validation (useful for initial "
-                "speed-up and offline work).",
-            true )
-        .list<std::string>( "aux-tag",
-                "GDML aux tags to be enabled for processing")
-        ;
-    return gdmlCfg;
-}
-
-void
-Geant4Application::_treat_geant4_options( const goo::dict::Dictionary & vm ) {
-    // Set up a NIST material manager.
-    // Note: materials (not elements!) of NIST library can be referenced from GDML
-    // by G4_ prefix.
-    if( vm.parameter("useNIST").as<bool>() ) {
-        //sV_log3("Enabling NIST.\n");
-        (_NISTMatMan = G4NistManager::Instance())->SetVerbose(1);
-    }
-    if( vm.parameter("customExceptionHandler").as<bool>() ) {
-        sV::aux::ExceptionHandler::enable();
-    }
-    if( vm.parameter("randomSeed").as<unsigned int>() ) {
-        CLHEP::HepRandom::setTheSeed(vm.parameter("randomSeed").as<unsigned int>());
-    }
-}
-
-void
-Geant4Application::_treat_geant4_gdml_options( const goo::dict::Dictionary & vm ) {
-    _parser = new G4GDMLParser();
-    if( vm.parameter("overlapCheck").as<bool>() ) {
-        _parser->SetOverlapCheck(true);
-    }
-    sV_log2("Reading a GDML geometry from \"%s\".\n",
-            vm.parameter("geometry").as<std::string>().c_str());
-    _parser->Read( vm.parameter("geometry").as<std::string>(),
-        vm.parameter("enableXMLSchemaValidation").as<bool>() );
-}
-
-void
-Geant4Application::_clear_geant4_options( const goo::dict::Dictionary & /*vm*/ ) {
-    // FIXME: sometimes causes strange segfaults...
-    # if 0
-    if( vm["Geant4.customExceptionHandler"].as<bool>() ) {
-        sV::aux::ExceptionHandler::disable();
-    }
-    # endif
-}
-
-void
-Geant4Application::_clear_geant4_gdml_options( const goo::dict::Dictionary & ) {
-    if( _parser ) {
-        delete _parser;
-    }
-}
-
-void
-Geant4Application::_set_cmd_args( int argc, char * const argv[] ) const {
-    const_cast<Geant4Application*>(this)->_argc = argc;
-    const_cast<Geant4Application*>(this)->_argv = argv;
-}
-
 void
 Geant4Application::g4_abort() {
-    # ifdef GEANT4_MC_MODEL
     if( G4UImanager::GetUIpointer() ) {
         G4UImanager::GetUIpointer()->ApplyCommand("/run/abort");
     }
-    # endif
 }
 
-void
-Geant4Application::_initialize_geometry() {
-    sV_log2("Setting up GEANT4 run manager on default volume \"%s\".\n",
-                _setupName.c_str());
-    G4RunManager::GetRunManager()->SetUserInitialization(
-                new extGDML::DetectorConstruction
-                        (gdml_parser_ptr()->GetWorldVolume(_setupName)) );
-}
+//
+//
+//
 
-void
-Geant4Application::_initialize_physics() {
-    if( cfg_option<std::string>("Geant4.physicsList") != "none" ) {
-        // Create a PhysicsList instance if it is not configured to `none':
-        G4RunManager::GetRunManager()->SetUserInitialization(
-                sV::obtain_physics_list_instance(
-                            co()["Geant4.physicsList"].as<std::string>() ) );
-    } else {
-        sV_logw( "No physics list assigned to MC simulation as there is no "
-                 "physicsList option provided.\n" );
-    }
-}
-
-void
-Geant4Application::_initialize_primary_generator_action() {
-    G4UImessenger * srcMessenger = nullptr;  // TODO: set srcMessenger
-    if( "none" != cfg_option<std::string>("Geant4.primaryGenerator") ) {
-        G4RunManager::GetRunManager()->SetUserAction( sV::user_primary_generator_action(
-                    cfg_option<std::string>("Geant4.primaryGenerator"),
-                    srcMessenger
-                ) );
-    }
-}
-
+/**Requires G4RunManager instance to be created.
+ *
+ * According to the Geant4 manual there are three mandatory user classes to be
+ * set prior to the run:
+ *
+ *   1. G4VUserDetectorConstruction -> _initialize_geometry()
+ *   2. G4VUserPhysicsList          -> _initialize_physics()
+ *   3. G4VUserActionInitialization which should include at least
+ *      G4VUserPrimaryGeneratorAction ( _initialize_primary_generator_action() ).
+ *
+ * Thus, this method does the following, in order:
+ *   1. Acquires the GDML setup name from common config.
+ *   2. Invokes the _initialize_geometry()
+ *   3. Invokes the _initialize_physics()
+ *   4. Invokes the _initialize_primary_generator_action()
+ * */
 void
 Geant4Application::_build_up_run() {
     if( cfg_option<bool>("Geant4.customExceptionHandler") ) {
@@ -327,12 +318,11 @@ Geant4Application::_build_up_run() {
     _initialize_physics();
     // PGA
     _initialize_primary_generator_action();
-    G4RunManager::GetRunManager()->Initialize();
 }
 
 # ifdef G4_MDL_GUI
 int
-Geant4Application::_gui_run( const std::string & macroFilePath ) {
+Geant4Application::_interactive_run( const std::string & macroFilePath ) {
     int rc = EXIT_SUCCESS;
     # ifdef G4_MDL_VIS
     _visManagerPtr = new G4VisExecutive();
@@ -363,6 +353,45 @@ Geant4Application::_gui_run( const std::string & macroFilePath ) {
 }
 # endif
 
+void
+Geant4Application::_initialize_geometry() {
+    sV_log2("Setting up Geant4 run manager on default volume \"%s\".\n",
+                _setupName.c_str());
+    G4RunManager::GetRunManager()->SetUserInitialization(
+                new extGDML::DetectorConstruction
+                        (gdml_parser_ptr()->GetWorldVolume(_setupName)) );
+}
+
+void
+Geant4Application::_initialize_physics() {
+    _TODO_  // TODO: use IndexOfConstructables
+    if( cfg_option<std::string>("Geant4.physicsList") != "none" ) {
+        // Create a PhysicsList instance if it is not configured to `none':
+        G4RunManager::GetRunManager()->SetUserInitialization(
+                sV::obtain_physics_list_instance(
+                            co()["Geant4.physicsList"].as<std::string>() ) );
+    } else {
+        sV_logw( "No physics list assigned to MC simulation as there is no "
+                 "physicsList option provided.\n" );
+    }
+}
+
+void
+Geant4Application::_initialize_primary_generator_action() {
+    _TODO_  // TODO: use IndexOfConstructables
+    G4UImessenger * srcMessenger = nullptr;  // TODO: set srcMessenger
+    if( "none" != cfg_option<std::string>("Geant4.primaryGenerator") ) {
+        G4RunManager::GetRunManager()->SetUserAction( sV::user_primary_generator_action(
+                    cfg_option<std::string>("Geant4.primaryGenerator"),
+                    srcMessenger
+                ) );
+    }
+}
+
+//
+//
+//
+
 int
 Geant4Application::_batch_run( const std::string & macroFilePath ) {
     char bf[128];
@@ -378,17 +407,43 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
     return EXIT_SUCCESS;
 }
 
+//
+//
+//
+
+/**
+ * This method provides a somewhat default initialization logic routing between
+ * major configurable VCtr utilities in StromaV.
+ *
+ * Calls:
+ *  - _build_up_run()
+ *  - _batch_run() / _interactive_run()
+ *
+ * This method allocates the default G4RunManager() instance. If you desire to
+ * use your own G4RunManager descendant, consider to avoid calling this method.
+ * */
 int
-Geant4Application::_run_session( bool isBatch,
-                                const std::string & macroFilePath ) {
+Geant4Application::_run_session(
+        bool isBatch,
+        const std::string & macroFilePath ) {
     int rc = EXIT_FAILURE;
+
+    if( !! G4RunManager::GetRunManager() ) {
+        emraise( badArchitect, "The G4RunManager instance was created while "
+            "execution had been forwarded to Geant4Application::_run_session(). "
+            "If you use your own G4RunManager, the _run_session() is not "
+            "supposed to be invoked." );
+    }
 
     // Allocate Geant4 run manager.
     G4RunManager * runManager = new G4RunManager();
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
+    // Close geometry and get ready for event loops.
+    runManager->Initialize();
+
     sV_log2("Processing aux info.\n");
-    const auto & tagNamesLst = co()["Geant4.gdml.aux-tag"]
+    const auto & tagNamesLst = co()["Geant4.gdml.enable-tag"]
                                                     .as_list_of<std::string>();
     extGDML::AuxInfoSet * auxInfoSet =
         new extGDML::AuxInfoSet(
@@ -396,38 +451,32 @@ Geant4Application::_run_session( bool isBatch,
     auxInfoSet->apply( *gdml_parser_ptr() );
     extGDML::extras::apply_styles_selector( _setupName );
 
+    // Forward execution to Geant4 routines.
     if( isBatch ) {
         rc = _batch_run( macroFilePath );
     } else {
         # if G4_MDL_GUI
-        rc = _gui_run( macroFilePath );
+        rc = _interactive_run( macroFilePath );
         # else
         sV_loge( "Only batch mode available in this build.\n" );
         rc = EXIT_FAILURE;
         # endif
     }
 
-    assert( G4RunManager::GetRunManager() == runManager );  // XXX?
-
     // Free run manager.
     delete runManager;
 
+    // Free UI session if need.
     # ifdef G4_MDL_VIS
     if( _visManagerPtr ) {
         delete _visManagerPtr;
         _visManagerPtr = nullptr;
     }
     # endif
-
-    /// Close root file, if needed.
-    if( gFile ) {
-        gFile->Write();
-        gFile->Close();
-    }
     return rc;
 }
 
-}  // mixins
+}  // namespace ::sV::mixins
 }  // namespace sV
 
 # endif  // GEANT4_MC_MODEL

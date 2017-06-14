@@ -28,13 +28,18 @@
 
 namespace mdlv {
 
+/**@brief A dummy Geant4 application designed for viewing the geometry.
+ *
+ * This Geant4 application has to be considered as an example generic
+ * implementation that utilizes StromaV ext.gdml geometry. More elaborated one
+ * is available in distributive by name "svmc".
+ * */
 class Application : public sV::mixins::Geant4Application {
 public:
     typedef sV::mixins::Geant4Application Parent;
     typedef Parent::Config Config;
 protected:
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
     virtual void _V_configure_concrete_app() override;
     virtual int _V_run() override;
 
