@@ -24,35 +24,51 @@
 # ifndef H_APP_G4SIMULATION_H
 # define H_APP_G4SIMULATION_H
 
-# include "afNA64_config.h"
+# include "sV_config.h"
 
 # include "app/mixins/geant4.hpp"
 # include "app/mixins/root.hpp"
 
 # include <fstream>
-# ifdef StromaV_RPC_PROTOCOLS
+# ifdef RPC_PROTOCOLS
 # include "app/mixins/protobuf.hpp"
-# endif  // StromaV_RPC_PROTOCOL
+# endif  // RPC_PROTOCOLS
 
 namespace svmc {
 
+/**@class Application
+ * @brief Generic Geant4 application utilizing StromaV framework.
+ *
+ * Inherits StromaV Geant4 application in conjunction with PBEventApp and
+ * RootApplication mixins to provide a flexible solution for extensible MC
+ * simulation procedure.
+ * */
 class Application : public sV::mixins::Geant4Application,
-                    public sV::mixins::RootApplication,
-                    public sV::mixins::PBEventApp {
+                    public sV::mixins::RootApplication
+                    # ifdef RPC_PROTOCOLS
+                    , public sV::mixins::PBEventApp
+                    # endif
+                    {
 public:
     typedef sV::mixins::Geant4Application Parent;
     typedef Parent::Config Config;
     typedef sV::mixins::Geant4Application G4AppMixin;
 protected:
-    virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    virtual std::vector<sV::po::options_description> _V_get_options() const override;
-    virtual void _V_configure_concrete_app() override;
+    /// Appends common config with additional parameters.
+    virtual void _V_concrete_app_append_common_cfg() override;
+    /// Applies configuration parameters to application instance.
+    virtual void _V_concrete_app_configure() override;
+    /// Forwards execution to Geant4 event loop.
     virtual int _V_run() override;
+    /// Appends parent's implementation with _initialize_tracking_action()
+    /// and _initialize_event_action().
     virtual void _build_up_run() override;
-
+    /// Adds support for virtually-constructed tracking action instances.
     virtual void _initialize_tracking_action();
+    /// Adds support for virtually-constructed event action instances.
     virtual void _initialize_event_action();
-    std::fstream _fileRef;
+    // XXX?
+    //std::fstream _fileRef;
 public:
     Application( Config * cfg );
     virtual ~Application();

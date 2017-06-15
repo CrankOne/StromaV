@@ -29,6 +29,7 @@
 
 # include "app/abstract.hpp"
 # include "app/mixins/protobuf.hpp"
+# include "app/mixins/root.hpp"
 # include "analysis/pipeline.hpp"
 
 namespace sV {
@@ -63,6 +64,7 @@ namespace sV {
  */
 class AnalysisApplication :
         public mixins::PBEventApp,
+        public mixins::RootApplication,
         public AnalysisPipeline,
         public virtual sV::AbstractApplication {
 public:
@@ -75,7 +77,7 @@ protected:
     // INTERFACE
     /// Called after common configuration options is done. Can set 
     /// _immediateExit flag.
-    virtual void _V_configure_concrete_app() override;
+    virtual void _V_concrete_app_configure() override;
     /// Appends updating of ASCII display upon successfull finish of single
     /// event processing.
     virtual void _finalize_event( Event * ) override;

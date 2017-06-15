@@ -60,12 +60,10 @@ const uint8_t RootApplication::enableCommonFile     = 0x1,
               RootApplication::enableDynamicPath    = 0x4,
               RootApplication::enableTApplication   = 0x8;
 
-RootApplication::RootApplication( 
-                        AbstractApplication::Config * c,
-                        const std::string & appClassName ) :
+RootApplication::RootApplication(
+                        AbstractApplication::Config * c ) :
             AbstractApplication(c),
             _tApp(nullptr),
-            _appClassName(appClassName),
             _t_argc(0),
             _t_argv(nullptr) {
     _enable_ROOT_feature( enableTApplication );
@@ -133,7 +131,7 @@ void
 RootApplication::initialize_ROOT_system(
                     uint8_t rootFts,
                     goo::dict::Dictionary & commonCfg,
-                    int argc &, const char **& argv ) {
+                    int & argc, char **& argv ) {
     using goo::filesystem::Path;
 
     bool doImmediateExit = false;
@@ -144,7 +142,7 @@ RootApplication::initialize_ROOT_system(
     }
 
     if( rootFts & enableDynamicPath ) {
-        const iSingularParameter & dynPath = commonCfg["ROOT.dynamic-path"];
+        const goo::dict::iSingularParameter & dynPath = commonCfg["ROOT.dynamic-path"];
         if( !dynPath.as_list_of<Path>().empty()
          && !doImmediateExit ) {
             for( auto additionalPath : dynPath.as_list_of<Path>() ) {
@@ -184,9 +182,9 @@ RootApplication::initialize_ROOT_system(
     }
 
     if( rootFts & enableTApplication ) {
-        new_native_ROOT_application_instance( 
-            commonCfg["ROOT.TApplication-args"].as<std::string>()
-            argc, argv );
+        new_native_ROOT_application_instance(
+                commonCfg["ROOT.TApplication-args"].as<std::string>(),
+                argc, argv );
     }
 
     if( rootFts & enableCommonFile ) {
@@ -215,15 +213,14 @@ RootApplication::initialize_ROOT_system(
 
 TApplication *
 RootApplication::new_native_ROOT_application_instance(
-            const std::string & rooAppArgsStr, int & argc, const char **& argv ) {
+            const std::string & rooAppArgsStr, int & argc, char **& argv ) {
     TApplication * ret = nullptr;
     if( rooAppArgsStr.empty() ) {
         ret = new TApplication( "sV-app", nullptr, nullptr, nullptr, 0 );
     } else {
         argc = ::goo::dict::Configuration::tokenize_string(
-                    rooAppArgsStr,
-                    argv );
-        ret = new TApplication( _appClassName.c_str(), &argc, argv, nullptr, 0 );
+                    rooAppArgsStr, argv );
+        ret = new TApplication( argv[0], &argc, argv, nullptr, 0 );
     }
     ret->SetReturnFromRun(kTRUE);
     ret->Init();

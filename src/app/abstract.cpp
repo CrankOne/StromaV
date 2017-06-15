@@ -54,6 +54,10 @@
  * functionality for integration with ROOT or (and) Geant4 frameworks as well
  * as extra definitions for functional needs like alignment or pipeline-like
  * event analysis of experimental/modelled data.
+ *
+ * Examples:
+ *  - @ref utilizing/application/my_application.cpp demonstrates basic usage
+ *      of class inherited from AbstractApplication.
  * */
 
 namespace sV {
@@ -391,31 +395,108 @@ AbstractApplication::_append_common_config_w_vctr( Config & ) {
     // ...
 }
 
+/**
+ * The application instances willing to inject additional parameters and
+ * sections the common config may override this method. The common config
+ * parameters has to be injected in common config before calling to parent
+ * (this, AbstractApplication's) _V_configure_application():
+ *
+ * @snippet examples/utilizing/application/my_application.cpp Appending common configuration
+ *
+ * The `const * appCfgPtr` ptr refers to application config and may be used for
+ * conditional composition of common config.
+ *
+ * @sa _V_concrete_app_configure()
+ */
 void
-AbstractApplication::_V_configure_application( const Config * cfg ) {
-    const Config & conf = *cfg;
+AbstractApplication::_V_concrete_app_append_common_cfg() {
+    // Default implementation is just an empty stub.
+}
+
+
+/**
+ * User application should be configured here.
+ *
+ * @snippet examples/utilizing/application/my_application.cpp Setting up common configuration 
+ *
+ * @sa _V_concrete_app_append_common_cfg()
+ */
+void
+AbstractApplication::_V_concrete_app_configure() {
+    // Default implementation is just an empty stub.
+}
+
+/**
+ * This implementation of application configuration method is qualified as
+ * "final" to prevent one from changing its (very basic) logic. User code has
+ * to consider use of _V_concrete_app_append_common_cfg() and
+ * _V_concrete_app_configure() methods to inject specific common-config
+ * options.
+ *
+ * Method performes the following activity, in order:
+ *
+ * At the pre-configuration stage:
+ *  1. injection of additional parameters to common config provided by mixins
+ *    and user app (with _V_concrete_app_append_common_cfg()).
+ *  2. injection of additional parameters brought by virtual constructor entries
+ *    by subsequent invokation of _append_common_config_w_vctr() method on
+ *    common config.
+ *  3. injection of user-defined (descendant class) parameters within probably
+ *    overriden method _V_append_concrete_app_config_parameters().
+ *     
+ * At the configuration stage:
+ *  1. Load and parse configuration files by method _parse_configs() into the
+ *    common config dictionary.
+ *  2. Supersede common config parameters provided by command line
+ *    `--override-opt` option argument.
+ *  3. If `--inspect-config` option was provided, the dumps the common config
+ *    into standard output (std::cout) and sets the `_immediateExit` flag.
+ *
+ * Finally, the applying configuration stage (what is called actual
+ * "configuration" in other parts of program):
+ *  1. Re-initialization of sV's logging infrastructure with invokation of
+ *    logging::iLoggingFamily::initialize_families().
+ *  2. Invokation of various config-applying methods in mixins included in
+ *    inheritance chain of the final descendant class.
+ *  3. invokation of _V_concrete_app_configure() to apply user-defined
+ *    configuration parameters on application.
+ *  4. Initialization of ASCII display, if it was demanded from app-config.
+ */
+void
+AbstractApplication::_V_configure_application( const Config * appCfgPtr ) {
+    const Config & appConf = *appCfgPtr;
     if( _immediateExit ) {
         return;
     }
-    // Append mixins configuration:
-    mixins::RootApplication myRootMixin =
-            dynamic_cast<RootApplication *>(this);
-    Geant4Application * myGeant4Mixin =
-            dynamic_cast<Geant4Application *>(this);
+
+    //
+    // 1. PRE-CONFIGURATION: Supplementary configuration injections:
+    // 1.1. Append mixins configuration:
+    mixins::RootApplication * myRootMixin =
+            dynamic_cast<mixins::RootApplication *>(this);
+    mixins::Geant4Application * myGeant4Mixin =
+            dynamic_cast<mixins::Geant4Application *>(this);
     if( myRootMixin ) {
-        myRootMixin->_append_ROOT_config_options( conf );
+        myRootMixin->_append_ROOT_config_options( _configuration );
     }
-    if( mygeant4Mixin ) {
-        myGeant4Mixin->_append_Geant4_config_options( conf );
+    if( myGeant4Mixin ) {
+        myGeant4Mixin->_append_Geant4_config_options( _configuration );
     }
     // ... more mixins here.
-    // Before config files will be parsed --- finalize the common config.
+    // 1.2. Injections from VCtr entries
     _append_common_config_w_vctr( _configuration );
-    // Load configuration files
-    _parse_configs( conf["config"].as<goo::filesystem::Path>() );
-    // Override configuration with command-line ones specified with
+    // 1.3. Finally, inject the conrete app parameters:
+    _V_concrete_app_append_common_cfg();
+
+    sV_log2( "Configuration 1/3: dictionary has been built.\n" );
+
+    //
+    // 2. CONFIGURATION:
+    // 2.1. Load configuration files
+    _parse_configs( appConf["config"].as<goo::filesystem::Path>() );
+    // 2.2. Override configuration with command-line ones specified with
     // -O|--override-opt
-    const auto & overridenOpts = conf["override-opt"].as_list_of<std::string>();
+    const auto & overridenOpts = appConf["override-opt"].as_list_of<std::string>();
     for( const auto & overridenOpt : overridenOpts ) {
         std::size_t eqPos = overridenOpt.find('=');
         if( std::string::npos == eqPos ) {
@@ -429,8 +510,9 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
                     ;
         _set_common_option( path, strVal );
     }
-
-    if( conf["inspect-config"].as<bool>() ) {
+    sV_log2( "Configuration 2/3: parameters dictionary ready.\n" );
+    // 2.3 Dump config, if need:
+    if( appConf["inspect-config"].as<bool>() ) {
         // TODO: support various help renderers from Goo.
         _configuration.print_ASCII_tree( std::cout );
         _immediateExit = true;
@@ -443,18 +525,19 @@ AbstractApplication::_V_configure_application( const Config * cfg ) {
     }
     // Configure mixins:
     if( myRootMixin && !do_immediate_exit() ) {
-        myRootMixin->_initialize_ROOT_system( conf );
+        myRootMixin->_initialize_ROOT_system( _configuration );
     }
     if( myGeant4Mixin && !do_immediate_exit() ) {
-        myGeant4Mixin->_initialize_Geant4_system( conf );
+        myGeant4Mixin->_initialize_Geant4_system( _configuration );
     }
     // ... more mixins here.
     // Configure particular application:
-    _V_configure_concrete_app();
+    _V_concrete_app_configure();
     // Configure ASCII display prior to run:
     if( _appCfg->parameter("ascii-display").as<bool>() ) {
         aux::ASCII_Display::enable_ASCII_display();
     }
+    sV_log2( "Configuration 3/3: application configured.\n" );
 }
 
 std::ostream *

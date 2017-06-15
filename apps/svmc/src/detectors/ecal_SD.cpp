@@ -24,6 +24,7 @@
 # ifndef H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
 # define H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
 
+# if 0
 # include "afNA64_config.h"
 # include "nsp_scorer.tcc"
 
@@ -419,8 +420,33 @@ ECAL_cell::fill_event() {
 //
 
 extGDML_G4_REGISTER_SD( ECAL_cell )
-
+    {
+        sV::po::options_description g4SDCfg;
+        g4SDCfg.add_options()
+            ("g4-SD-ECAL_cell.timeVSedepHisto",
+                sV::po::value<bool>()->default_value(true),
+                "XXX")
+            ("g4-SD-ECAL_cell.timeVSedepMaxTime-ns",
+                sV::po::value<double>()->default_value(5),
+                "XXX")
+            ("g4-SD-ECAL_cell.timeVSedep-timeNBins",
+                sV::po::value<int>()->default_value(200),
+                "XXX")
+            ("g4-SD-ECAL_cell.timeVSedepMaxEDep-MeV",
+                sV::po::value<double>()->default_value(2),
+                "XXX")
+            ("g4-SD-ECAL_cell.timeVSedep-edepNBins",
+                sV::po::value<int>()->default_value(200),
+                "XXX")
+            ("g4-SD-ECAL_cell.scorerPool-NCells",
+                sV::po::value<int32_t>()->default_value(10000),
+                "Scorer pool size (number of values stored per event) for "
+                "\"ECAL_cell\" detector.")
+            ;
+        res.push_back( g4SDCfg );
+    }
 }  // namespace sV
+# endif
 
 # endif  // H_SVMC_DETECTORS_ECAL_SENSITIVE_DETECTOR_H
 

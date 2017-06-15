@@ -42,6 +42,33 @@ namespace mixins {
  * @brief Application mixin implementing interaction with
  * Geant4 MC engine.
  *
+ * This class offers an application implementation that inherits all the
+ * neccessary StromaV run-time parametrization, including:
+ *
+ *  - Acquizition and parsing of geometry defined as parameterized template
+ *    GDML, including fetching from remote destination.
+ *  - Support for physics and physics list defined using virtual constructor
+ *    entries (based on StromaV IndexOfConstructables class) with all
+ *    auxilliary tags and extensions supplied within ext.gdml package.
+ *  - Support for sensitive detectors defined using virtual constructor
+ *    entries (based on StromaV IndexOfConstructables class).
+ *  - Support for primary generators action defined using virtual constructor
+ *    entries (based on StromaV IndexOfConstructables class).
+ *
+ * User classes may override default implementation offered by this class that
+ * is defined in the set of virtual methods starting with _run_session().
+ *
+ * The _run_session() invokes the _build_up_run() to set up mandatory Geant4
+ * classes and forwards execution to _interactive_run() or _batch_run()
+ * depending on whether the `--batch` flag was set. The _run_session() will
+ * also invoke callbacks associated to auxilliary tags using the
+ * extGDML::AuxInfoSet::apply() method.
+ *
+ * The _build_up_run() invokes, in order, the _initialize_geometry() to
+ * perform geometry construction, the _initialize_physics() to initialize
+ * dynamic physics, and the _initialize_primary_generator_action() to construct
+ * the primary generator action instance.
+ *
  * @ingroup app
  * @ingroup mc
  * @ingroup g4
@@ -57,7 +84,7 @@ protected:
     /// Pointer to NIST material manager (if enabled).
     G4NistManager * _NISTMatMan;
     /// A GDML parser instance pointer.
-    G4GDMLParser  * _parser;  // TODO: delete in dtr?
+    G4GDMLParser  * _parser;  // todo: delete in dtr?
     /// G4 vis manager instance pointer (if enabled).
     G4VisManager * _visManagerPtr;
     /// The name of currently viewing setup.
@@ -66,7 +93,7 @@ protected:
     /// Forwards execution to Geant4 system. Designed to be invoked from
     /// AbstractApplication::_V_run() directly, without any additional
     /// preparations.
-    virtual int _run_session( bool isBatch, const std::string & macroFilePath );
+    virtual int _run_session();
 
     /// Performs acquizition of the setup name, initializes geometry, physics
     /// and PGA. Requires G4RunManager to be created upon invokation.

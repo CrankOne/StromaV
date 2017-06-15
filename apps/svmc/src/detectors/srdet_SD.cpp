@@ -24,6 +24,7 @@
 # ifndef H_SVMC_SRDET_SD_H
 # define H_SVMC_SRDET_SD_H
 
+# if 0
 # include "afNA64_config.h"
 # include "nsp_scorer.tcc"
 # include "ext.gdml/SensDetDict.hpp"
@@ -170,5 +171,7 @@ void test01_SD::clear() {
 extGDML_G4_REGISTER_SD( test01_SD )
 
 }        // namespace sV
+# endif
+
 # endif  // sV_srdet_SD_h
 

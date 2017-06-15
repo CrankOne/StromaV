@@ -24,6 +24,7 @@
 # include "app_g4simulation.hpp"
 # include "app/implement_app.hpp"
 
-StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( svmc::Application )
+StromaV_DEFAULT_APP_INSTANCE_ENTRY_POINT( svmc::Application, "svmc",
+    "TODO: description" )
 
 

@@ -52,14 +52,33 @@ namespace sV {
 
 /**@class AbstractApplication
  * @brief Abstract application class constituing logging streams
- * and configuration/run entry points.
+ *        and configuration/run entry points.
+ *
+ * This clas is built on top of the goo::App<...> template instantiated with
+ * goo::Configuration ad configuration type and std::ostream as logging
+ * stream type. The class was designed to provide an abstract common base for
+ * all the StromaV applications and provide a common logging and configuration
+ * logic.
+ *
+ * Responsibility:
+ * - The common configuration object and application configuration object are
+ *   introduced here.
+ * - Configuration arguments extraction including parsing YAML configs and
+ *   forwarding execution to subsecent calls of goo::configuration methods.
+ * - The path interpolating procedures related to particular software setup are
+ *   also incapsulated by nested class ConfigPathInterpolator.
+ *
  * @ingroup app
  */
 class AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
                             public sV::logging::Logger,
                             public sV::aux::ASCII_Display {
 public:
+    /// A particular config class type. Aggregates configuration parameters
+    /// into the annotated dictionary. StromaV now uses
+    /// goo::dictionary::Configuration class (former was boost::variables_map).
     typedef goo::dict::Configuration Config;
+    /// Logging stream base class.
     typedef std::ostream Stream;
     typedef goo::App<Config, Stream> Parent;
 
@@ -80,29 +99,30 @@ public:
     /// restricted to only C++ applications, so we've made it a nested class.
     class ConstructableConfMapping {
     public:
+        /// Shortcut to parameters injection map type.
         typedef goo::dict::DictionaryInjectionMap Injection;
+        /// Mappings define how the parameter entries should be related between
+        /// local config object and common config object.
         struct Mappings : public std::unordered_map<std::string, Injection> {
             std::string baseName, baseDescription;
         };
     private:
+        /// Index of mappings sorted by C++ RTTI type indexing hash.
         std::map<std::type_index, Mappings> _sections;
-
+        /// A self instance ptr to ConstructableConfMapping singleton that may
+        /// be created prior to AbstractApplication.
         static ConstructableConfMapping * _self;
     protected:
         template<typename T> Mappings & _get_section( bool insertNonExisting=false );
     public:
         /// Returns a singleton instance of this class.
         static ConstructableConfMapping & self();
-
         /// Sets description for particular base type.
         template<typename T> void set_basetype_description( const std::string &, const std::string & );
-
         /// Inserts new config mapping for particular virtual ctr.
         template<typename T> void add_mappings( const std::string &, const goo::dict::DictionaryInjectionMap & );
-
         /// Returns config mapping dictionary.
         const std::map<std::type_index, Mappings> sections() const { return _sections; }
-
         /// Produces own config dictionary according to mappings from common
         /// one.
         template<typename T> void own_conf_for(
@@ -111,42 +131,43 @@ public:
                         goo::dict::Dictionary & );
     };
 protected:
+    /// List of docuemented environment variables used by application.
     std::map<std::string, std::string> _envVarsDocs;
+    /// Additional logging stream, dedicated for errors and warnings.
     Stream * _eStr;
+    /// Streaming buffer for auxilliary streams dispatching messages somewhere
+    /// else (besides of sV's application logs).
     logging::StreamBuffer _lBuffer, _eBuffer;
-    Config * _appCfg, _configuration;
-
+    Config * _appCfg,  ///< Pointer to an application config.
+           _configuration  ///< Common config instance filled mostly by config files.
+           ;
     /// Stores linked paths between common config and constructible configs.
     static std::unordered_map<std::type_index,
             std::unordered_map<std::string, goo::dict::DictionaryInjectionMap> >
             * _cfgInjectionsPtr;
-
+    /// Temporary flag used by some configuration routines. During config
+    /// parsing activities, indicates necessity of termination (e.g., `--help`
+    /// option was provided).
     mutable bool _immediateExit;
-
+    /// Path interpolating class performing substitution of parameters in
+    /// arguments of type goo::filesystem::Path.
     mutable ConfigPathInterpolator _pathInterpolator;
-
     /// Creates instance of type ConfigObjectT according to command-line arguments
     virtual Config * _V_construct_config_object( int argc, char * const argv[] ) const override;
-    /// Configures application according to recently constructed config object.
-    virtual void _V_configure_application( const Config * ) override;
+    /// Configures application according to previously constructed app-config object.
+    virtual void _V_configure_application( const Config * ) final;
     /// Should create the logging stream of type LogStreamT (app already configured).
     virtual Stream * _V_acquire_stream() override;
     virtual Stream * _V_acquire_errstream();
-    /// User application should be configured here.
-    virtual void _V_configure_concrete_app() {}
-private:
-    boost::asio::io_service _ioService;
-    /// This should only be set by descendant classes, from ctr.
-    /// Will be set to 0x0 until RootApplication descendant part is
-    /// ctrd. Setting is available via the _enable_ROOT_feature()
-    /// method and not via ctr arg due to C++ virtual inheritance
-    /// mechanics implementing mixins concept.
-    uint8_t _ROOTAppFeatures;
-protected:
-    void _process_options( const Config * );
-    /// For available features codes see mixins::RootApplication.
-    void _enable_ROOT_feature( uint8_t ftCode );
 
+    /// User application should define additional configuration entries here.
+    virtual void _V_concrete_app_append_common_cfg();
+    /// User application should be configured here.
+    virtual void _V_concrete_app_configure();
+private:
+    /// Shared instance of I/O service demanded by some boost routines.
+    boost::asio::io_service _ioService;
+protected:
     /// Appends common config with various options from dynamically loaded
     /// modules. See implementation for details.
     virtual void _append_common_config_w_vctr( Config & cfg );
@@ -158,62 +179,48 @@ protected:
     /// Sets the common config option.
     void _set_common_option( const std::string & path,
                              const std::string & strVal );
-
     /// Default ctr --- the void config instance should be provided here.
     AbstractApplication( Config * );
 public:
     virtual ~AbstractApplication() {}
-
     /// Verbosity level setter (forwards to Logger::log_level()).
     virtual void verbosity( sV::logging::LogLevel v ) { log_family().log_level(v); }
-
     /// Verbosity level getter (forwards to Logger::log_level()).
     sV::logging::LogLevel verbosity() const { return log_level(); }
-
     /// Prints current build info.
     virtual void dump_build_info( std::ostream & ) const;
-
     /// Returns error stream (as goo basically doesn't support it).
     std::ostream & es() { return ( _eStr ? *_eStr : std::cerr ); }
-
     /// Returns common interpolator ptr;
     ConfigPathInterpolator * path_interpolator() const { return &_pathInterpolator; }
-
     /// Common config option getter.
     template<typename T>
     T cfg_option(const std::string & name) const {
         return _configuration[name.c_str()].as<T>();
     }
-
     /// Common config option getter.
     template<typename T>
     const std::list<T> & cfg_options_list(const std::string & name) const {
         return _configuration[name.c_str()].as_list_of<T>();
     }
-
+    /// Application config option getter.
     template<typename T>
     T app_option(const std::string & name) const {
         return _appCfg->parameter(name.c_str()).as<T>();
     }
-
     /// App config multiple option getter.
     template<typename T>
     const std::list<T> & app_options_list(const std::string & name) const {
         return _appCfg->parameter(name.c_str()).as_list_of<T>();
     }
-
     /// Returns reference to common config object.
     const Config & common_co() const { return _configuration; }
-
     /// Returns value of "immediate exit" flag that is used during
     /// configuration stage.
     bool do_immediate_exit() const { return _immediateExit; }
-
     /// Returns pointer to common boost::io_service instance
     /// (interface method for future usage).
     boost::asio::io_service * boost_io_service_ptr() { return &_ioService; }
-
-    uint8_t ROOT_features() const { return _ROOTAppFeatures; }
 };  // AbstractApplication
 
 /// Constructs a new instance with its virtual ctr using common config

@@ -23,30 +23,29 @@
 # ifndef H_SVMC_EVENT_ACTION_H
 # define H_SVMC_EVENT_ACTION_H
 
-# include "afNA64_config.h"
+# include "sV_config.h"
 
-# ifdef StromaV_RPC_PROTOCOLS
+# ifdef RPC_PROTOCOLS
 # include <G4UserEventAction.hh>
-# include "buckets/iBucketDispatcher.hpp"
+# include "buckets/iDispatcher.hpp"
 # include <ostream>
 
 namespace svmc {
 
 class EventAction : public G4UserEventAction {
-    public:
-        EventAction( sV::iBucketDispatcher * bucketDispatcher);
-        virtual ~EventAction();
+public:
+    EventAction( sV::buckets::iDispatcher * bucketDispatcher);
+    virtual ~EventAction();
 
-        virtual void BeginOfEventAction(const G4Event* ) final;
-        virtual void EndOfEventAction(const G4Event* ) final;
-    protected:
-        sV::iBucketDispatcher * _bucketDispatcher;
-        // std::ostream & _streamRef;
-        // std::fstream & _fileRef;
-
+    virtual void BeginOfEventAction(const G4Event* ) final;
+    virtual void EndOfEventAction(const G4Event* ) final;
+protected:
+    sV::buckets::iDispatcher * _bucketDispatcher;
+    // std::ostream & _streamRef;
+    // std::fstream & _fileRef;
 };  // class EventAction
 
 }  //  namespace svmc
-# endif  // StromaV_RPC_PROTOCOLS
-# endif  //  H_SVMC_EVENT_ACTION_H
+# endif  // RPC_PROTOCOLS
+# endif  // H_SVMC_EVENT_ACTION_H
 

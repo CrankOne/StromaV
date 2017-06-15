@@ -54,7 +54,6 @@ private:
     /// This should only be set by descendant classes, from ctrs.
     uint8_t _ROOTAppFeatures;
     TApplication * _tApp;
-    std::string _appClassName;
     /// argc for TApplication (set by AbstractApplication).
     int _t_argc;
     /// argv[] for TApplication (set by AbstractApplication).
@@ -68,8 +67,7 @@ protected:
     /// Invoked by abstract application to init configured features.
     void _initialize_ROOT_system( goo::dict::Dictionary & commonCfg );
 public:
-    RootApplication( AbstractApplication::Config * c,
-                     const std::string & appClassName );
+    RootApplication( AbstractApplication::Config * c );
     virtual ~RootApplication();
 
     const TApplication & get_TApplication() const { assert(_tApp); return *_tApp; }
@@ -94,7 +92,7 @@ public:
     static void initialize_ROOT_system(
             uint8_t flags,
             goo::dict::Dictionary & commonCfg,
-            int argc &, const char **& argv );
+            int & argc, char **& argv );
     /// Will create new TApplication instance with arguments extracted from
     /// given string expression (as if it was processed to argc/argv by shell).
     /// The argc/argv arguments gas to be freed further with
@@ -102,8 +100,8 @@ public:
     /// by initialize_ROOT_system() if corresponding feature flag provided.
     static TApplication * new_native_ROOT_application_instance(
             const std::string &,
-            int rootArgc &,
-            const char **& rootArgv );
+            int & rootArgc,
+            char **& rootArgv );
     friend class AbstractApplication;
 };
 

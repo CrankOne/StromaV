@@ -888,7 +888,7 @@ EXCLUDE_SYMBOLS        = EX_* \
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           = examples \
+EXAMPLE_PATH           = @CMAKE_SOURCE_DIR@/examples \
                          @CMAKE_SOURCE_DIR@/apps/ut
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
@@ -1204,7 +1204,7 @@ HTML_TIMESTAMP         = YES
 # The default value is: NO.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_DYNAMIC_SECTIONS  = NO
+HTML_DYNAMIC_SECTIONS  = YES
 
 # With HTML_INDEX_NUM_ENTRIES one can control the preferred number of entries
 # shown in the various tree structured indices initially; the user can expand

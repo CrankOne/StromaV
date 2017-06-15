@@ -52,6 +52,8 @@
 
 # include <TFile.h>
 
+# include <goo_dict/parameters/path_parameter.hpp>
+
 /**@defgroup mc MC Siulation
  * @brief Monte-Carlo simulation helpers.
  *
@@ -151,6 +153,14 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
     .bgn_sect("Geant4", "Major Geant4 framework integration "
         "options. Includes number of various pre-initialization parameters "
         "including .vis macros path, verbosity level, etc.")
+        # if G4_MDL_GUI
+        .p<std::string>( "gui-session-type", "Geant4 session types are "
+                "identified by a case-insensitive characters (\"qt\", \"xm\", "
+                "\"win32\", \"gag\", \"tcsh\", \"csh\"). This option is "
+                "available only if Geant4 GUI support was enabled (G4_MDL_GUI "
+                "build macro arg)",
+            "qt" )
+        # endif  // G4_MDL_GUI
         .p<bool>( "useNIST",
                 "Whether to use NIST materials database (have prefix G4_* in "
                 "Geant4 geometry).",
@@ -167,7 +177,7 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
                 "Note, that null seed means no manual setting.",
             0 )
         .flag( "batch",
-                "Disables a GUI session." )
+                "Disables a UI session." )
         .p<std::string>( "primaryGenerator",
                 "Primary particles generator name (from VCtr index).",
             "SimpleGun" )
@@ -175,6 +185,11 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
                 "Set physics list defining the entire MC simulation "
                 "(from VCtr index).",
             "FTFP_BERT" )
+        .p<std::string>( "exec-args",
+                "Sets arguments to be forwarded to G4UIExecutive ctr as a "
+                "string that further will be splitted into common argc/argv "
+                "set. Used in implementation of `_interactive_run()`.",
+            "sV-Geant4-app" )
         .bgn_sect( "extraPhysics", "Modular physics configuration section." )
             .list<std::string>( "module",
                     "Physics module to be included in modular physics list." )
@@ -191,6 +206,36 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
             //        "Take into consideration material parameters while "
             //        "modelling synchrotron radiation physics.",
             //    false )
+            # if 0  // TODO: move it in VCtr entry of DPhMC lib
+            # ifdef AFNA64_DPhMC_FOUND
+            .bgn_sect( "aprimeEvGen", "Parameters set for dark photon MC "
+                    "generator implemented in DPhMC library." )
+                # define appendDPhMC_parameter( type, strName, name, description ) \
+                    .p<type>( strName, description )
+                for_all_PhMClib_aprimeCS_parameters( appendDPhMC_parameter )
+                # undef appendDPhMC_parameter
+                .bgn_sect( "physicsAe", "Parameters for Dark Photon MC "
+                        "generator implemented in DPhMC for EM-scattering on "
+                        "nuclei." )
+                    .bgn_sect( "gslIntegration", "Parameters for GSL "
+                            "integration procedure.")
+                        # define appendDPhMC_parameter( type, strName, defVal, name, description ) \
+                            p<type>( strName, description, defVal )
+                        for_all_PhMClib_aprimeCS_GSL_chi_comp_parameter( appendDPhMC_parameter )
+                        # undef appendDPhMC_parameter
+                    .end_sect( "gslIntegration" )
+                    .bgn_sect( "TFoam", "Parameters for TFoam generalized event "
+                        "generator generating dark photon particles by computed "
+                        "cross-section parameters." )
+                        # define appendDPhMC_parameter( type, strName, defVal, name, description ) \
+                            .p<type>( strName, description, defVal )
+                        for_all_PhMClib_TFoam_generator_parameters( appendDPhMC_parameter )
+                        # undef appendDPhMC_parameter
+                    .end_sect( "TFoam" )
+                .end_sect( "physicsAe" )
+            .end_sect( "aprimeEvGen" )
+            # endif  // AFNA64_DPhMC_FOUND
+            # endif
         .end_sect("extraPhysics")
         .bgn_sect("gdml", "A GDML-related set of parameters. The GDML acronym "
             "comes for \"Geometry Description Mark-up Language\" which is "
@@ -236,11 +281,66 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
 
 void
 Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg ) {
-    if( app_option<bool>("customExceptionHandler")() ) {
+    if( app_option<bool>("customExceptionHandler") ) {
         sV::aux::ExceptionHandler::enable();
     }
 
-    goo::filesystem::Path geomPath = app_option("geometry").as<goo::filesystem::Path>();
+
+    if( app_option<bool>("list-physics") ) {
+        // Physics list:
+        auto phll = sV::available_physics_lists()
+                # ifdef GEANT4_DYNAMIC_PHYSICS
+                , mdls = sV::ModularPhysicsList::available_physics_modules()
+                # endif  // GEANT4_DYNAMIC_PHYSICS
+             ;
+        if( phll.empty() ) {
+            sV_loge( "No physics list available at current build!\n" );
+        }
+        int i = 1;
+        sV_log1( ESC_CLRBOLD "Pre-formed physics list:" ESC_CLRCLEAR "\n" );
+        for( auto it = phll.cbegin(); phll.cend() != it; ++it, ++i ) {
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+        }
+        i = 1;
+        sV_log1( "\n" ESC_CLRBOLD "Physics modules:" ESC_CLRCLEAR "\n" );
+        # ifdef GEANT4_DYNAMIC_PHYSICS
+        for( auto it = mdls.cbegin(); mdls.cend() != it; ++it, ++i ) {
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+        }
+        # else  // GEANT4_DYNAMIC_PHYSICS
+        sV_loge( "No physics modules are available at current build "
+                 "(since -DGEANT4_DYNAMIC_PHYSICS=OFF)!\n" );
+        # endif // GEANT4_DYNAMIC_PHYSICS
+        // PGAs
+        auto pgal = sV::user_primary_generator_actions_list();
+        if( pgal.empty() ) {
+            sV_loge( "No primary generators available at current build!\n" );
+        }
+        i = 1;
+        sV_log1( "\n" ESC_CLRBOLD "Primary generators:" ESC_CLRCLEAR "\n" );
+        for( auto it = pgal.cbegin(); pgal.cend() != it; ++it, ++i ) {
+            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
+        }
+        sV_log1( "\n" );
+        _immediateExit = true;
+        return;
+    }
+
+    if ( app_option<bool>("list-sensitive-detectors") ) {
+        std::cout << "List of available sensitive detectors:" << std::endl;
+        extGDML::SDDictionary::self().print_SD_List();
+        std::cout << "* Basically, value of sensDet should consist of two "
+                     "parts separated with column ':' sign."
+        << std::endl << "* E.g.:" << std::endl
+        << "* ECAL_cell:/sVdet/ecal" << std::endl
+        << "* Will refer to SensitiveDetector subclass named 'ECAL_cell' and "
+            "create an instance"
+        << std::endl << "* named '/sVdet/ecal'." << std::endl;  // TODO
+        _immediateExit = true;
+        return;
+    }
+
+    goo::filesystem::Path geomPath = app_option<goo::filesystem::Path>("geometry");
     geomPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
 
     sV_log2("Reading a GDML geometry from \"%s\".\n",
@@ -324,19 +424,28 @@ Geant4Application::_build_up_run() {
 int
 Geant4Application::_interactive_run( const std::string & macroFilePath ) {
     int rc = EXIT_SUCCESS;
+    char ** argv_;
+    int argc_ = ::goo::dict::Configuration::tokenize_string(
+                    cfg_option<std::string>("exec-args"), argv_ );
     # ifdef G4_MDL_VIS
     _visManagerPtr = new G4VisExecutive();
     _visManagerPtr->Initialize( /* former syntax required argc, argv */ );
     # endif
-
     // Define (G)UI
     # ifdef G4_MDL_VIS
-    G4UIExecutive * uiExec = new G4UIExecutive(_argc, const_cast<char **>(_argv));
+    G4UIExecutive * uiExec = 
+        # ifndef G4_MDL_GUI
+        new G4UIExecutive(argc_, const_cast<char **>(argv_));
+        # else  // G4_MDL_GUI
+        // 3rd arg may be: "qt", "xm", "win32", "gag", "tcsh", "csh"
+        new G4UIExecutive(argc_, const_cast<char **>(argv_),
+                cfg_option<std::string>("Geant4.gui-session-type") );
+        # endif  // G4_MDL_GUI
     # endif
     if( !macroFilePath.empty() ) {
         char bf[128];
         snprintf( bf, sizeof(bf),
-                  "/vis/verbose %d", cfg_option<int>("Geant4.verbosity"));
+                  "/vis/verbose %d", g4_verbosity() );
         G4UImanager::GetUIpointer()->ApplyCommand( bf );
         snprintf( bf, sizeof(bf),
                   "/control/execute %s", macroFilePath.c_str() );
@@ -348,7 +457,7 @@ Geant4Application::_interactive_run( const std::string & macroFilePath ) {
     uiExec->SessionStart();
     delete uiExec;
     # endif
-
+    ::goo::dict::Configuration::free_tokens( argc_, argv_ );
     return rc;
 }
 # endif
@@ -423,24 +532,29 @@ Geant4Application::_batch_run( const std::string & macroFilePath ) {
  * use your own G4RunManager descendant, consider to avoid calling this method.
  * */
 int
-Geant4Application::_run_session(
-        bool isBatch,
-        const std::string & macroFilePath ) {
-    int rc = EXIT_FAILURE;
-
+Geant4Application::_run_session() {
+    G4RunManager * runManager = nullptr;
     if( !! G4RunManager::GetRunManager() ) {
-        emraise( badArchitect, "The G4RunManager instance was created while "
+        sV_logw( "The G4RunManager instance was created while "
             "execution had been forwarded to Geant4Application::_run_session(). "
             "If you use your own G4RunManager, the _run_session() is not "
             "supposed to be invoked." );
+    } else {
+        sV_log1( "Creating default G4RunManager().\n" );
+        // Allocate Geant4 run manager.
+        runManager = new G4RunManager();
     }
+    int rc = EXIT_FAILURE;
 
-    // Allocate Geant4 run manager.
-    G4RunManager * runManager = new G4RunManager();
+    bool isBatch = cfg_option<bool>("Geant4.batch");
+    goo::filesystem::Path macroFilePath = app_option<goo::filesystem::Path>("visMacroFile");
+    macroFilePath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
+
     // Initializes run manager, geometry, sens. dets, etc.
     _build_up_run();
+
     // Close geometry and get ready for event loops.
-    runManager->Initialize();
+    G4RunManager::GetRunManager()->Initialize();
 
     sV_log2("Processing aux info.\n");
     const auto & tagNamesLst = co()["Geant4.gdml.enable-tag"]
@@ -453,10 +567,10 @@ Geant4Application::_run_session(
 
     // Forward execution to Geant4 routines.
     if( isBatch ) {
-        rc = _batch_run( macroFilePath );
+        rc = _batch_run( macroFilePath.interpolated() );
     } else {
         # if G4_MDL_GUI
-        rc = _interactive_run( macroFilePath );
+        rc = _interactive_run( macroFilePath.interpolated() );
         # else
         sV_loge( "Only batch mode available in this build.\n" );
         rc = EXIT_FAILURE;
@@ -464,7 +578,9 @@ Geant4Application::_run_session(
     }
 
     // Free run manager.
-    delete runManager;
+    if( runManager ) {
+        delete runManager;
+    }
 
     // Free UI session if need.
     # ifdef G4_MDL_VIS

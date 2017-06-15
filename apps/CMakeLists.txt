@@ -27,10 +27,6 @@ push_option( build_pipeline
             "Build data pipelining library and executable."
             OFF )
 #\option
-push_option( build_mdlv
-            "Build TGDML browsing library and executable."
-            OFF )
-#\option
 push_option( build_unit_tests
             "Build unit tests for StromaV library."
             ON )
@@ -43,19 +39,11 @@ option( build_svmc
 #\opt-dep:
 option_depend( build_pipeline   ANALYSIS_ROUTINES RPC_PROTOCOLS )
 #\opt-dep:
-option_depend( build_mdlv       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
-#\opt-dep:
 option_depend( build_svmc       GEANT4_MC_MODEL G4_MDL_GUI G4_MDL_VIS )
-#\opt-dep:
-option_depend( build_svmc       StromaV_GEANT4_MC_MODEL )
 
 if( build_pipeline )
     add_subdirectory( pipeline )
 endif( build_pipeline )
-
-if( build_mdlv )
-    add_subdirectory( mdlv )
-endif( build_mdlv )
 
 if( build_svmc )
     add_subdirectory( svmc )

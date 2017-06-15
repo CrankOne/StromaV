@@ -25,11 +25,10 @@
 # ifdef StromaV_RPC_PROTOCOLS
 
 # include "app/mixins/protobuf.hpp"
-# include <iostream>  // XXX
 
 namespace svmc {
 
-EventAction::EventAction( sV::iBucketDispatcher* bucketDispatcher ) {
+EventAction::EventAction( sV::buckets::iDispatcher * bucketDispatcher ) {
     _bucketDispatcher = bucketDispatcher;
 }
 

@@ -21,7 +21,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-// # include "afNA64_config.h"
+# include "sV_config.h"
 # include <G4MagneticField.hh>
 # include <G4ThreeVector.hh>
 # include <G4SystemOfUnits.hh>

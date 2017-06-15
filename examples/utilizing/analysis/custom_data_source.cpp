@@ -20,26 +20,22 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/**@file data_source
+/**@file data_source.cpp
  * @brief An example that demonstrates how to implement a
- * custom data source for analysis application.
- *
- * 
+ *        custom data source for analysis application.
  */
 
 // This is for application routines:
-# include "app/analysis.hpp"
-// This refers to universal event
-# include "p348g4_uevent.hpp"
+# include "analysis/pipeline.hpp"
 
-namespace p348 {
+namespace sV {
 namespace dsources {
 namespace example {
 
-class MyFile : public AnalysisApplication::iEventSequence {
+class MyFile : public aux::iEventSequence {
 public:
-    typedef AnalysisApplication::iEventSequence Parent;
-    typedef typename AnalysisApplication::Event Event;
+    typedef aux::iEventSequence Parent;
+    typedef typename Parent::Event Event;
 private:
     // ... private members --- data acquizition parameters,
     // ... managers, network settings, etc. ...
@@ -133,8 +129,8 @@ p348_DEFINE_DATA_SOURCE_FMT_CONSTRUCTOR( File ) {
 p348_REGISTER_DATA_SOURCE_FMT_CONSTRUCTOR( File, "myFile", "Example events data source." )
 
 
-}  // namespace example
-}  // namespace dsources
-}  // namespace p348
+}  // namespace ::sV::dsources::example
+}  // namespace ::sV::dsources
+}  // namespace sV
 
 

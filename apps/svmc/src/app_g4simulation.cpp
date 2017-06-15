@@ -42,11 +42,9 @@
 # include "g4extras/PGA.hpp"
 # include "ext.gdml/SensDetDict.hpp"
 
-# ifdef StromaV_RPC_PROTOCOLS
-# include "buckets/PlainStreamBucketDispatcher.hpp"
-# include "buckets/ComprBucketDispatcher.hpp"
-# include "compr/DummyCompressor.hpp"
-# endif  // StromaV_RPC_PROTOCOL
+# ifdef RPC_PROTOCOLS
+// ... TODO: bucket dispatchers
+# endif  // RPC_PROTOCOLS
 
 # ifdef G4_MDL_VIS
 # include <G4VisManager.hh>
@@ -62,86 +60,26 @@
 #   include "evGen/parameters.h"
 # endif
 
-# include "g4extras/aprimeHooks.hpp"
+//# include "g4extras/aprimeHooks.hpp"
 
 namespace svmc {
 
 Application::Application( Config * cfg) :
                                 AbstractApplication(cfg),
                                 Geant4Application(cfg),
-                                RootApplication(cfg, "Application")
-                                # ifdef StromaV_RPC_PROTOCOLS
+                                RootApplication(cfg)
+                                # ifdef RPC_PROTOCOLS
                                 , PBEventApp(cfg)
                                 # endif  // StromaV_RPC_PROTOCOL
                                 {}
 
 Application::~Application( ) {
-    _fileRef.close();
+    //_fileRef.close();
 }
 
-Application::Config *
-Application::_V_construct_config_object( int argc, char * const argv[] ) const {
-    Geant4Application::_set_cmd_args( argc, argv );
-    return Parent::_V_construct_config_object(argc, argv);
-}
-
-std::vector<sV::po::options_description>
-Application::_V_get_options() const /*{{{*/ {
-    auto res = Parent::_V_get_options();
-    res.push_back( _geant4_options() );
-    res.push_back( _geant4_gdml_options() );
-    res.push_back( sV::iBucketDispatcher::_dispatcher_options());  // BucketDispatcher options
-    {
-        sV::po::options_description g4SDCfg;
-        g4SDCfg.add_options()
-            ("g4-SD-ECAL_cell.timeVSedepHisto",
-                sV::po::value<bool>()->default_value(true),
-                "XXX")
-            ("g4-SD-ECAL_cell.timeVSedepMaxTime-ns",
-                sV::po::value<double>()->default_value(5),
-                "XXX")
-            ("g4-SD-ECAL_cell.timeVSedep-timeNBins",
-                sV::po::value<int>()->default_value(200),
-                "XXX")
-            ("g4-SD-ECAL_cell.timeVSedepMaxEDep-MeV",
-                sV::po::value<double>()->default_value(2),
-                "XXX")
-            ("g4-SD-ECAL_cell.timeVSedep-edepNBins",
-                sV::po::value<int>()->default_value(200),
-                "XXX")
-            ("g4-SD-ECAL_cell.scorerPool-NCells",
-                sV::po::value<int32_t>()->default_value(10000),
-                "Scorer pool size (number of values stored per event) for "
-                "\"ECAL_cell\" detector.")
-            ;
-        res.push_back( g4SDCfg );
-    }
-    # ifdef AFNA64_DPhMC_FOUND
-    {
-        sV::po::options_description APPhCfg;
-        APPhCfg.add_options()
-            # define appendDPhMC_parameter( type, strName, name, description ) \
-                ( "aprimeEvGen." strName, sV::po::value<type>(), description )
-            for_all_PhMClib_aprimeCS_parameters( appendDPhMC_parameter )
-            # undef appendDPhMC_parameter
-            //
-            # define appendDPhMC_parameter( type, strName, defVal, name, description ) \
-                ( "extraPhysics.physicsAe.gslIntegration." strName, \
-                    sV::po::value<type>()->default_value(defVal),   \
-                    description )
-            for_all_PhMClib_aprimeCS_GSL_chi_comp_parameter( appendDPhMC_parameter )
-            # undef appendDPhMC_parameter
-            //
-            # define appendDPhMC_parameter( type, strName, defVal, name, description ) \
-                ( "extraPhysics.physicsAe.TFoam." strName, \
-                    sV::po::value<type>()->default_value(defVal),   \
-                    description )
-            for_all_PhMClib_TFoam_generator_parameters( appendDPhMC_parameter )
-            # undef appendDPhMC_parameter
-            ;
-        res.push_back( APPhCfg );
-    }
-    # endif  // AFNA64_DPhMC_FOUND
+void
+Application::_V_concrete_app_append_common_cfg() /*{{{*/ {
+    # if 0
     {
         sV::po::options_description g4CDTA;
         g4CDTA.add_options()
@@ -157,11 +95,12 @@ Application::_V_get_options() const /*{{{*/ {
             ;
         res.push_back( g4CDTA );
     }
-    return res;
+    # endif
 } /* }}} */
 
 void
 Application::_initialize_tracking_action() {
+    # if 0
     // TODO: what have we do in case of multiple tracking actions?
     if( co().count("g4.trackingActions.createStatistics")
      || co().count("g4.trackingActions.destroyStatistics") ) {
@@ -201,14 +140,16 @@ Application::_initialize_tracking_action() {
 
         sV_log2("CreateDestroyStats_TA has been registered.\n");
     }
+    # endif
 }
 
 void
 Application::_initialize_event_action() {
+    # if 0
     //  TODO
     //  Further to be implemented using dedicated dictionary class.
     //  Bucket's destructor will be called from EventAction destructor.
-    # ifdef StromaV_RPC_PROTOCOLS
+    # ifdef RPC_PROTOCOLS
     _fileRef.open(goo::app<sV::AbstractApplication>().cfg_option<std::string>
         ("b-dispatcher.outFile"), std::ios::out | std::ios::binary |
                                   std::ios::app );
@@ -237,99 +178,27 @@ Application::_initialize_event_action() {
     G4RunManager::GetRunManager()
                     ->SetUserAction(new EventAction( bucketDispatcher));
     sV_log2("User EventAction has been initialized\n");
-    # endif  // StromaV_RPC_PROTOCOLS
+    # endif  // RPC_PROTOCOLS
+    # endif
 }
 void
-Application::_V_configure_concrete_app() /*{{{*/ {
-    const sV::po::variables_map & vm = goo::app<sV::AbstractApplication>().co();
-    if( do_immediate_exit() ) return;
-    _treat_geant4_options(      goo::app<Application>().co() );
-    if( do_immediate_exit() ) return;
-    _treat_geant4_gdml_options( goo::app<Application>().co() );
-    if( do_immediate_exit() ) return;
-
-    if( vm.count("g4.list-physics") ) {
-        // Physics list:
-        auto phll = sV::available_physics_lists()
-                # ifdef GEANT4_DYNAMIC_PHYSICS
-                , mdls = sV::ModularPhysicsList::available_physics_modules()
-                # endif  // GEANT4_DYNAMIC_PHYSICS
-             ;
-        if( phll.empty() ) {
-            sV_loge( "No physics list available at current build!\n" );
-        }
-        int i = 1;
-        sV_log1( ESC_CLRBOLD "Pre-formed physics list:" ESC_CLRCLEAR "\n" );
-        for( auto it = phll.cbegin(); phll.cend() != it; ++it, ++i ) {
-            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
-        }
-        i = 1;
-        sV_log1( "\n" ESC_CLRBOLD "Physics modules:" ESC_CLRCLEAR "\n" );
-        # ifdef GEANT4_DYNAMIC_PHYSICS
-        for( auto it = mdls.cbegin(); mdls.cend() != it; ++it, ++i ) {
-            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
-        }
-        # else  // GEANT4_DYNAMIC_PHYSICS
-        sV_loge( "No physics modules are available at current build "
-                 "(since -DGEANT4_DYNAMIC_PHYSICS=OFF)!\n" );
-        # endif // GEANT4_DYNAMIC_PHYSICS
-        // PGAs
-        auto pgal = sV::user_primary_generator_actions_list();
-        if( pgal.empty() ) {
-            sV_loge( "No primary generators available at current build!\n" );
-        }
-        i = 1;
-        sV_log1( "\n" ESC_CLRBOLD "Primary generators:" ESC_CLRCLEAR "\n" );
-        for( auto it = pgal.cbegin(); pgal.cend() != it; ++it, ++i ) {
-            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
-        }
-        sV_log1( "\n" );
-        _immediateExit = true;
-        return;
-    }
-
-    if ( vm.count("g4.sensitiveDetectorsList") ) {
-        std::cout << "List of available sensitive detectors:" << std::endl;
-        extGDML::SDDictionary::self().print_SD_List();
-        std::cout << "* Basically, value of sensDet should consist of two "
-                     "parts separated with column ':' sign."
-        << std::endl << "* E.g.:" << std::endl
-        << "* ECAL_cell:/sVdet/ecal" << std::endl
-        << "* Will refer to SensitiveDetector subclass named 'ECAL_cell' and "
-            "create an instance"
-        << std::endl << "* named '/sVdet/ecal'." << std::endl;  // TODO
-        _immediateExit = true;
-        return;
-    }
-    initialize_ROOT_system( RootApplication::enableCommonFile );
+Application::_V_concrete_app_configure() /*{{{*/ {
+    // ...
 } /*}}}*/
 
 void
 Application::_build_up_run() {
-    if( cfg_option<bool>("g4.customExceptionHandler") ) {
-        sV::aux::ExceptionHandler::enable();    // as G4RunManagerKernel overrides our handler in ctr,
-                                                // we must re-set it again here.
-    }
-    _setupName = cfg_option<std::string>("gdml.setup");
-    // Do the G4 initialization stuff.
-    _initialize_geometry();
-    // assign physlist:
-    _initialize_physics();
-    // PGA
-    _initialize_primary_generator_action();
-    G4RunManager::GetRunManager()->Initialize();
+    Parent::_build_up_run();
+    //G4RunManager::GetRunManager()->Initialize();
+    // ^^^ xxx? Called after _build_up_run(), by _run_session()
     _initialize_tracking_action();
     _initialize_event_action();
 }
 
 int
 Application::_V_run() /*{{{*/ {
-    if( do_immediate_exit() ) return EXIT_FAILURE;
-    int rc = _run_session( co().count("g4.batch"),
-                           cfg_option<std::string>("g4.visMacroFile") );
-    _clear_geant4_options( co() );
-    _clear_geant4_gdml_options( co() );
-    return rc;
+    if( do_immediate_exit() ) return EXIT_SUCCESS;
+    return _run_session();
 }  /*}}}*/
 
 } // namespace svmc

@@ -55,8 +55,9 @@ AnalysisApplication::_finalize_event( Event * ep ) {
 // Interfacing application methods implementation
 
 AnalysisApplication::AnalysisApplication( Config * vm ) :
-            sV::AbstractApplication( vm ),
-            mixins::PBEventApp(vm) {
+            sV::AbstractApplication(vm),
+            mixins::PBEventApp(vm),
+            mixins::RootApplication(vm) {
     # if 0 // XXX (dev)
     // Inject custom stacktrace info acauizition into boost exception construction
     // procedures; TODO: doesn't work; may be here `handler' means "how to treat" the
@@ -159,7 +160,7 @@ AnalysisApplication::_V_get_options() const {
 # endif
 
 void
-AnalysisApplication::_V_configure_concrete_app() {
+AnalysisApplication::_V_concrete_app_configure() {
     if( co()["list-src-formats"].as<bool>() ) {
         print_constructables_reference<sV::aux::iEventSequence>( std::cout );
         _immediateExit = true;
