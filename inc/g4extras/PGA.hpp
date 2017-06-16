@@ -26,6 +26,9 @@
 # include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
+
+# if 0
+
 # include <list>
 # include <string>
 
@@ -33,10 +36,8 @@ class G4VUserPrimaryGeneratorAction;
 class G4UImessenger;
 
 namespace sV {
-
 /// List available generators.
 std::list<std::string> user_primary_generator_actions_list();
-
 /// Creates and returns primary action instance according to selected type.
 ///
 /// Note: messenger pointer may not be set, if PGA soen't imply it ti be.
@@ -46,21 +47,18 @@ G4VUserPrimaryGeneratorAction * user_primary_generator_action(
 
 namespace aux {
 typedef G4VUserPrimaryGeneratorAction * (*PGAConstructor)( G4UImessenger *& );
-
 /// (internal) Registers new PGA constructor in system.
 void register_PGA_ctr( const std::string & name, PGAConstructor );
 }  // namespace aux
-
 }  // namespace sV
 
-# define StromaV_PGA_CONSTRUCTOR( pgaName, ctrName )     \
-static void _static_ ## pgaName ## _ctr_enlst           \
-    ( ) __attribute__(( constructor(156) ));            \
-static void _static_ ## pgaName ## _ctr_enlst           \
-    ( ) {                                               \
+# define StromaV_PGA_CONSTRUCTOR( pgaName, ctrName )        \
+static void _static_ ## pgaName ## _ctr_enlst               \
+    ( ) __attribute__(( constructor(156) ));                \
+static void _static_ ## pgaName ## _ctr_enlst               \
+    ( ) {                                                   \
 sV::aux::register_PGA_ctr( # pgaName, ctrName ); }
-
-
+# endif
 
 # endif  // GEANT4_MC_MODEL
 

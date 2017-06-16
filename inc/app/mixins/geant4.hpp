@@ -32,9 +32,9 @@
 class G4NistManager;
 class G4GDMLParser;
 class G4VisManager;
+class G4VUserPrimaryGeneratorAction;
 
 namespace sV {
-
 namespace mixins {
 
 /**@class Geant4Application
@@ -130,8 +130,23 @@ public:
 /**@}*/
 
 }  // namespace mixins
-
 }  // namespace sV
+
+
+
+//
+// Primary Generator Action registering macros
+
+# define StromaV_DEFINE_GEANT4_PGA( name, cxxClassName )    \
+StromaV_DEFINE_CONSTRUCTABLE(                               \
+        ::G4VUserPrimaryGeneratorAction,                    \
+        name, cxxClassName)
+
+# define StromaV_DEFINE_GEANT4_PGA_MCONF( name, cxxClassName )  \
+StromaV_DEFINE_STD_CONSTRUCTABLE_MCONF( cxxClassName, name, ::G4VUserPrimaryGeneratorAction )
+
+//
+//
 
 # endif  // GEANT4_MC_MODEL
 # endif  // H_STROMA_V_CERN_GEANT4_FRAMEWORK_BASED_APPLICATION_MIXIN_H

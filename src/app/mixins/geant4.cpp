@@ -36,6 +36,7 @@
 # include <G4RunManager.hh>
 # include <G4VisExecutive.hh>
 # include <G4UIExecutive.hh>
+# include <G4VUserPrimaryGeneratorAction.hh>
 // # pragma GCC diagnostic pop
 
 
@@ -99,7 +100,8 @@ Geant4Application::Geant4Application( AbstractApplication::Config * c ) :
 
     c->insertion_proxy()
         .flag( "list-physics",
-            "List physics lists which are available at current build." )
+            "List dynamic Geant4 physics entries which are available at "
+            "current build: physics list, physics modules and particles." )
         .flag( "list-sensitive-detectors",
             "Prints list of registered sensitive detectors that may be "
             "associated within GDML detector description." )
@@ -191,8 +193,8 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
                 "set. Used in implementation of `_interactive_run()`.",
             "sV-Geant4-app" )
         .bgn_sect( "extraPhysics", "Modular physics configuration section." )
-            .list<std::string>( "module",
-                    "Physics module to be included in modular physics list." )
+            .list<std::string>( "modules",
+                    "Physics modules to be included in modular physics list." )
             .p<std::string>("verbosity",
                     "Verbosity for physics list. Can be set to 0..3 or to "
                     "\"application\" to correspond global application "
@@ -202,10 +204,11 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
                     "Name of G4PhysListFactory product. See Geant4 manual for "
                     "guide how this name can be composed.",
                 "FTFP_BERT_EMV" )
-            //.p<bool>( "physicsSR-considerMaterials",
-            //        "Take into consideration material parameters while "
-            //        "modelling synchrotron radiation physics.",
-            //    false )
+            .bgn_sect( "SynchrotronRadiationPhysics", "SR physics module parameters" )
+                .p<bool>( "considerMaterials",
+                        "Whether to take into consideration material parameters "
+                        "while modelling synchrotron radiation physics." )
+            .end_sect( "SynchrotronRadiationPhysics" )
             # if 0  // TODO: move it in VCtr entry of DPhMC lib
             # ifdef AFNA64_DPhMC_FOUND
             .bgn_sect( "aprimeEvGen", "Parameters set for dark photon MC "
@@ -312,16 +315,7 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
                  "(since -DGEANT4_DYNAMIC_PHYSICS=OFF)!\n" );
         # endif // GEANT4_DYNAMIC_PHYSICS
         // PGAs
-        auto pgal = sV::user_primary_generator_actions_list();
-        if( pgal.empty() ) {
-            sV_loge( "No primary generators available at current build!\n" );
-        }
-        i = 1;
-        sV_log1( "\n" ESC_CLRBOLD "Primary generators:" ESC_CLRCLEAR "\n" );
-        for( auto it = pgal.cbegin(); pgal.cend() != it; ++it, ++i ) {
-            sV_log1( "%30s%c", it->c_str(), ( i%3 ? '\t' : '\n') );
-        }
-        sV_log1( "\n" );
+        print_constructables_reference<::G4VUserPrimaryGeneratorAction>( std::cout );
         _immediateExit = true;
         return;
     }
@@ -340,15 +334,6 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
         return;
     }
 
-    goo::filesystem::Path geomPath = app_option<goo::filesystem::Path>("geometry");
-    geomPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
-
-    sV_log2("Reading a GDML geometry from \"%s\".\n",
-            geomPath.interpolated().c_str());
-
-    _parser->Read( geomPath.interpolated(),
-                   commonCfg["Geant4.gdml.enableXMLSchemaValidation"].as<bool>() );
-
     if( commonCfg["Geant4.useNIST"].as<bool>() ) {
         sV_log2("Enabling NIST.\n");
         (_NISTMatMan = G4NistManager::Instance())->SetVerbose( g4_verbosity() );
@@ -361,10 +346,19 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
         }
     }
     _parser = new G4GDMLParser();
-    if( commonCfg["overlapCheck"].as<bool>() ) {
-        _parser->SetOverlapCheck( true );
+
+    goo::filesystem::Path geomPath = app_option<goo::filesystem::Path>("geometry");
+    geomPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
+
+    _parser->SetOverlapCheck( commonCfg["Geant4.gdml.overlapCheck"].as<bool>() );
+
+    if( ! geomPath.interpolated().empty() ) {
+        sV_log2("Reading a GDML geometry from \"%s\".\n",
+                geomPath.interpolated().c_str());
+        _parser->Read( geomPath.interpolated(),
+                       commonCfg["Geant4.gdml.enableXMLSchemaValidation"].as<bool>() );
     } else {
-        _parser->SetOverlapCheck( false );
+        sV_log3( "No GDML geometry provided.\n" );
     }
 }
 
@@ -407,11 +401,11 @@ Geant4Application::g4_abort() {
  * */
 void
 Geant4Application::_build_up_run() {
-    if( cfg_option<bool>("Geant4.customExceptionHandler") ) {
+    if( app_option<bool>("customExceptionHandler") ) {
         sV::aux::ExceptionHandler::enable();  // as G4RunManagerKernel overrides our handler in ctr,
                                                 // we must re-set it again here.
     }
-    _setupName = cfg_option<std::string>("Geant4.gdml.setup");
+    _setupName = cfg_option<std::string>("Geant4.gdml.setup-name");
     // Do the G4 initialization stuff.
     _initialize_geometry();
     // assign physlist:
@@ -426,7 +420,7 @@ Geant4Application::_interactive_run( const std::string & macroFilePath ) {
     int rc = EXIT_SUCCESS;
     char ** argv_;
     int argc_ = ::goo::dict::Configuration::tokenize_string(
-                    cfg_option<std::string>("exec-args"), argv_ );
+                    cfg_option<std::string>("Geant4.exec-args"), argv_ );
     # ifdef G4_MDL_VIS
     _visManagerPtr = new G4VisExecutive();
     _visManagerPtr->Initialize( /* former syntax required argc, argv */ );
@@ -473,12 +467,13 @@ Geant4Application::_initialize_geometry() {
 
 void
 Geant4Application::_initialize_physics() {
-    _TODO_  // TODO: use IndexOfConstructables
-    if( cfg_option<std::string>("Geant4.physicsList") != "none" ) {
+    // TODO: use IndexOfConstructables?
+    if(  cfg_option<std::string>("Geant4.physicsList") != "none"
+     && !cfg_option<std::string>("Geant4.physicsList").empty() ) {
         // Create a PhysicsList instance if it is not configured to `none':
         G4RunManager::GetRunManager()->SetUserInitialization(
                 sV::obtain_physics_list_instance(
-                            co()["Geant4.physicsList"].as<std::string>() ) );
+                            cfg_option<std::string>("Geant4.physicsList") ) );
     } else {
         sV_logw( "No physics list assigned to MC simulation as there is no "
                  "physicsList option provided.\n" );
@@ -487,13 +482,10 @@ Geant4Application::_initialize_physics() {
 
 void
 Geant4Application::_initialize_primary_generator_action() {
-    _TODO_  // TODO: use IndexOfConstructables
-    G4UImessenger * srcMessenger = nullptr;  // TODO: set srcMessenger
     if( "none" != cfg_option<std::string>("Geant4.primaryGenerator") ) {
-        G4RunManager::GetRunManager()->SetUserAction( sV::user_primary_generator_action(
-                    cfg_option<std::string>("Geant4.primaryGenerator"),
-                    srcMessenger
-                ) );
+        G4RunManager::GetRunManager()->SetUserAction(
+                generic_new<::G4VUserPrimaryGeneratorAction>(cfg_option<std::string>("Geant4.primaryGenerator"))
+            );
     }
 }
 
@@ -557,8 +549,7 @@ Geant4Application::_run_session() {
     G4RunManager::GetRunManager()->Initialize();
 
     sV_log2("Processing aux info.\n");
-    const auto & tagNamesLst = co()["Geant4.gdml.enable-tag"]
-                                                    .as_list_of<std::string>();
+    const auto & tagNamesLst = cfg_options_list<std::string>("Geant4.gdml.enable-tag");
     extGDML::AuxInfoSet * auxInfoSet =
         new extGDML::AuxInfoSet(
             std::vector<std::string>(tagNamesLst.begin(), tagNamesLst.end()) );

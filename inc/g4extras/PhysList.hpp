@@ -47,8 +47,6 @@ namespace sV {
  * Designed to always return a pointer to valid physic list instance.
  * See https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch06.html
  * for details about how those physics lists are constructed.
- *
- *
  */
 G4VUserPhysicsList * obtain_physics_list_instance( const std::string & name );
 

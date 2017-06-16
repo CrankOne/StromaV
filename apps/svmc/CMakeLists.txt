@@ -22,7 +22,7 @@
 cmake_minimum_required( VERSION 2.6 )
 project( svmc )
 
-include_directories( "${PROJECT_SOURCE_DIR}/inc/" )
+include_directories( ${PROJECT_SOURCE_DIR}/inc )
 
 file( GLOB_RECURSE svmc-implem_SRCS
     ${PROJECT_SOURCE_DIR}/src/*.c*)
@@ -35,12 +35,11 @@ set( svmc_implem svmc_implem${StromaV_BUILD_POSTFIX}
     CACHE STRING "StromaV svmc implementation library name." )
 
 add_library( ${svmc_implem} SHARED ${svmc-implem_SRCS} )
-#target_link_libraries( ${svmc_implem} ${StromaV_LIB} )
 target_link_libraries( ${svmc_implem} ${StromaV_LIB} )
 
 add_executable( ${svmc_exec} ${PROJECT_SOURCE_DIR}/src/main.cpp )
 target_link_libraries( ${svmc_exec} ${svmc_implem} )
 
-install( TARGETS ${svmc_implem}   EXPORT StromaV LIBRARY DESTINATION lib/na64 )
+install( TARGETS ${svmc_implem}   EXPORT StromaV LIBRARY DESTINATION lib/StromaV )
 install( TARGETS ${svmc_exec}     EXPORT StromaV RUNTIME DESTINATION bin )
 

@@ -21,15 +21,12 @@
 cmake_minimum_required( VERSION 2.6 )
 project( afpipe )
 
-include_directories( "${PROJECT_SOURCE_DIR}/inc/"
-                     "${PROJECT_SOURCE_DIR}/../../inc/" )
+include_directories( ${PROJECT_SOURCE_DIR}/inc )
 
 file( GLOB_RECURSE afpipe-implem_SRCS 
     ${PROJECT_SOURCE_DIR}/src/*.c*)
 list( REMOVE_ITEM afpipe-implem_SRCS 
     ${PROJECT_SOURCE_DIR}/src/main.cpp )
-
-file( GLOB afpipe_SRCS ${PROJECT_SOURCE_DIR}/src/main.cpp )
 
 set( afpipe_exec afpipe${StromaV_BUILD_POSTFIX}
     CACHE STRING "StromaV pipeline exec name." )
@@ -39,7 +36,7 @@ set( afpipe_implem afpipe_implem${StromaV_BUILD_POSTFIX}
 add_library( ${afpipe_implem} SHARED ${afpipe-implem_SRCS} )
 target_link_libraries( ${afpipe_implem} ${StromaV_LIB} )
 
-add_executable( ${afpipe_exec} ${afpipe_SRCS} )
+add_executable( ${afpipe_exec} ${PROJECT_SOURCE_DIR}/src/main.cpp )
 target_link_libraries( ${afpipe_exec} ${afpipe_implem} )
 
 install( TARGETS ${afpipe_exec}     EXPORT StromaVRUNTIME DESTINATION bin )

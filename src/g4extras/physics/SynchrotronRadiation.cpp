@@ -98,7 +98,8 @@ ModularPhysicsList::construct_physics<SynchrotronRadiationPhysics>() {
     //std::cout << " === #0 === " << std::endl;  // XXX
     return new SynchrotronRadiationPhysics(
                 ModularPhysicsList::physicsVerbosity,
-                goo::app<sV::AbstractApplication>().co()["extraPhysics.physicsSR.considerMaterials"].as<bool>()
+                goo::app<sV::AbstractApplication>()
+                    .cfg_option<bool>("Geant4.extraPhysics.SynchrotronRadiationPhysics.considerMaterials")
             );
 }
 

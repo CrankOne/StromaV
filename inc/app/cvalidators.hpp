@@ -27,12 +27,11 @@
 # include <cstdint>
 # include <regex>
 
-# if 0
-# include <boost/lexical_cast.hpp>
-# include <boost/optional.hpp>
-# include <boost/program_options.hpp>
-# include <boost/program_options/errors.hpp>
+# ifdef GEANT4_MC_MODEL
+# include <G4ThreeVector.hh>
 # endif
+
+# include "utils.hpp"
 
 namespace sV {
 namespace aux {
@@ -108,7 +107,7 @@ template<typename ComponentT> void
 }
 # endif
 
-// The histogram parametization grammar is following:
+// The histogram parametization grammar:
 // expr ::= '{' axes '}'
 //
 // axes ::= axis
@@ -130,11 +129,6 @@ public:
 
     friend std::ostream & operator<<( std::ostream & os, const HistogramParameters1D & );
 };
-
-//void validate(boost::any& v,
-//              const std::vector<std::string>& values,
-//              HistogramParameters1D * target_type, int);
-
 
 struct HistogramParameters2D {
 public:
@@ -202,6 +196,43 @@ protected:
     /// Returns set value.
     virtual std::string _V_stringify_value( const Value & ) const override;
 };
+
+
+# ifdef GEANT4_MC_MODEL
+template<>
+class Parameter<G4ThreeVector> : public
+                        mixins::iDuplicable< iAbstractParameter,
+                            Parameter<G4ThreeVector>,
+                            iParameter<G4ThreeVector> > {
+public:
+    typedef typename DuplicableParent::Parent::Value Value;
+public:
+    /// Only long option ctr.
+    Parameter( const char * name_,
+               const char * description_,
+               const G4ThreeVector & ) :
+                    DuplicableParent( name_,
+                              description_,
+                              0x0 | iAbstractParameter::set
+                                  | iAbstractParameter::atomic
+                                  | iAbstractParameter::singular,
+                              '\0' ) {}
+
+    Parameter( const Parameter<G4ThreeVector> & o ) : DuplicableParent( o ) {}
+    friend class ::goo::dict::InsertionProxy;
+protected:
+    /// Sets parameter value from given string.
+    virtual Value _V_parse( const char * str ) const override {
+        return ::sV::aux::parse_g4_three_vector( str );
+    }
+    /// Returns set value.
+    virtual std::string _V_stringify_value( const Value & v ) const override {
+        char bf[128];
+        snprintf( bf, sizeof(bf), "{%.3e,%.3e,%.3e}", v[0], v[1], v[2] );
+        return bf;
+    }
+};
+# endif
 
 }  // namespace dict
 }  // namespace goo

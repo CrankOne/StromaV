@@ -85,8 +85,7 @@ obtain_physics_list_instance(
     }
 
     std::list<std::string> ml = goo::app<sV::AbstractApplication>()
-            .co()["Geant4.extraPhysics.physlist.module"]
-            .as_list_of<std::string>()
+            .cfg_options_list<std::string>("Geant4.extraPhysics.modules")
             ;
     std::vector<std::string> modulesList( ml.begin(), ml.end() );
 
@@ -96,8 +95,7 @@ obtain_physics_list_instance(
         G4PhysListFactory factory;
         rs = factory.GetReferencePhysList(
                 goo::app<sV::AbstractApplication>()
-                .co()["Geant4.extraPhysics.productName"]
-                .as<std::string>()
+                .cfg_option<std::string>("Geant4.extraPhysics.productName")
             );
     } else
     # ifdef GEANT4_DYNAMIC_PHYSICS
@@ -143,8 +141,8 @@ obtain_physics_list_instance(
 
     {
         std::string verbosity = goo::app<sV::AbstractApplication>()
-                .co()["Geant4.extraPhysics.verbosity"]
-                .as<std::string>();
+                .cfg_option<std::string>("Geant4.extraPhysics.verbosity")
+                ;
         if( "application" != verbosity ) {
             try {
                 rs->SetVerboseLevel( boost::lexical_cast<int>(verbosity) );
@@ -159,8 +157,8 @@ obtain_physics_list_instance(
     {
         int physicsListVerbosityLevel = goo::app<sV::AbstractApplication>().verbosity();
         std::string verbosity = goo::app<sV::AbstractApplication>()
-                .co()["Geant4.extraPhysics.verbosity"]
-                .as<std::string>();
+                .cfg_option<std::string>("Geant4.extraPhysics.verbosity")
+                ;
         if( "application" != verbosity ) {
             try {
                 physicsListVerbosityLevel = boost::lexical_cast<int>(verbosity);

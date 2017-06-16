@@ -21,29 +21,35 @@
 %YAML 1.2
 ---
 
-ROOT:
-    dynamic-path: $(CFG:sV-paths.root-plugins)
-    plugin-handlers-file: $(CFG:sV-paths.root-plugins)/StromaV-plugins.rootrc
-    output-file: /tmp/sV_latest.root
-    TGraphics:
-        width: 1200
-        height: 400
-        palette: 1
-
-# The buckets implements a basic lower-level infrastructure for handling set of
-# events: count, accumulation of meta- and supplementary information, integrity
-# checks, network and file I/O.
-buckets:
-    # Sets default collectors set set up for default bucket dispatcher
-    # construction:
-    suppInfo:
-        - Generic
-    # Generic bucket supplementary information includes calculation of
-    #   1. Events number in a bucket
-    #   2. Raw data size in a bucket
-    #   3. SHA256 checksum of raw data for bucket identification
-    generic:
-        maxBucketSize_events: 1000
-        maxBucketSize_kB: 16384  # 16MB
+Geant4:
+    useNIST: true
+    physicsList: modular
+    visMacroFile: $(CFG:sV-paths.assets)/mac/vis.mac
+    customExceptionHandler : true
+    exec-args: "sV-geant4-app"
+    gui-session-type: "qt"
+    primaryGenerator: simpleGun
+    extraPhysics:
+        verbosity: application
+        productName: FTFP_BERT_EMV
+        modules:
+            - G4EmStandardPhysics
+            - G4HadronPhysicsQGSP_FTFP_BERT
+            - SynchrotronRadiationPhysics
+            #- APrimePhysics
+        SynchrotronRadiationPhysics:
+            considerMaterials: yes
+    gdml:
+        action: view
+        setup: Default
+        enableXMLSchemaValidation: true
+        preprocessorOutput: /dev/shm
+        preprocessorEnvironment: $(CFG:sV-paths.assets)/setups/overview.py
+    simpleGun:
+        particleType: e-
+        position-cm: "{0.,0.,0.}"
+        orientation: "{0.,0.,-1.}"
+        energy-MeV: 2e5
 ...
+
 

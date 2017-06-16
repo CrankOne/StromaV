@@ -24,6 +24,7 @@
 # include "sV_config.h"
 
 # ifdef GEANT4_MC_MODEL
+# if 0
 
 # include "app/app.h"
 
@@ -72,5 +73,6 @@ register_PGA_ctr( const std::string & name, aux::PGAConstructor ctr ) {
 
 }  // namespace sV
 
+# endif
 # endif  // GEANT4_MC_MODEL
 
