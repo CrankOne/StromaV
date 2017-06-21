@@ -35,6 +35,7 @@
 get_filename_component(_CURRENT_LOCATION "${CMAKE_CURRENT_LIST_FILE}" PATH)
 include( ${_CURRENT_LOCATION}/StromaVTargets.cmake )
 include( ${_CURRENT_LOCATION}/sV_find_pkgs.cmake )
+unset(_CURRENT_LOCATION)
 
 set( StromaV_INCLUDE_DIRS   "@CMAKE_INSTALL_PREFIX@/include/StromaV" )
 set( StromaV_LIBRARIES      @StromaV_LIB@ )
