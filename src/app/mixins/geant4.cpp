@@ -50,6 +50,7 @@
 # include <ext.gdml/DetectorConstruction.hpp>
 # include <ext.gdml/extras.hpp>
 # include <ext.gdml/gdml_aux_visStyles.hpp>
+# include <ext.gdml/extGDMLFetch.hpp>
 
 # include <TFile.h>
 
@@ -100,22 +101,38 @@ Geant4Application::Geant4Application( AbstractApplication::Config * c ) :
 
     c->insertion_proxy()
         .flag( "list-physics",
-            "List dynamic Geant4 physics entries which are available at "
-            "current build: physics list, physics modules and particles." )
+                "List dynamic Geant4 physics entries which are available at "
+                "current build: physics list, physics modules and particles." )
         .flag( "list-sensitive-detectors",
-            "Prints list of registered sensitive detectors that may be "
-            "associated within GDML detector description." )
+                "Prints list of registered sensitive detectors that may be "
+                "associated within GDML detector description." )
         .flag( "list-aux-tags",
-            "Prints list of registered auxilliary tags that may be "
-            "put within GDML geometry description to provide some extra "
-            "behaviour (e.g. sensitive detector association, appearance "
-            "styling, etc)." )
+                "Prints list of registered auxilliary tags that may be "
+                "put within GDML geometry description to provide some extra "
+                "behaviour (e.g. sensitive detector association, appearance "
+                "styling, etc)." )
         .flag( "list-PGAs",
-            "Prints list of registered primary generator classes that produces "
-            "initial particles during Geant4 MC event simulation." )
-        .p<goo::filesystem::Path>( "geometry",
-            "GDML source to be parsed. May refer to file or network "
-            "address." ) //.required_argument() ?
+                "Prints list of registered primary generator classes that produces "
+                "initial particles during Geant4 MC event simulation." )
+        .p<goo::filesystem::Path>( "geometry",  // TODO: goo::filesystem::URI
+                "GDML source to be parsed."
+                # if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+                " The http:// locations will also be handled within this argument. "
+                "See also the `--placements' option description to specify "
+                "additional configuration to desired setup."
+                # endif  // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+            ) //.required_argument() ?
+        # if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+        .p<goo::filesystem::Path>( "placements", // TODO: goo::filesystem::URI
+                "The YAML file briefly describing desired setup. See "
+                "http://your-resources-server/geo/observe for details "
+                "about expected fields within YAML object. When this argument "
+                "is set to \"none\", the server's common setup with default "
+                "placements will be used. You may also specify the "
+                "remote (http://) location to retreive placements stored for "
+                "particular run.",
+            "none")
+        # endif  // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
         .p<goo::filesystem::Path>( "visMacroFile",
                 "Geant4 .mac script that usually steers the actual "
                 "simulation in non-interactive mode, or prior to it."
@@ -166,7 +183,7 @@ Geant4Application::_append_Geant4_config_options( goo::dict::Dictionary & common
         .p<bool>( "useNIST",
                 "Whether to use NIST materials database (have prefix G4_* in "
                 "Geant4 geometry).",
-            true)
+                true)
         .p<std::string>( "verbosity",
                 "Geant4 core system verbosity level to start with. Will be set "
                 "before any .mac script will be processed --- they can further "
@@ -288,6 +305,18 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
         sV::aux::ExceptionHandler::enable();
     }
 
+    # if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+    xercesc::XMLPlatformUtils::Initialize();
+    if( xercesc::XMLPlatformUtils::fgNetAccessor ) {
+        sV_logw( "Overriding set XMLPlatformUtils::fgNetAccessor "
+            "(=%p) with new instance of extGDML::HTTP_POST_Fetch.\n",
+            xercesc::XMLPlatformUtils::fgNetAccessor );
+    }
+    // Set the network accessor to support POST-submitted data:
+    extGDML::HTTP_POST_Fetch * POSTFetchPtr =
+            new (xercesc::XMLPlatformUtils::fgMemoryManager) extGDML::HTTP_POST_Fetch();
+    xercesc::XMLPlatformUtils::fgNetAccessor = POSTFetchPtr;
+    # endif   // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
 
     if( app_option<bool>("list-physics") ) {
         // Physics list:
@@ -351,6 +380,48 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
     geomPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
 
     _parser->SetOverlapCheck( commonCfg["Geant4.gdml.overlapCheck"].as<bool>() );
+
+    # if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+    goo::filesystem::Path placementsPath = app_option<goo::filesystem::Path>("placements");
+    placementsPath.interpolator( goo::app<AbstractApplication>().path_interpolator() );
+    if( (! placementsPath.interpolated().empty())
+        && "none" != placementsPath.interpolated() ) {
+        std::string placementsContent;
+        // TODO: more elaborated criteria to determine whether URI is URL.
+        if( "http://" == placementsPath.interpolated().substr(0, 7) ) {
+            char bf[512];
+            snprintf( bf, sizeof(bf), "placements:\r\n  URL:%s", 
+                    placementsPath.interpolated().c_str() );
+            placementsContent = bf;
+        } else {
+            // read entire file to string and send it to server.
+            std::ifstream t( placementsPath.interpolated() );
+            placementsContent = std::string((std::istreambuf_iterator<char>(t)),
+                                             std::istreambuf_iterator<char>());
+            sV_log1( "Using placements file \"%s\" (of size %zu) to parameterize "
+                "network-fetched geometry.\n",
+                placementsPath.interpolated().c_str(),
+                placementsContent.size() );
+        }
+        POSTFetchPtr->set_context(
+                "Expect:"
+                "\r\n"
+                "Accept: text/xml"
+                "\r\n"
+                "Content-Type: text/plain"
+                "\r\n"
+                // Syntax:  User-Agent: <product> / <product-version> <comment>
+                "User-Agent: StromaV / "
+                    STRINGIFY_MACRO_ARG(STROMAV_VERSION_MAJOR) "."
+                    STRINGIFY_MACRO_ARG(STROMAV_VERSION_MINOR) " "
+                    STRINGIFY_MACRO_ARG(STROMAV_BUILD_TYPE) "-"
+                    STRINGIFY_MACRO_ARG(STROMAV_CMAKE_SYSTEM) ", "
+                    " build " STROMAV_BUILD_TIMESTAMP ", "
+                    " fts: 0x0"  //< todo: will be useful further
+                "\r\n",
+                placementsContent );
+    }
+    # endif   // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
 
     if( ! geomPath.interpolated().empty() ) {
         sV_log2("Reading a GDML geometry from \"%s\".\n",
