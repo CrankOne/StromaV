@@ -34,7 +34,24 @@ class G4GDMLParser;
 class G4VisManager;
 class G4VUserPrimaryGeneratorAction;
 
+# if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+namespace extGDML {
+class URLInputStream;
+}  // namespace extGDML
+# endif  // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+
 namespace sV {
+
+# if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+namespace aux {
+/// The default status code handler for Geant4 application. This function may
+/// be invoked from deep Geant4 internals, when XercesC libCURL support is
+/// enabled. This callback is used to print diagnostic info and throw
+/// "nwGeneric" exception.
+void http_status_xercesc_handler( long, extGDML::URLInputStream * );
+}  // namespace ::sV::aux
+# endif  // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+
 namespace mixins {
 
 /**@class Geant4Application

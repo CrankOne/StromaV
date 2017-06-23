@@ -71,6 +71,44 @@
  * */
 
 namespace sV {
+
+# if defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+namespace aux {
+
+void
+http_status_xercesc_handler(
+        long HTTPStatusCode,
+        extGDML::URLInputStream * streamPtr ) {
+    if( !HTTPStatusCode ) {
+        // This will be zero if no server response code has been received.
+        return;
+    }
+    if( 200 == HTTPStatusCode ) {
+        // just OK
+        return;
+    }
+    std::ostream & es = goo::app<AbstractApplication>().es();
+    auto & hdrsList = streamPtr->response_headers();
+    es << ESC_CLRBOLD " === START SERVER RESPONSE ===" ESC_CLRCLEAR << std::endl
+       << ESC_CLRBOLD " === HEADERS:" ESC_CLRCLEAR << std::endl
+       ;
+    for( const auto & hdrLine : hdrsList ) {
+        es << ESC_CLRBOLD " * " ESC_CLRCLEAR << hdrLine;
+    }
+    es << ESC_CLRBOLD " === CONTENT:" ESC_CLRCLEAR << std::endl;
+    const XMLSize_t maxToRead = 10*1024;
+    XMLByte * const toFill = new XMLByte [maxToRead+1];
+    XMLByte [maxToRead] = '\0';
+    streamPtr->readBytes( toFill, maxToRead );
+    es << (const char *) toFill << std::endl;
+    es << ESC_CLRBOLD " === END SERVER RESPONSE ===" ESC_CLRCLEAR << std::endl;
+    emraise( nwGeneric, "Network fetch failed: the HTTP response code is %d.",
+        HTTPStatusCode );
+}
+
+}  // namespace ::sV::aux
+# endif  // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
+
 namespace mixins {
 
 class Geant4Application::AppSession : public G4UIsession {
@@ -309,13 +347,14 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
     xercesc::XMLPlatformUtils::Initialize();
     if( xercesc::XMLPlatformUtils::fgNetAccessor ) {
         sV_logw( "Overriding set XMLPlatformUtils::fgNetAccessor "
-            "(=%p) with new instance of extGDML::HTTP_POST_Fetch.\n",
+            "(=%p) with new instance of extGDML::HTTPFetch.\n",
             xercesc::XMLPlatformUtils::fgNetAccessor );
     }
     // Set the network accessor to support POST-submitted data:
-    extGDML::HTTP_POST_Fetch * POSTFetchPtr =
-            new (xercesc::XMLPlatformUtils::fgMemoryManager) extGDML::HTTP_POST_Fetch();
-    xercesc::XMLPlatformUtils::fgNetAccessor = POSTFetchPtr;
+    extGDML::HTTPFetch * fetchPtr =
+            new (xercesc::XMLPlatformUtils::fgMemoryManager)
+                extGDML::HTTPFetch( aux::http_status_xercesc_handler );
+    xercesc::XMLPlatformUtils::fgNetAccessor = fetchPtr;
     # endif   // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
 
     if( app_option<bool>("list-physics") ) {
@@ -403,13 +442,11 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
                 placementsPath.interpolated().c_str(),
                 placementsContent.size() );
         }
-        POSTFetchPtr->set_context(
-                "Expect:"
-                "\r\n"
-                "Accept: text/xml"
-                "\r\n"
-                "Content-Type: text/plain"
-                "\r\n"
+        char headersStringBuffer[1024];
+        snprintf( headersStringBuffer, sizeof(headersStringBuffer), ""
+                "Accept: text/xml\r\n"
+                "Content-Type: text/plain; charset=utf-8\r\n"
+                "Content-Length: %zu\r\n"
                 // Syntax:  User-Agent: <product> / <product-version> <comment>
                 "User-Agent: StromaV / "
                     STRINGIFY_MACRO_ARG(STROMAV_VERSION_MAJOR) "."
@@ -417,9 +454,9 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
                     STRINGIFY_MACRO_ARG(STROMAV_BUILD_TYPE) "-"
                     STRINGIFY_MACRO_ARG(STROMAV_CMAKE_SYSTEM) ", "
                     " build " STROMAV_BUILD_TIMESTAMP ", "
-                    " fts: 0x0"  //< todo: will be useful further
-                "\r\n",
-                placementsContent );
+                    " fts: 0x0\r\n",  // todo: encoded sV-features
+                placementsContent.size() );
+        fetchPtr->set_context( headersStringBuffer, placementsContent );
     }
     # endif   // defined(XercesC_FOUND) && defined(XercesC_CURL_SUPPORT)
 
