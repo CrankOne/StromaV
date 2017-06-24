@@ -40,7 +40,7 @@
 # include "g4extras/PhysList.hpp"
 # include "g4extras/eHandler.hpp"
 # include "g4extras/PGA.hpp"
-# include "ext.gdml/SensDetDict.hpp"
+# include "ext.gdml/dicts/sensDets.hpp"
 
 # ifdef RPC_PROTOCOLS
 // ... TODO: bucket dispatchers

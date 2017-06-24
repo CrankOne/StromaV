@@ -555,7 +555,10 @@ AbstractApplication::_V_acquire_stream() {
     // TODO: Goo API must provide err stream acquizition method.
     _eStr = _V_acquire_errstream();
 
-    return new std::ostream( &_lBuffer );
+    std::ostream * lStrPtr = new std::ostream( &_lBuffer );
+    // extGDML::Journal::self().warn_stream( _eStr );
+    // extGDML::Journal::self().info_stream( *lStrPtr );
+    return lStrPtr;
 }
 
 std::ostream *

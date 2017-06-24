@@ -27,7 +27,7 @@
 # include <G4SystemOfUnits.hh>
 # include <G4Field.hh>
 
-# include "ext.gdml/FieldDict.hpp"
+# include "ext.gdml/dicts/fields.hpp"
 
 namespace sV {
 
@@ -70,7 +70,7 @@ void MagneticField::GetFieldValue(const G4double [4], double* bField) const
     bField[2] = _fieldValue[2]*tesla;
 }
 
-extGDML_REGISTER_FIELD ( MagneticField )
+extGDML_REGISTER_FIELD( MagneticField )
 
 }  // namespace sV
 

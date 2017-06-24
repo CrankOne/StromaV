@@ -45,11 +45,11 @@
 
 # include "g4extras/eHandler.hpp"
 
-# include <ext.gdml/SensDetDict.hpp>
-# include <ext.gdml/auxInfoSet.hpp>
+# include <ext.gdml/dicts/sensDets.hpp>
+# include <ext.gdml/dicts/tags.hpp>
 # include <ext.gdml/DetectorConstruction.hpp>
 # include <ext.gdml/extras.hpp>
-# include <ext.gdml/gdml_aux_visStyles.hpp>
+# include <ext.gdml/aux_tags/visStyles.hpp>
 # include <ext.gdml/extGDMLFetch.hpp>
 
 # include <TFile.h>
@@ -98,7 +98,7 @@ http_status_xercesc_handler(
     es << ESC_CLRBOLD " === CONTENT:" ESC_CLRCLEAR << std::endl;
     const XMLSize_t maxToRead = 10*1024;
     XMLByte * const toFill = new XMLByte [maxToRead+1];
-    XMLByte [maxToRead] = '\0';
+    toFill[maxToRead] = '\0';
     streamPtr->readBytes( toFill, maxToRead );
     es << (const char *) toFill << std::endl;
     es << ESC_CLRBOLD " === END SERVER RESPONSE ===" ESC_CLRCLEAR << std::endl;
@@ -390,7 +390,7 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
 
     if ( app_option<bool>("list-sensitive-detectors") ) {
         std::cout << "List of available sensitive detectors:" << std::endl;
-        extGDML::SDDictionary::self().print_SD_List();
+        extGDML::SDDictionary::self().print_SD_List( std::cout );
         std::cout << "* Basically, value of sensDet should consist of two "
                      "parts separated with column ':' sign."
         << std::endl << "* E.g.:" << std::endl
