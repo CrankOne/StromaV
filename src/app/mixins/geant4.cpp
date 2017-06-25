@@ -144,7 +144,7 @@ Geant4Application::Geant4Application( AbstractApplication::Config * c ) :
         .flag( "list-sensitive-detectors",
                 "Prints list of registered sensitive detectors that may be "
                 "associated within GDML detector description." )
-        .flag( "list-aux-tags",
+        .flag( "list-gdml-aux",
                 "Prints list of registered auxilliary tags that may be "
                 "put within GDML geometry description to provide some extra "
                 "behaviour (e.g. sensitive detector association, appearance "
@@ -398,6 +398,13 @@ Geant4Application::_initialize_Geant4_system( goo::dict::Dictionary & commonCfg 
         << "* Will refer to SensitiveDetector subclass named 'ECAL_cell' and "
             "create an instance"
         << std::endl << "* named '/sVdet/ecal'." << std::endl;  // TODO
+        _immediateExit = true;
+        return;
+    }
+
+    if( app_option<bool>("list-gdml-aux") ) {
+        std::cout << "List of available GDML auxilliary tags:" << std::endl;
+        extGDML::AuxInfoSet::list_registered_tags( std::cout );
         _immediateExit = true;
         return;
     }

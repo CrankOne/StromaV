@@ -42,9 +42,13 @@ Geant4:
     gdml:
         action: view
         setup: Default
-        enableXMLSchemaValidation: true
+        # NOTE: enabled validation causes Xerces-C to fetch all the schema
+        # files from http://service-spi.web.cern.ch that takes significant
+        # amount of time.
+        enableXMLSchemaValidation: false
         preprocessorOutput: /dev/shm
         preprocessorEnvironment: $(CFG:sV-paths.assets)/setups/overview.py
+        enable-tag: style  # sensDet, field, magField, ...
     simpleGun:
         particleType: e-
         position-cm: "{0.,0.,0.}"
