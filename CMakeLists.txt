@@ -138,11 +138,11 @@ endif( DOC_HTML )
 # available
 if( DSuL )
     BISON_TARGET(DSuL_Parser assets/grammar/dsul.y
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_parser_generated.c
+        ${CMAKE_CURRENT_BINARY_DIR}/dsul_parser_generated.c
         #VERBOSE ${CMAKE_CURRENT_BINARY_DIR}/dsul.dbg
         COMPILE_FLAGS "--graph=${CMAKE_CURRENT_BINARY_DIR}/dsul.dot" )
     FLEX_TARGET(DSuL_Lexer   assets/grammar/dsul.l
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsul_lexer_generated.c)
+        ${CMAKE_CURRENT_BINARY_DIR}/dsul_lexer_generated.c)
     ADD_FLEX_BISON_DEPENDENCY(DSuL_Lexer DSuL_Parser)
     #message( "XXX: ${BISON_DSuL_Parser_OUTPUTS} ${FLEX_DSuL_Lexer_OUTPUTS}" )
 endif( DSuL )
@@ -310,6 +310,12 @@ configure_file (
 #
 # Library target
 file(GLOB_RECURSE StromaV_LIB_SOURCES src/*.c*)
+
+if( DSuL )
+    list( APPEND StromaV_LIB_SOURCES
+        ${CMAKE_CURRENT_BINARY_DIR}/dsul_parser_generated.c
+        ${CMAKE_CURRENT_BINARY_DIR}/dsul_lexer_generated.c )
+endif( DSuL )
 
 add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
