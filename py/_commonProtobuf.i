@@ -40,9 +40,13 @@
  * So here we have to manually defining these macro to pass by. */
 #define LIBPROTOBUF_EXPORT
 
+%include "google/protobuf/generated_message_util.h"
+%include "google/protobuf/generated_message_table_driven.h"
 %include "google/protobuf/stubs/common.h"
 %include "google/protobuf/message_lite.h"
 %include "google/protobuf/message.h"
+
+%immutable "google::protobuf::*_default_instance_";
 
 %{
 # include "google/protobuf/message_lite.h"
@@ -59,12 +63,15 @@ using google::protobuf::MessageLite;
 using google::protobuf::FieldDescriptor;
 using google::protobuf::OneofDescriptor;
 using google::protobuf::EnumValueDescriptor;
+using google::protobuf::ProtobufOnceType;
 
 typedef int32_t int32;
 typedef uint32_t uint32;
 typedef uint8_t uint8;
 typedef int64_t int64;
 typedef uint64_t uint64;
+
+using std::string;
 
 %}
 
