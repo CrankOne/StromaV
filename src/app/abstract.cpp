@@ -245,7 +245,12 @@ AbstractApplication::_V_construct_config_object( int argc, char * const argv [] 
         }
         // TODO: try too look-up provided paths relatively to sV-paths.plugins
         // location?
-        void * handle = dlopen( intrpltdPath.c_str(), RTLD_NOW );
+        /* - The RTLD_NOW flag makes the dlopen() resolve all the symbols
+         * before return.
+         * - The RTLD_GLOBAL flag makes loaded symbols being globally available
+         * (thus you may dynamically load various system libraries).
+         * */
+        void * handle = dlopen( intrpltdPath.c_str(), RTLD_NOW | RTLD_GLOBAL );
         if( !handle ) {
             sV_loge( "Failed to load module: %s.\n", dlerror() );
         } else {
