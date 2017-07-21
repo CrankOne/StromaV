@@ -70,9 +70,9 @@ namespace sV {
  *
  * @ingroup app
  */
-class AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
-                            public sV::logging::Logger,
-                            public sV::aux::ASCII_Display {
+class DLL_PUBLIC AbstractApplication : public goo::App<goo::dict::Configuration, std::ostream>,
+                                       public sV::logging::Logger,
+                                       public sV::aux::ASCII_Display {
 public:
     /// A particular config class type. Aggregates configuration parameters
     /// into the annotated dictionary. StromaV now uses
