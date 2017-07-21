@@ -24,6 +24,8 @@
 
 %include "std_string.i"
 
+%import "events.i"
+
 %nodefaultctor std::type_index;
 
 %ignore PACKAGE_VERSION;

@@ -26,7 +26,7 @@
 
 namespace sV {
 
-static const char _static_dftPySessionArgs[] = "sVPy -v3";
+static const char _static_dftPySessionArgs[] = "sVPy";
 
 static goo::dict::Configuration * _static_dftPySessionConf = nullptr;
 

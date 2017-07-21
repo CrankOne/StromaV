@@ -26,6 +26,8 @@
 
 %include "_commonProtobuf.i"
 
+%import "app.i"
+
 %ignore PACKAGE_VERSION;
 
 /* SWIG concats enum names with their encompassing classes. The same does
