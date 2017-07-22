@@ -22,13 +22,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+%ignore PACKAGE_VERSION;
+
 %include "std_string.i"
 
 %include "_commonProtobuf.i"
 
-%import "app.i"
-
-%ignore PACKAGE_VERSION;
+%import(module="StromaV.app") "app.i"
 
 /* SWIG concats enum names with their encompassing classes. The same does
  * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG

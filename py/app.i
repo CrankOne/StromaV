@@ -28,6 +28,7 @@
 %nodefaultctor sV::mixins::PBEventApp;
 
 %ignore PACKAGE_VERSION;
+%ignore GIT_STRING;
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -36,7 +37,11 @@
 # define final
 # endif  // SWIG
 
+%include "goo_config.h"
 %include "sV_config.h"
+
+%include "goo_app.hpp"
+%template(BaseApp) goo::App<goo::dict::Configuration, std::ostream>;
 
 %include "app/abstract.hpp"
 %include "app/mixins/protobuf.hpp"

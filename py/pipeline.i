@@ -22,13 +22,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+%ignore PACKAGE_VERSION;
+
 %include "std_string.i"
 
 %import "events.i"
 
 %nodefaultctor std::type_index;
-
-%ignore PACKAGE_VERSION;
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */

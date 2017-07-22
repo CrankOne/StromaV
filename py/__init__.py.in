@@ -19,8 +19,9 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from .app import PythonSession
+import sys
 
-sVApp = PythonSession()
+PythonSession.init_from_string( 'sVApp', 'TODO', ' '.join(sys.argv))
 
 __all__ = "${${PYPKGNM}_PY_MODULES}".split()
 

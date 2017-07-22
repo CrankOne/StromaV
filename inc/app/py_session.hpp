@@ -33,8 +33,8 @@
 
 namespace sV {
 
-/// Returns an instance to default static python "app" conf.
-goo::dict::Configuration * default_pythob_session_app_conf();
+// Returns an instance to default static python "app" conf. XXX
+//goo::dict::Configuration * default_pythob_session_app_conf(); XXX
 
 /**@class PythonSession
  * @brief A sV's wrapper around AbstractApplication for Python.
@@ -50,14 +50,24 @@ goo::dict::Configuration * default_pythob_session_app_conf();
  * redirecting standard streams, logging, intercepting exceptions, etc.
  * */
 class PythonSession : public AnalysisApplication {
+private:
+    static char ** _locArgv;
+    static int _locArgc;
+    static goo::dict::Configuration * _locConf;
 protected:
     /// Has to never be invoked.
     virtual int _V_run() override { _FORBIDDEN_CALL_; }
+    PythonSession( sV::AbstractApplication::Config * cfgPtr );
 public:
-    PythonSession( ) :
-                   AbstractApplication( default_pythob_session_app_conf() ),
-                   sV::AnalysisApplication( default_pythob_session_app_conf() ) {}
-    ~PythonSession(){}
+    ~PythonSession();
+
+    /// A special static method designed for immediate initialization of python
+    /// session with joined argv[]-string acquired with
+    /// Python ' '.join(sys.argv) or similar.
+    static void init_from_string(
+            const char * appName,
+            const char * appDescription,
+            const char * strtoks_argv );
 };  // class PythonSession
 
 }  // namespace sV

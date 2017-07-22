@@ -26,6 +26,7 @@
 
 namespace sV {
 
+# if 0
 static const char _static_dftPySessionArgs[] = "sVPy";
 
 static goo::dict::Configuration * _static_dftPySessionConf = nullptr;
@@ -45,6 +46,33 @@ default_pythob_session_app_conf() {
     // goo::dict::Configuration::free_tokens( argc, argv );
 
     return _static_dftPySessionConf;
+}
+# endif
+
+char ** PythonSession::_locArgv = nullptr;
+int PythonSession::_locArgc = 0;
+goo::dict::Configuration * PythonSession::_locConf = nullptr;
+
+PythonSession::PythonSession( sV::AbstractApplication::Config * cfgPtr ) :
+                   AbstractApplication( cfgPtr ),
+                   sV::AnalysisApplication( cfgPtr ) {
+}
+
+void
+PythonSession::init_from_string(
+            const char * appName,
+            const char * appDescription,
+            const char * strtoks_argv ) {
+    _locConf = new goo::dict::Configuration( appName, appDescription );
+    _locArgc = goo::dict::Configuration::tokenize_string( strtoks_argv, _locArgv );
+    _locConf->extract( _locArgc, _locArgv, true );
+    PythonSession * app = new PythonSession( _locConf );
+    sV::AbstractApplication::Parent::init( _locArgc, _locArgv, app );
+}
+
+PythonSession::~PythonSession() {
+    goo::dict::Configuration::free_tokens( _locArgc, _locArgv );
+    delete _locConf;
 }
 
 }  // namespace sV
