@@ -176,14 +176,14 @@ set( StromaV_LIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/inc/" )
 #    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic" )
 #endif( CMAKE_COMPILER_IS_GNUCXX )
 
-set( CMAKE_C_FLAGS_DEBUG            "${CMAKE_C_FLAGS_DEBUG}     -fno-omit-frame-pointer" ) # -Wfatal-errors -fprofile-use? -fprofile-correction
-set( CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG}   -fno-omit-frame-pointer" )
+set( CMAKE_C_FLAGS_DEBUG            "${CMAKE_C_FLAGS_DEBUG}     -Wfatal-errors -fno-omit-frame-pointer" ) # -Wfatal-errors -fprofile-use? -fprofile-correction
+set( CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG}   -Wfatal-errors -fno-omit-frame-pointer" )
 set( CMAKE_C_FLAGS_RELEASE          "${CMAKE_C_FLAGS_RELEASE}" )
 set( CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE}" )
 set( CMAKE_C_FLAGS_MINSIZEREL       "${CMAKE_C_FLAGS_MINSIZEREL}" )
 set( CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL}" )
-set( CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}" )
-set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" )
+set( CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO} -Wfatal-errors" )
+set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -Wfatal-errors" )
 
 # Attain configuration depending on current build dir.
 include(${Goo_CMAKE_MODULES_DIR}/BuildConf.cmake)
@@ -354,6 +354,7 @@ endif( genfit_FOUND )
 
 if( PYTHON_BINDINGS AND RPC_PROTOCOLS )
     target_include_directories( ${StromaV_LIB} SYSTEM PUBLIC ${PYTHON_INCLUDE_DIRS} )
+    target_link_libraries( ${StromaV_LIB} PUBLIC ${PYTHON_LIBRARIES} )
 endif( PYTHON_BINDINGS AND RPC_PROTOCOLS )
 
 #add_dependencies( ${StromaV_LIB} ${PY_MSG_MODULES} )  # XXX

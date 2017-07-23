@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
+# Copyright (c) 2017 Renat R. Dusaev <crank@qcrypt.org>
 # Author: Renat R. Dusaev <crank@qcrypt.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -18,7 +18,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
+# WARNING: this module is implicitly imported by C++ extension.
 
 class GooException(Exception):
     """
@@ -30,18 +30,4 @@ class GooException(Exception):
         super(GooException, self).__init__(gooExcDict['what'])
         self.code = gooExcDict['code']
         self.cppStackDump = gooExcDict['cppStackDump']
-
-# The system's sys.__displayhook__ may contain already overriden hook, so we
-# have to store it.
-gOriginalDisplayHook = sys.excepthook
-
-def _goo_except_hook( excType, excInstance, traceback ):
-    gOriginalDisplayHook( excType, excInstance, traceback )
-    if issubclass(excType, GooException):
-        sys.stderr.write("C++ stacktrace referred by Goo exception:")
-        sys.stderr.write( excInstance.cppStackDump )
-
-sys.excepthook = _goo_except_hook
-
-__all__ = "${${PYPKGNM}_PY_MODULES}".split()
 

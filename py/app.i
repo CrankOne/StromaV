@@ -23,6 +23,7 @@
  */
 
 %include "std_string.i"
+%include "_gooExceptionWrapper.i"
 
 %nodefaultctor sV::AbstractApplication;
 %nodefaultctor sV::mixins::PBEventApp;
@@ -48,6 +49,10 @@
 %include "app/analysis.hpp"
 %include "app/py_session.hpp"
 
+%init %{
+sV::PythonSession::initialize_exception_type();
+%}
+
 %{
 
 #include "sV_config.h"
@@ -55,6 +60,8 @@
 #if !defined( PYTHON_BINDINGS )
 #error "PYTHON_BINDINGS is not defined. Unable to build app py-wrapper module."
 #endif
+
+#define SWIG_FILE_WITH_INIT
 
 #include "app/py_session.hpp"
 

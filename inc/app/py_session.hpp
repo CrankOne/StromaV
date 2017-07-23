@@ -29,7 +29,7 @@
 
 # include "app/analysis.hpp"
 
-//# include <Python.h>
+# include <Python.h>
 
 namespace sV {
 
@@ -51,9 +51,14 @@ namespace sV {
  * */
 class PythonSession : public AnalysisApplication {
 private:
+    /// Local argv usually forwarded from command line.
     static char ** _locArgv;
+    /// Local argc usually forwarded from command line.
     static int _locArgc;
+    /// Local configuration with bound lifetime.
     static goo::dict::Configuration * _locConf;
+    /// Stores reference to Python exception class that wraps the goo exception.
+    static PyObject * _gooExceptionTypePtr;
 protected:
     /// Has to never be invoked.
     virtual int _V_run() override { _FORBIDDEN_CALL_; }
@@ -68,6 +73,12 @@ public:
             const char * appName,
             const char * appDescription,
             const char * strtoks_argv );
+
+    // Exception conversion group. May be used without any session instantiated.
+    static void initialize_exception_type();
+    static PyObject * exception_type();
+    static PyObject * goo_exception2dict( const goo::Exception & e );
+    static void test_exception_throw();
 };  // class PythonSession
 
 }  // namespace sV

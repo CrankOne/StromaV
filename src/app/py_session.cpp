@@ -52,6 +52,7 @@ default_pythob_session_app_conf() {
 char ** PythonSession::_locArgv = nullptr;
 int PythonSession::_locArgc = 0;
 goo::dict::Configuration * PythonSession::_locConf = nullptr;
+PyObject * PythonSession::_gooExceptionTypePtr = NULL;
 
 PythonSession::PythonSession( sV::AbstractApplication::Config * cfgPtr ) :
                    AbstractApplication( cfgPtr ),
@@ -73,6 +74,63 @@ PythonSession::init_from_string(
 PythonSession::~PythonSession() {
     goo::dict::Configuration::free_tokens( _locArgc, _locArgv );
     delete _locConf;
+}
+
+void
+PythonSession::initialize_exception_type() {
+    auto exceptionModule = PyImport_ImportModule("StromaV");
+    if( exceptionModule ) {
+        PyObject * moduleDict = PyModule_GetDict( exceptionModule );
+        _gooExceptionTypePtr = PyDict_GetItemString( moduleDict, "GooException" );
+        if( !_gooExceptionTypePtr ) {
+            PyErr_SetString( PyExc_RuntimeError,
+                "Failed to locate native \"GooException\" python class in "
+                ".gooException module." );
+        } else {
+            Py_INCREF( _gooExceptionTypePtr );
+        }
+    } else {
+        PyErr_SetString( PyExc_RuntimeError,
+                "Failed to locate \"StromaV\" module." );
+    }
+}
+
+PyObject *
+PythonSession::exception_type() {
+    if( !_gooExceptionTypePtr ) {
+        initialize_exception_type();
+    }
+    return _gooExceptionTypePtr;
+}
+
+/* A helper function extracting stacktrace information from Goo exception into
+ * python dictionary for further use within native python exception. */
+PyObject *
+PythonSession::goo_exception2dict( const goo::Exception & e ) {
+    PyObject * ret = PyDict_New();
+    assert(PyDict_Check(ret));
+
+    // Basic fields
+    PyDict_SetItemString( ret, "code", Py_BuildValue("i", e.code()) );
+    PyDict_SetItemString( ret, "what", Py_BuildValue("s", e.what()) );
+
+    // C++ stacktrace:
+    # ifndef EM_STACK_UNWINDING
+    PyDict_SetItemString( ret, "cppStackDump", Py_BuildValue("s",
+        "C++ stacktrace is unavailable in current build configuration.") );
+    # else  // EM_STACK_UNWINDING
+    std::stringstream ss;
+    e.dump(ss);
+    PyDict_SetItemString( ret, "cppStackDump", Py_BuildValue("s",
+        ss.str().c_str()) );
+    # endif  // EM_STACK_UNWINDING
+    return ret;
+}
+
+void
+PythonSession::test_exception_throw() {
+    emraise( common, "This is a test exception instance thrown to check the "
+        "wrapper code." );
 }
 
 }  // namespace sV

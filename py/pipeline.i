@@ -25,6 +25,7 @@
 %ignore PACKAGE_VERSION;
 
 %include "std_string.i"
+%include "_gooExceptionWrapper.i"
 
 %import "events.i"
 

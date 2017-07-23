@@ -26,6 +26,7 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
     list( APPEND StromaV_PYMODULES events.i app.i pipeline.i )
     install( FILES
              _commonProtobuf.i
+             _gooExceptionWrapper.i
              app.i
              events.i
              pipeline.i

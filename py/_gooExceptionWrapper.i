@@ -1,5 +1,3 @@
-%module(directors="1") events
-
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
@@ -22,39 +20,33 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-%ignore PACKAGE_VERSION;
-
-%include "std_string.i"
-%include "_commonProtobuf.i"
-%include "_gooExceptionWrapper.i"
-
-%import(module="StromaV.app") "app.i"
-
-/* SWIG concats enum names with their encompassing classes. The same does
- * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG
- * to process protoc output causes these identifiers to collide. Here we
- * resolve this conflicts by manually renaming the encompassing classes. */
-%rename(SenderStatus)           sV::events::MulticastMessage_SenderStatusMessage;
-%rename(CompressedDataMsg)      sV::events::CompressedData;
-
-%ignore sV::events::protobuf_InitDefaults_event_2eproto_impl;
-%ignore sV::events::protobuf_AddDesc_event_2eproto_impl;
-%ignore sV::events::protobuf_AssignDesc_event_2eproto;
-%ignore sV::events::protobuf_ShutdownFile_event_2eproto;
-
-%include "../event.pb.h"
+/* This SWIG include-only module introduces wrapping exception to handle the
+ * Goo error as native python exception to establish seamless error-reporting 
+ * mechanism between wrapped C++ code and python environment.
+ */
 
 %{
-# include "sV_config.h"
-# include "event.pb.h"
-
-#if !defined( RPC_PROTOCOLS )
-# include <google/protobuf/message.h>
-# include "uevent.hpp"
-#error "RPC_PROTOCOLS is not " \
-"defined. Unable to build events py-wrapper module."
-#endif
-
+# include "app/py_session.hpp"
 %}
+
+%exception {
+    try {
+        $action
+    } catch( goo::Exception & e ) {
+        if( sV::PythonSession::exception_type() ) {
+            PyErr_SetObject( sV::PythonSession::exception_type(),
+                             sV::PythonSession::goo_exception2dict(e) );
+        } else {
+            PyErr_SetString( PyExc_RuntimeError, e.what() );
+            e.dump( std::cerr );
+        }
+        return NULL;
+    }
+    // For other type of exceptions one may add:
+    // catch( na64ee::Exception & e ) {
+    //     PyErr_SetString( PyExc_RuntimeError, e.what() );
+    //     return NULL;
+    // }
+}
 
 // vim: ft=swig
