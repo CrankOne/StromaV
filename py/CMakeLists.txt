@@ -23,12 +23,12 @@ include(${Goo_CMAKE_MODULES_DIR}/PyExtensions.cmake)
 set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
-    list( APPEND StromaV_PYMODULES events.i app.i pipeline.i )
+    list( APPEND StromaV_PYMODULES sVEvents.i appUtils.i pipeline.i )
     install( FILES
              _commonProtobuf.i
              _gooExceptionWrapper.i
-             app.i
-             events.i
+             appUtils.i
+             sVEvents.i
              pipeline.i
              std_unique_ptr.i
              std_stream.i

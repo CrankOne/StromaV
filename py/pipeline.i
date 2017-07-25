@@ -27,7 +27,7 @@
 %include "std_string.i"
 %include "_gooExceptionWrapper.i"
 
-%import "events.i"
+%import(module="StromaV.sVEvents") "sVEvents.i"
 
 %nodefaultctor std::type_index;
 

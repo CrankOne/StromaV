@@ -402,7 +402,10 @@ endif( ANALYSIS_ROUTINES )
 if( RPC_PROTOCOLS )
     set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES COMPILE_FLAGS -w )
     set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES GENERATED TRUE )
-    target_link_libraries( ${StromaV_LIB} PUBLIC ${PROTOBUF_LIBRARIES} )
+    target_link_libraries( ${StromaV_LIB}
+            PUBLIC  ${PROTOBUF_LIBRARIES}
+                    ${Protobuf_LIBRARIES}
+                    ${Protobuf_LITE_LIBRARIES}  )
     if( RFIO_AKA_SHIFT_LIB )
         message( STATUS "Found RFIO library: "  )
         target_link_libraries( ${StromaV_LIB} PUBLIC ${RFIO_AKA_SHIFT_LIB} )

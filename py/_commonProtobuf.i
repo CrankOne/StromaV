@@ -42,6 +42,8 @@
 
 %include "google/protobuf/stubs/common.h"
 
+%ignore google::protobuf::internal::MergePartialFromCodedStream;
+
 /* NOTE: not sure, whether the 3.1 is exact version number. At least for 3.1
  * the instructions below have to be disabled, while version 3.3 makes them
  * necessary.
@@ -51,7 +53,6 @@
 %include "google/protobuf/generated_message_table_driven.h"
 # endif  // GOOGLE_PROTOBUF_VERSION > 3001000
 
-%include "google/protobuf/stubs/common.h"
 %include "google/protobuf/message_lite.h"
 %include "google/protobuf/message.h"
 

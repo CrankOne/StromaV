@@ -1,4 +1,4 @@
-%module(directors="1") app
+%module(directors="1") appUtils
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>

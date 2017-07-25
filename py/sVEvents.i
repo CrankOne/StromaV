@@ -1,4 +1,4 @@
-%module(directors="1") events
+%module(directors="1") sVEvents
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
@@ -28,7 +28,7 @@
 %include "_commonProtobuf.i"
 %include "_gooExceptionWrapper.i"
 
-%import(module="StromaV.app") "app.i"
+%import(module="StromaV.appUtils") "appUtils.i"
 
 /* SWIG concats enum names with their encompassing classes. The same does
  * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG
@@ -42,7 +42,7 @@
 %ignore sV::events::protobuf_AssignDesc_event_2eproto;
 %ignore sV::events::protobuf_ShutdownFile_event_2eproto;
 
-%include "../event.pb.h"
+%include "event.pb.h"
 
 %{
 # include "sV_config.h"
