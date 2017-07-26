@@ -43,6 +43,19 @@
 %include "goo_dict/insertion_proxy.tcc"
 %include "goo_dict/dict.hpp"
 
+%runtime %{
+#include "goo_dict/dict.hpp"
+
+static void _insert_parameter(
+        goo::dict::InsertionProxy & self,
+        PyObject * pyType_,
+        char shortcut,
+        const char * name,
+        const char * description,
+        PyObject * pyDefault_
+    );
+%}
+
 //%pythonprepend goo::dict::InsertionProxy::p( PyObject * args, PyObject * kwargs ) {@sVPy_argspreproc}
 
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
@@ -116,59 +129,7 @@
             shortcut = PyString_AS_STRING(pyShortcut)[0];
         }
 
-        # define _M_insert_parameter( parType, parseDefault )               \
-            if( name && shortcut && pyDefault_ ) {                          \
-                $self->p<parType>( shortcut, name, description, parseDefault(pyDefault_) ); \
-            } else if( name && shortcut && !pyDefault_ ) {                  \
-                $self->p<parType>( shortcut, name, description );           \
-            } else if( name && (!shortcut) && pyDefault_ ) {                \
-                $self->p<parType>( name, description, parseDefault(pyDefault_) );  \
-            } else if( name && (!shortcut) && !pyDefault_ ) {               \
-                $self->p<parType>( name, description );                     \
-            } else if( (!name) && shortcut && pyDefault_ ) {                \
-                $self->p<parType>( shortcut, description, parseDefault(pyDefault_) );  \
-            } else if( (!name) && shortcut && !pyDefault_ ) {               \
-                $self->p<parType>( shortcut, description );                 \
-            } else {                                                        \
-                emraise( badParameter, "Unable to insert parameter: either the " \
-                    "shortcut, the name, or both have to be provided." );   \
-            }
-
-        PyTypeObject * pyType = (PyTypeObject *) pyType_;
-        if( PyTuple_Check( pyType_ ) ) {
-            emraise( unimplemented, "Tuple type parameter insertion is not "
-                "yet implemented.");  // TODO
-        } else if( PyType_IsSubtype( pyType, &PyBool_Type ) ) {
-            _M_insert_parameter( bool, PyInt_AsLong );
-        } else if( PyType_IsSubtype( pyType, &PyString_Type ) ) {
-            if( name && shortcut && pyDefault_ ) {
-                $self->p<std::string>( shortcut, name, description, PyString_AS_STRING(pyDefault_) );
-            } else if( name && shortcut && !pyDefault_ ) {
-                $self->p<std::string>( shortcut, name, description );
-            } else if( name && (!shortcut) && pyDefault_ ) {
-                $self->p<std::string>( name, description, PyString_AS_STRING(pyDefault_) );
-            } else if( name && (!shortcut) && !pyDefault_ ) {
-                $self->p<std::string>( name, description );
-            } else if( (!name) && shortcut && pyDefault_ ) {
-                $self->p<std::string>( shortcut, nullptr, description, PyString_AS_STRING(pyDefault_) );
-            } else if( (!name) && shortcut && !pyDefault_ ) {
-                $self->p<std::string>( shortcut, nullptr, description );
-            } else {
-                emraise( badParameter, "Unable to insert parameter: either the "
-                    "shortcut, the name, or both have to be provided." );
-            }
-        } else if( PyType_IsSubtype( pyType, &PyInt_Type ) ) {
-            _M_insert_parameter( long, PyInt_AsLong );
-        } else if( PyType_IsSubtype( pyType, &PyFloat_Type ) ) {
-            _M_insert_parameter( double, PyFloat_AsDouble );
-        } else if( PyString_Check(pyType_) ) {
-            emraise( unimplemented, "Dynamic type resolution and parameter "
-                    "insertion is not yet implemented." );  // TODO
-        } else {
-            PyObject * typeRepr = PyObject_Repr( pyType_ );
-            emraise( badParameter, "Unknown type provided: %s.",
-                            PyString_AsString( typeRepr ) );
-        }
+        _insert_parameter( *$self, pyType_, shortcut, name, description, pyDefault_ );
         // TODO: https://docs.python.org/2/c-api/exceptions.html#c.PyErr_Occurred
 
         return *$self;
@@ -187,6 +148,93 @@
 #error "PYTHON_BINDINGS is not defined. Unable to build app py-wrapper module."
 #endif
 
+
+# define _M_insert_parameter_generic( insM, parType, parseDefault )  \
+    if( name && shortcut && pyDefault_ ) {                          \
+        self . insM <parType>( shortcut, name, description, parseDefault(pyDefault_) ); \
+    } else if( name && shortcut && !pyDefault_ ) {                  \
+        self . insM <parType>( shortcut, name, description );      \
+    } else if( name && (!shortcut) && pyDefault_ ) {                \
+        self . insM <parType>( name, description, parseDefault(pyDefault_) );  \
+    } else if( name && (!shortcut) && !pyDefault_ ) {               \
+        self . insM <parType>( name, description );                \
+    }
+
+# define _M_insert_parameter( insM, parType, parseDefault )         \
+    _M_insert_parameter_generic(insM, parType, parseDefault)        \
+     else if( (!name) && shortcut && pyDefault_ ) {                 \
+        self . insM <parType>( shortcut, description, parseDefault(pyDefault_) );  \
+    } else if( (!name) && shortcut && !pyDefault_ ) {               \
+        self . insM <parType>( shortcut, description );            \
+    } else {                                                        \
+        emraise( badParameter, "Unable to insert parameter: either the " \
+            "shortcut, the name, or both have to be provided." );   \
+    }
+
+# define _M_insert_parameter_string( insM, parType, parseDefault )  \
+    _M_insert_parameter_generic(insM, parType, parseDefault)        \
+    else if( (!name) && shortcut && pyDefault_ ) {                  \
+        self . insM <parType>( shortcut, nullptr, description, parseDefault(pyDefault_) );  \
+    } else if( (!name) && shortcut && !pyDefault_ ) {               \
+        self . insM <parType>( shortcut, nullptr, description );    \
+    } else {                                                        \
+        emraise( badParameter, "Unable to insert parameter: either the "  \
+            "shortcut, the name, or both have to be provided." );   \
+    }
+
+static
+void _insert_parameter(
+        goo::dict::InsertionProxy & self,
+        PyObject * pyType_,
+        char shortcut,
+        const char * name,
+        const char * description,
+        PyObject * pyDefault_
+    ) {
+    PyTypeObject * pyType = (PyTypeObject *) pyType_;
+    if( PyTuple_Check( pyType_ ) && 1 == PyTuple_Size(pyType_) ) {
+        pyType_ = PyTuple_GET_ITEM(pyType_, 0);
+        if( ! (pyType_ && PyType_Check(pyType_)) ) {
+            emraise( badParameter, "First argument of p() is not "
+                "a Python tuple containing the single Python type "
+                "element." );
+        }
+        PyTypeObject * pyType = (PyTypeObject *) pyType_;
+        // Tuple objects:
+        if( PyType_IsSubtype( pyType, &PyBool_Type ) ) {
+            _M_insert_parameter( list, bool, PyInt_AsLong );
+        } else if( PyType_IsSubtype( pyType, &PyString_Type ) ) {
+            _M_insert_parameter_string( list, std::string, PyString_AS_STRING )
+        } else if( PyType_IsSubtype( pyType, &PyInt_Type ) ) {
+            _M_insert_parameter( list, long, PyInt_AsLong );
+        } else if( PyType_IsSubtype( pyType, &PyFloat_Type ) ) {
+            _M_insert_parameter( list, double, PyFloat_AsDouble );
+        } else if( PyString_Check(pyType_) ) {
+            emraise( unimplemented, "Dynamic type resolution and parameter "
+                    "insertion is not yet implemented." );  // TODO
+        } else {
+            PyObject * typeRepr = PyObject_Repr( pyType_ );
+            emraise( badParameter, "Unknown type provided: %s.",
+                            PyString_AsString( typeRepr ) );
+        }
+    } else if( PyType_IsSubtype( pyType, &PyBool_Type ) ) {
+        _M_insert_parameter( p, bool, PyInt_AsLong );
+    } else if( PyType_IsSubtype( pyType, &PyString_Type ) ) {
+        _M_insert_parameter_string( p, std::string, PyString_AS_STRING )
+    } else if( PyType_IsSubtype( pyType, &PyInt_Type ) ) {
+        _M_insert_parameter( p, long, PyInt_AsLong );
+    } else if( PyType_IsSubtype( pyType, &PyFloat_Type ) ) {
+        _M_insert_parameter( p, double, PyFloat_AsDouble );
+    } else if( PyString_Check(pyType_) ) {
+        emraise( unimplemented, "Dynamic type resolution and parameter "
+                "insertion is not yet implemented." );  // TODO
+    } else {
+        PyObject * typeRepr = PyObject_Repr( pyType_ );
+        emraise( badParameter, "Unknown type provided: %s.",
+                        PyString_AsString( typeRepr ) );
+    }
+    // ...
+}
 %}
 
 // vim: ft=swig
