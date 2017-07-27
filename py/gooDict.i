@@ -23,6 +23,8 @@
  */
 
 %include "std_string.i"
+%include "std_list.i"
+
 %include "_gooExceptionWrapper.i"
 
 %nodefaultctor goo::dict::InsertionProxy;
@@ -39,12 +41,9 @@
 
 %include "goo_config.h"
 
-%include "goo_dict/parameter.tcc"
-%include "goo_dict/insertion_proxy.tcc"
-%include "goo_dict/dict.hpp"
-
 %runtime %{
 #include "goo_dict/dict.hpp"
+#include "goo_types.h"
 
 static void _insert_parameter(
         goo::dict::InsertionProxy & self,
@@ -94,14 +93,44 @@ get_C_list( PyObject * pyTuple ) {
     return lst;
 }
 
+PyObject *
+iSingularParameter2PyObject( goo::dict::iSingularParameter * isp );
+
 %}
 
-//%pythonprepend goo::dict::InsertionProxy::p( PyObject * args, PyObject * kwargs ) {@sVPy_argspreproc}
+%pythoncode %{
+import re  # need for Dictionary.__getattr__
+%}
 
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
-    def p(self, *args, **kwargs):
-        return _gooDict.InsertionProxy_p(self, args, kwargs)
+def p(self, *args, **kwargs):
+    return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
+
+%feature("shadow") goo::dict::Dictionary::parameters() const %{
+def parameters( self ):
+    return self.__list_parameters()
+%}
+
+%feature("shadow") goo::dict::Dictionary::__getattr__( PyObject * pyStrKey ) %{
+def __getattr__(self, pyStrKey):
+    # Note: if no matches found, keep default behaviour to raise original error.
+    if '_' in pyStrKey:
+        rxsLookup = pyStrKey.replace( "_", "[-_]" )
+        rxeLookup = re.compile( rxsLookup )
+        candidates = list(filter( rxeLookup.match, self.parameters() ))
+        if len(candidates) > 1:
+            raise KeyError( "Disambiguation. The \"%s\" identifier may "
+                "refer to: %s. Consider manual getattr() invokation."%(
+                pyStrKey, str(candidates) ) )
+        elif 1 == len(candidates):
+            pyStrKey = candidates[0]
+    return $action(self, pyStrKey)
+%}
+
+%include "goo_dict/parameter.tcc"
+%include "goo_dict/insertion_proxy.tcc"
+%include "goo_dict/dict.hpp"
 
 %extend goo::dict::InsertionProxy {
     goo::dict::InsertionProxy p( PyObject * args, PyObject * kwargs ) {
@@ -183,9 +212,42 @@ get_C_list( PyObject * pyTuple ) {
     }
 }
 
-//%dictargs( p, goo::dict::InsertionProxy &, PyObject )
+%extend goo::dict::Dictionary {
+    PyObject * __getattr__( PyObject * pyStrKey ) {
+        if( !PyString_Check( pyStrKey ) ) {
+            PyObject * typeRepr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "Goo's dictionary __getattr__ called "
+                "with not a string type argument: %s.", PyString_AsString( typeRepr ) );
+        }
+        const char * attrKey = PyString_AS_STRING(pyStrKey);
+        goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
+        if( !parameter ) {
+            char bf[128];
+            snprintf( bf, sizeof(bf),
+                "Entry \"%s\" not found in parameter dictionary %p.",
+                attrKey, $self );
+            PyErr_SetString( PyExc_KeyError, bf );
+            return NULL;
+        }
+        return iSingularParameter2PyObject( parameter );
+    }
 
-//%template(int_param) goo::dict::InsertionProxy::p<int>;
+    PyObject * __list_parameters() const {
+        auto pLst = $self->parameters();
+        PyObject * pyPLst = PyTuple_New( pLst.size() );
+        uint32_t n = 0;
+        for( auto it = pLst.begin(); pLst.end() != it; ++it, ++n ) {
+            PyObject * pName;
+            if( (*it)->name() ) {
+                pName = PyString_FromString( (*it)->name() );
+            } else {
+                pName = PyString_FromFormat( "%c", (*it)->shortcut() );
+            }
+            PyTuple_SET_ITEM( pyPLst, n, pName );
+        }
+        return pyPLst;
+    }
+}
 
 %{
 
@@ -194,6 +256,11 @@ get_C_list( PyObject * pyTuple ) {
 #if !defined( PYTHON_BINDINGS )
 #error "PYTHON_BINDINGS is not defined. Unable to build goo's dicts py-wrapper module."
 #endif
+
+
+//
+// Parameter insertion helper macros and routine
+///////////////////////////////////////////////
 
 # define _M_insert_parameter_generic( parType ) \
     if( name && shortcut && pyDefault_ ) {                          \
@@ -325,6 +392,41 @@ void _insert_parameter(
     }
     // ...
 }
+
+PyObject *
+iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
+    // Parameter found. Now resolve its type and return as python object.
+    const std::type_info & TI = isp->target_type_info();
+    # ifndef GOO_TYPES_H
+    # error Macros from goo_types.h header are required.
+    # endif
+
+    # define _M_return_pyInt( gooCode, cType, gooType, gooSType )       \
+    if( typeid(cType) == TI ) {                                         \
+        return PyInt_FromLong( (long) isp->as<cType>() );               \
+    } else
+
+    # define _M_return_pyFloat( gooCode, cType, gooType, goosType )     \
+    if( typeid(cType) == TI ) {                                         \
+        return PyFloat_FromDouble( (long double) isp->as<cType>() );    \
+    } else
+
+    for_all_integer_datatypes( _M_return_pyInt )
+    for_all_floating_point_datatypes( _M_return_pyFloat )
+    if( typeid(std::string) == TI ) {
+        return PyString_FromString( isp->as<std::string>().c_str() );
+    //} else if(  ) {
+    } else {
+        char bf[128];
+        snprintf( bf, sizeof(bf),
+            "Requested Goo dictionary entry has "
+            "type \"%s\" which can not be converted into native Python type.",
+            TI.name() );
+        PyErr_SetString( PyExc_TypeError, bf );
+        return NULL;
+    }
+}
+
 %}
 
 // vim: ft=swig
