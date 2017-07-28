@@ -26,6 +26,7 @@
 %include "std_list.i"
 
 %include "_gooExceptionWrapper.i"
+%include "_sV_utility.i"
 
 %nodefaultctor goo::dict::InsertionProxy;
 
@@ -60,26 +61,36 @@ static void _insert_parameter(
 template<typename T> T
 get_C_value(PyObject *);  // None default implementation
 
-template<> bool
-get_C_value<bool>(PyObject * o) {
-    // Note: implemented as subclass of integers
-    return PyObject_IsTrue( o );
+# define _M_get_C_value_implem(T, fun)                                      \
+template<> T get_C_value<T>(PyObject * o) { return fun (o); }
+_M_get_C_value_implem( bool, PyObject_IsTrue ) // Note: implemented as subclass of integers
+_M_get_C_value_implem( long, PyInt_AsLong )
+_M_get_C_value_implem( double, PyFloat_AsDouble )
+_M_get_C_value_implem( std::string, PyString_AsString )
+# undef _M_get_C_value_implem
+
+//
+// Generic template value creation helpers
+
+template<typename T> PyObject *
+new_Py_value( const T & );  // None default implementation
+
+# define _M_new_Py_value_implem( code, T, gooType, gooSType, fun, pyCType ) \
+template<> PyObject * new_Py_value<T>( const T & val ) { return fun( (pyCType) val ); }
+for_all_floating_point_datatypes( _M_new_Py_value_implem, PyFloat_FromDouble, double )
+for_all_integer_datatypes( _M_new_Py_value_implem, PyInt_FromLong, long )
+# undef _M_new_Py_value_implem
+
+template<> PyObject *
+new_Py_value<std::string>( const std::string & val ) { 
+    return PyString_FromString( val.c_str() );
 }
 
-template<> long
-get_C_value<long>(PyObject * o) {
-    return PyInt_AsLong( o );
+template<> PyObject *
+new_Py_value<bool>( const bool & val ) { 
+    return PyBool_FromLong( val ? 1 : 0 );
 }
 
-template<> double
-get_C_value<double>(PyObject * o) {
-    return PyFloat_AsDouble( o );
-}
-
-template<> std::string
-get_C_value<std::string>(PyObject * o) {
-    return PyString_AsString( o );
-}
 
 // ...
 
@@ -99,25 +110,13 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp );
 %}  // %runtime
 
 %newobject goo::dict::Dictionary::insertion_proxy;
+// We do not need this method in python since we won't work with parameter
+// instances.
 %ignore goo::dict::InsertionProxy::insert_copy_of;
 
-%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::p {
-    (void)($result);  // supress *unused* warning
-    Py_INCREF($self);
-    $result = $self;
-}
-
-%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::bgn_sect {
-    //(void)($result);  // supress *unused* warning
-    Py_INCREF($self);
-    $result = $self;
-}
-
-%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::end_sect {
-    //(void)($result);  // supress *unused* warning
-    Py_INCREF($self);
-    $result = $self;
-}
+self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::p)
+self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::bgn_sect )
+self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::end_sect )
 
 %pythoncode %{
 import re  # need for Dictionary.__getattr__
@@ -127,16 +126,6 @@ import re  # need for Dictionary.__getattr__
 def p(self, *args, **kwargs):
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
-
-//%feature("shadow") goo::dict::InsertionProxy::bgn_sect( const char *, const char * ) %{
-//def bgn_sect(self, name, description=None):
-//    return self.__bgn_sect(name, description)
-//%}
-
-//%feature("shadow") goo::dict::InsertionProxy::end_sect( const char * ) %{
-//def end_sect(self, name):
-//    return self.__end_sect_(name)
-//%}
 
 %feature("shadow") goo::dict::Dictionary::parameters() const %{
 def parameters( self ):
@@ -164,18 +153,6 @@ def __getattr__(self, pyStrKey):
 %include "goo_dict/dict.hpp"
 
 %extend goo::dict::InsertionProxy {
-    // These methods have to be overrided with copying ones since the Python
-    // will clean-up instances immediately after first call. This bug,
-    // apparently can not be avoided. See:
-    // https://stackoverflow.com/questions/4975509/lifetime-of-temporary-objects-in-swigs-python-wrappers
-    //goo::dict::InsertionProxy & __bgn_sect( const char * nm, const char * dscr ) {
-    //    printf( "XXX#1: %s\n", nm );
-    //    return $self->bgn_sect(nm, dscr);
-    //}
-    //goo::dict::InsertionProxy & __end_sect( const char * nm ) {
-    //    printf( "XXX#2: %s\n", nm );
-    //    return $self->end_sect(nm);
-    //}
     goo::dict::InsertionProxy & p( PyObject * args, PyObject * kwargs ) {
         // Actual signature of the function:
         //      ( type, name=None, description=None, shortcut=None, required=False )
@@ -249,7 +226,11 @@ def __getattr__(self, pyStrKey):
             required = PyObject_IsTrue(pyShortcut);
         }
         _insert_parameter( *$self, pyType_, shortcut, name, description, pyDefault_ );
-        // TODO: https://docs.python.org/2/c-api/exceptions.html#c.PyErr_Occurred
+
+        if( required ) {
+            // Mark last inserted parameter as required.
+            $self->required_argument();
+        }
 
         return *$self;
     }
@@ -260,11 +241,13 @@ def __getattr__(self, pyStrKey):
         if( !PyString_Check( pyStrKey ) ) {
             PyObject * typeRepr = PyObject_Repr( pyStrKey );
             emraise( badParameter, "Goo's dictionary __getattr__ called "
-                "with not a string type argument: %s.", PyString_AsString( typeRepr ) );
+                "with not a string type argument: %s.",
+                PyString_AsString( typeRepr ) );
         }
         const char * attrKey = PyString_AS_STRING(pyStrKey);
         goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
         if( !parameter ) {
+            // TODO: probe subsection
             char bf[128];
             snprintf( bf, sizeof(bf),
                 "Entry \"%s\" not found in parameter dictionary %p.",
@@ -434,6 +417,10 @@ void _insert_parameter(
                         PyString_AsString( typeRepr ) );
     }
     // ...
+    // todo: shall we check PyErr_Occurred() here in case something went
+    // wrong with subsequent python invokations?
+    // See reference at:
+    // https://docs.python.org/2/c-api/exceptions.html#c.PyErr_Occurred
 }
 
 PyObject *
@@ -458,16 +445,41 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
     for_all_floating_point_datatypes( _M_return_pyFloat )
     if( typeid(std::string) == TI ) {
         return PyString_FromString( isp->as<std::string>().c_str() );
-    //} else if(  ) {
-    } else {
-        char bf[128];
-        snprintf( bf, sizeof(bf),
-            "Requested Goo dictionary entry has "
-            "type \"%s\" which can not be converted into native Python type.",
-            TI.name() );
-        PyErr_SetString( PyExc_TypeError, bf );
-        return NULL;
+    } else if( typeid(bool) == TI ) {
+        return PyBool_FromLong( isp->as<bool>() ? 1 : 0 );
+    } else if( isp->has_multiple_values() ) {
+        // Parameter is a tuple.
+        # define _M_return_pyTuple( T )                                 \
+        if( typeid(std::list<T>) == TI ) {                              \
+            const std::list<T> & lst = isp->as_list_of<T>();            \
+            PyObject * pyLst = PyTuple_New( lst.size() );               \
+            uint32_t n = 0;                                             \
+            for( auto & pRef : lst ) {                                  \
+                PyTuple_SET_ITEM( pyLst, n++, new_Py_value<T>( pRef ) );  \
+            }                                                           \
+            return pyLst;                                               \
+        } else
+        # define _M_goo_return_tuple_types_wrap( gooCode, cType, gooType, goosType ) \
+        _M_return_pyTuple( cType )
+        for_all_integer_datatypes( _M_goo_return_tuple_types_wrap )
+        for_all_floating_point_datatypes( _M_goo_return_tuple_types_wrap )
+        _M_return_pyTuple(bool)
+        _M_return_pyTuple(std::string)
+        # undef _M_goo_return_tuple_types_wrap
+        # undef _M_return_pyTuple
+        {
+            // Do nothing, forward execution to finalizing block that raises
+            // an exception.
+        }
     }
+    // All the checks have failed.
+    char bf[128];
+    snprintf( bf, sizeof(bf),
+        "Requested Goo dictionary entry has "
+        "type \"%s\" which can not be converted into native Python type.",
+        TI.name() );
+    PyErr_SetString( PyExc_TypeError, bf );
+    return NULL;
 }
 
 %}
