@@ -96,28 +96,47 @@ get_C_list( PyObject * pyTuple ) {
 PyObject *
 iSingularParameter2PyObject( goo::dict::iSingularParameter * isp );
 
-%}
+%}  // %runtime
+
+%newobject goo::dict::Dictionary::insertion_proxy;
+%ignore goo::dict::InsertionProxy::insert_copy_of;
+
+%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::p {
+    (void)($result);  // supress *unused* warning
+    Py_INCREF($self);
+    $result = $self;
+}
+
+%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::bgn_sect {
+    //(void)($result);  // supress *unused* warning
+    Py_INCREF($self);
+    $result = $self;
+}
+
+%typemap(out) goo::dict::InsertionProxy & goo::dict::InsertionProxy::end_sect {
+    //(void)($result);  // supress *unused* warning
+    Py_INCREF($self);
+    $result = $self;
+}
 
 %pythoncode %{
 import re  # need for Dictionary.__getattr__
 %}
-
-%ignore goo::dict::InsertionProxy::insert_copy_of( const goo::dict::iSingularParameter &, const char * );
 
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
 def p(self, *args, **kwargs):
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
 
-%feature("shadow") goo::dict::InsertionProxy::bgn_sect( const char *, const char * ) %{
-def bgn_sect(self, name, description=None):
-    return self.__bgn_sect(name, description)
-%}
+//%feature("shadow") goo::dict::InsertionProxy::bgn_sect( const char *, const char * ) %{
+//def bgn_sect(self, name, description=None):
+//    return self.__bgn_sect(name, description)
+//%}
 
-%feature("shadow") goo::dict::InsertionProxy::end_sect( const char * ) %{
-def end_sect(self, name):
-    return self.__end_sect_(name)
-%}
+//%feature("shadow") goo::dict::InsertionProxy::end_sect( const char * ) %{
+//def end_sect(self, name):
+//    return self.__end_sect_(name)
+//%}
 
 %feature("shadow") goo::dict::Dictionary::parameters() const %{
 def parameters( self ):
@@ -149,15 +168,15 @@ def __getattr__(self, pyStrKey):
     // will clean-up instances immediately after first call. This bug,
     // apparently can not be avoided. See:
     // https://stackoverflow.com/questions/4975509/lifetime-of-temporary-objects-in-swigs-python-wrappers
-    goo::dict::InsertionProxy __bgn_sect( const char * nm, const char * dscr ) {
-        printf( "XXX#1: %s\n", nm );
-        return $self->bgn_sect(nm, dscr);
-    }
-    goo::dict::InsertionProxy __end_sect( const char * nm ) {
-        printf( "XXX#2: %s\n", nm );
-        return $self->end_sect(nm);
-    }
-    goo::dict::InsertionProxy p( PyObject * args, PyObject * kwargs ) {
+    //goo::dict::InsertionProxy & __bgn_sect( const char * nm, const char * dscr ) {
+    //    printf( "XXX#1: %s\n", nm );
+    //    return $self->bgn_sect(nm, dscr);
+    //}
+    //goo::dict::InsertionProxy & __end_sect( const char * nm ) {
+    //    printf( "XXX#2: %s\n", nm );
+    //    return $self->end_sect(nm);
+    //}
+    goo::dict::InsertionProxy & p( PyObject * args, PyObject * kwargs ) {
         // Actual signature of the function:
         //      ( type, name=None, description=None, shortcut=None, required=False )
         // Within the C API the args is an ordinary Python tuple, and kwargs is

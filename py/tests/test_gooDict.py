@@ -42,6 +42,7 @@ class TestDictionaryBasics(unittest.TestCase):
                 default=stringToBeChecked )  \
             .p( (int,), shortcut='e', name='tuple-parameter',
                 description="Parameter 5, str.", )
+        # ...
 
     def test_base_access(self):
         # This will test dictionary attribute set to default vale:
@@ -56,6 +57,7 @@ class TestDictionaryBasics(unittest.TestCase):
     # Has no sense without recursive traversal
     #    self.assertFalse( self.dct.inconsistent )
 
+
 class TestDictionaryAdvanced( TestDictionaryBasics ):
     def setUp(self):
         super( TestDictionaryAdvanced, self ).setUp()
@@ -65,6 +67,8 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
                 .p( int, name='int-sub2', description='Another int-typed parameter.' ) \
                 .bgn_sect('subsub1', "Testing subsection #2") \
                     .p( float, name='int-sub1', description='Some float-typed parameter.' ) \
+                    .p( float, name='int-sub2', description='Another float-typed parameter.' ) \
+                    .p( float, name='int-sub3', description='Yet another float-typed parameter.' ) \
                 .end_sect('subsub1') \
             .end_sect('sub1')
 
