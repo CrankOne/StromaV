@@ -102,9 +102,21 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp );
 import re  # need for Dictionary.__getattr__
 %}
 
+%ignore goo::dict::InsertionProxy::insert_copy_of( const goo::dict::iSingularParameter &, const char * );
+
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
 def p(self, *args, **kwargs):
     return _gooDict.InsertionProxy_p(self, args, kwargs)
+%}
+
+%feature("shadow") goo::dict::InsertionProxy::bgn_sect( const char *, const char * ) %{
+def bgn_sect(self, name, description=None):
+    return self.__bgn_sect(name, description)
+%}
+
+%feature("shadow") goo::dict::InsertionProxy::end_sect( const char * ) %{
+def end_sect(self, name):
+    return self.__end_sect_(name)
 %}
 
 %feature("shadow") goo::dict::Dictionary::parameters() const %{
@@ -133,6 +145,18 @@ def __getattr__(self, pyStrKey):
 %include "goo_dict/dict.hpp"
 
 %extend goo::dict::InsertionProxy {
+    // These methods have to be overrided with copying ones since the Python
+    // will clean-up instances immediately after first call. This bug,
+    // apparently can not be avoided. See:
+    // https://stackoverflow.com/questions/4975509/lifetime-of-temporary-objects-in-swigs-python-wrappers
+    goo::dict::InsertionProxy __bgn_sect( const char * nm, const char * dscr ) {
+        printf( "XXX#1: %s\n", nm );
+        return $self->bgn_sect(nm, dscr);
+    }
+    goo::dict::InsertionProxy __end_sect( const char * nm ) {
+        printf( "XXX#2: %s\n", nm );
+        return $self->end_sect(nm);
+    }
     goo::dict::InsertionProxy p( PyObject * args, PyObject * kwargs ) {
         // Actual signature of the function:
         //      ( type, name=None, description=None, shortcut=None, required=False )

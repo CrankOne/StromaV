@@ -33,8 +33,7 @@ class TestDictionaryBasics(unittest.TestCase):
             .p( int, shortcut='a', name="int-parameter",
                 description="Parameter 1, int.", default=12 )  \
             .p( float, shortcut='b', name="float-parameter",
-                description="Parameter 2, float.",
-                required=True)  \
+                description="Parameter 2, float.")  \
             .p( bool, shortcut='c',
                 description="Parameter 3, bool.",
                 default=True )  \
@@ -52,6 +51,25 @@ class TestDictionaryBasics(unittest.TestCase):
 
     def test_no_key(self):
         self.assertRaises( KeyError, getattr, self.dct, 'blam' )
+
+    #def test_inconsistent(self):
+    # Has no sense without recursive traversal
+    #    self.assertFalse( self.dct.inconsistent )
+
+class TestDictionaryAdvanced( TestDictionaryBasics ):
+    def setUp(self):
+        super( TestDictionaryAdvanced, self ).setUp()
+        ip = self.dct.insertion_proxy()
+        ip.bgn_sect('sub1', "Testing subsection #1")  \
+                .p( int, name='int-sub1', description='Some int-typed parameter.' ) \
+                .p( int, name='int-sub2', description='Another int-typed parameter.' ) \
+                .bgn_sect('subsub1', "Testing subsection #2") \
+                    .p( float, name='int-sub1', description='Some float-typed parameter.' ) \
+                .end_sect('subsub1') \
+            .end_sect('sub1')
+
+    #def test_
+    
 
 # See: https://stackoverflow.com/questions/35282222/in-python-how-do-i-cast-a-class-object-to-a-dict
 #def __iter__(self):
