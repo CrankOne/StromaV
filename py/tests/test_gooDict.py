@@ -19,10 +19,16 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+"""
+This testing unit performs check of the goo::dict::Dictionary class bindings.
+It is also a good check for the attendant InsertionProxy class.
+"""
+
 from __future__ import print_function
 import unittest
 from castlib3.models.filesystem import Folder, File, DeclBase
 from StromaV.gooDict import Dictionary
+from StromaV import GooException
 
 stringToBeChecked='Klaata baradu nikto.'
 
@@ -41,22 +47,33 @@ class TestDictionaryBasics(unittest.TestCase):
                 description="Parameter 4, str.",
                 default=stringToBeChecked )  \
             .p( (int,), shortcut='e', name='tuple-parameter',
-                description="Parameter 5, str.", )
+                description="Parameter 5, str." )
         # ...
 
     def test_base_access(self):
+        # This may be extended further, so we need to check that AT LEAST the
+        # inserted parameters are present.
+        self.assertTrue(
+            set(self.dct.parameters()).issuperset( (
+                'int-parameter', 'float-parameter', 'c',
+                'string-parameter', 'tuple-parameter' ) ) )
         # This will test dictionary attribute set to default vale:
         self.assertTrue( hasattr( self.dct, 'int-parameter' ) )
         self.assertTrue( self.dct.int_parameter == 12 )
         self.assertTrue( self.dct.string_parameter == stringToBeChecked )
+        self.assertTrue( self.dct.c )
+        self.assertTrue( 
+            type( self.dct.tuple_parameter ) is tuple and
+            0 == len(self.dct.tuple_parameter) )
 
     def test_no_key(self):
         self.assertRaises( KeyError, getattr, self.dct, 'blam' )
-
-    #def test_inconsistent(self):
-    # Has no sense without recursive traversal
-    #    self.assertFalse( self.dct.inconsistent )
-
+        # Shall raise "has not been set while its value required" exception.
+        # Since GooException is not slightly typed, we just testing its its
+        # message here
+        self.assertRaisesRegexp( GooException,
+                "has not been set while its value required",
+                getattr, self.dct, 'float-parameter' )
 
 class TestDictionaryAdvanced( TestDictionaryBasics ):
     def setUp(self):
@@ -69,11 +86,33 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
                     .p( float, name='int-sub1', description='Some float-typed parameter.' ) \
                     .p( float, name='int-sub2', description='Another float-typed parameter.' ) \
                     .p( float, name='int-sub3', description='Yet another float-typed parameter.' ) \
+                    .p( (float,), shortcut='F', description='Some list of floats to ' \
+                        'check tuple acquizition', default=(1.276, 512, 2.1e-32) ) \
+                    .p( float, name='flt_param_test', description='Some float to extract',
+                        default=3.14 ) \
                 .end_sect('subsub1') \
-            .end_sect('sub1')
+            .end_sect('sub1') \
+            .bgn_sect('sub2', 'Empty subsection.').end_sect('sub2')
+        ip.p( (int,), name='int-list', description='Some list of integers to ' \
+                'check tuple acquizition', default=(1, 2, 3, 4, 5) ) \
+            .p( (str,), shortcut='s', description='Some list of strings to ' \
+                'check tuple acquizition', default=('foo', 'bar') )
 
-    #def test_
-    
+    def test_list_access(self):
+        self.assertTrue( self.dct.int_list, (1, 2, 3, 4, 5) )
+        self.assertTrue( self.dct.s,        ("foo", "bar") )
+
+    def test_subsect_access(self):
+        self.assertTrue(set(self.dct.dictionaries()).issuperset(( 'sub1', 'sub2' ) ))
+        self.assertTrue(type(self.dct.subsection('sub1')) is Dictionary)
+        self.assertTrue(type(self.dct.sub1) is Dictionary)
+        self.assertTrue(type(self.dct.sub2) is Dictionary)
+        self.assertTrue(type(self.dct.sub1.subsub1) is Dictionary)
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 3.14)
+
+    #def test_inconsistent(self):
+    # Has no sense without recursive traversal
+    #    self.assertFalse( self.dct.inconsistent )
 
 # See: https://stackoverflow.com/questions/35282222/in-python-how-do-i-cast-a-class-object-to-a-dict
 #def __iter__(self):

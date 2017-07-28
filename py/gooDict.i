@@ -127,24 +127,39 @@ def p(self, *args, **kwargs):
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
 
+// We do not need this method being native in python since we won't work with
+// parameter instances. It just returns the tuple of names instead.
 %feature("shadow") goo::dict::Dictionary::parameters() const %{
 def parameters( self ):
     return self.__list_parameters()
 %}
 
+// The wrapping of this method natively has no sense considering significant
+// cost of wrapping the std::map<> and copying sub-dictionaries. It just
+// returns the tuple of names instead.
+%feature("shadow") goo::dict::Dictionary::dictionaries() const %{
+def dictionaries( self ):
+    return self.__list_subsections()
+%}
+
 %feature("shadow") goo::dict::Dictionary::__getattr__( PyObject * pyStrKey ) %{
 def __getattr__(self, pyStrKey):
     # Note: if no matches found, keep default behaviour to raise original error.
+    rxeLookup = None
     if '_' in pyStrKey:
         rxsLookup = pyStrKey.replace( "_", "[-_]" )
         rxeLookup = re.compile( rxsLookup )
-        candidates = list(filter( rxeLookup.match, self.parameters() ))
+        candidates = list(filter( rxeLookup.match,
+                self.parameters() + self.dictionaries() ))
         if len(candidates) > 1:
             raise KeyError( "Disambiguation. The \"%s\" identifier may "
-                "refer to: %s. Consider manual getattr() invokation."%(
+                "refer to parameters named: %s. Consider manual getattr() "
+                "invokation."%(
                 pyStrKey, str(candidates) ) )
         elif 1 == len(candidates):
             pyStrKey = candidates[0]
+    if pyStrKey in self.dictionaries():
+        return self.subsection( pyStrKey )
     return $action(self, pyStrKey)
 %}
 
@@ -246,16 +261,27 @@ def __getattr__(self, pyStrKey):
         }
         const char * attrKey = PyString_AS_STRING(pyStrKey);
         goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
-        if( !parameter ) {
-            // TODO: probe subsection
+        goo::dict::Dictionary * sub = $self->probe_subsection( attrKey );
+
+        if( !parameter && !sub ) {
             char bf[128];
             snprintf( bf, sizeof(bf),
                 "Entry \"%s\" not found in parameter dictionary %p.",
                 attrKey, $self );
             PyErr_SetString( PyExc_KeyError, bf );
             return NULL;
+        } else if ( parameter ) {
+            return iSingularParameter2PyObject( parameter );
+        } else {
+            // This case is possible when user tries to trick our
+            // overriden "__getattr__()" method and somehow got access to
+            // native underlying SWIG lambda function or similar...
+            emraise( badState, "The dictionary \"%s\" (%p) is declared as "
+                "a subsection of dictionary \"%s\" (%p) while it was "
+                "requested as a parameter. Consider use of subsection() "
+                "method.", sub->name(), sub,
+                $self->name(), $self );
         }
-        return iSingularParameter2PyObject( parameter );
     }
 
     PyObject * __list_parameters() const {
@@ -270,6 +296,17 @@ def __getattr__(self, pyStrKey):
                 pName = PyString_FromFormat( "%c", (*it)->shortcut() );
             }
             PyTuple_SET_ITEM( pyPLst, n, pName );
+        }
+        return pyPLst;
+    }
+
+    PyObject * __list_subsections() const {
+        const auto & subsMap = $self->dictionaries();
+        PyObject * pyPLst = PyTuple_New( subsMap.size() );
+        uint32_t n = 0;
+        for( auto it = subsMap.begin(); subsMap.end() != it; ++it, ++n ) {
+            PyTuple_SET_ITEM(
+                pyPLst, n, PyString_FromString( it->first.c_str() ) );
         }
         return pyPLst;
     }
@@ -342,22 +379,22 @@ def __getattr__(self, pyStrKey):
         }                                                           \
     }
     
-# define _M_insert_parameter_list_strings( T, M )                   \
+# define _M_insert_parameter_list_strings( M )                      \
     if( pyDefault_ ) {                                              \
         if( shortcut && name ) {                                    \
-            M( T, get_C_list<T>(pyDefault_), shortcut, name, description );  \
+            M( std::string, get_C_list<std::string>(pyDefault_), shortcut, name, description );  \
         } else if( (!shortcut) && name ) {                          \
-            M( T, get_C_list<T>(pyDefault_), name, description );   \
+            M( std::string, get_C_list<std::string>(pyDefault_), name, description );   \
         } else if( shortcut && !name ) {                            \
-            M( T, get_C_list<T>(pyDefault_), shortcut, nullptr, description );  \
+            M( std::string, get_C_list<std::string>(pyDefault_), shortcut, nullptr, description );  \
         }                                                           \
     } else {                                                        \
         if( shortcut && name ) {                                    \
-            M( T, shortcut, name, description );                    \
+            M( std::string, shortcut, name, description );          \
         } else if( (!shortcut) && name ) {                          \
-            M( T, name, description );                              \
+            M( std::string, name, description );                    \
         } else if( shortcut && !name ) {                            \
-            M( T, shortcut, nullptr, description );                 \
+            M( std::string, shortcut, nullptr, description );       \
         }                                                           \
     }
 
@@ -383,11 +420,19 @@ void _insert_parameter(
                 "element." );
         }
         PyTypeObject * pyType = (PyTypeObject *) pyType_;
+        if( pyDefault_ ) {
+            if( !PyTuple_Check(pyDefault_) ) {
+                PyObject * typeRepr = PyObject_Repr( pyType_ );
+                emraise( badParameter,
+                    "Tuple expected as 'default' argument. Got %s instead.",
+                    PyString_AsString( typeRepr ) );
+            }
+        }
         // Tuple objects:
         if( PyType_IsSubtype( pyType, &PyBool_Type ) ) {
             _M_insert_parameter_list( bool, _M_insert_list_p )
         } else if( PyType_IsSubtype( pyType, &PyString_Type ) ) {
-            _M_insert_parameter_list_strings( std::string, _M_insert_list_p )
+            _M_insert_parameter_list_strings( _M_insert_list_p )
         } else if( PyType_IsSubtype( pyType, &PyInt_Type ) ) {
             _M_insert_parameter_list( long, _M_insert_list_p )
         } else if( PyType_IsSubtype( pyType, &PyFloat_Type ) ) {
@@ -441,16 +486,10 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
         return PyFloat_FromDouble( (long double) isp->as<cType>() );    \
     } else
 
-    for_all_integer_datatypes( _M_return_pyInt )
-    for_all_floating_point_datatypes( _M_return_pyFloat )
-    if( typeid(std::string) == TI ) {
-        return PyString_FromString( isp->as<std::string>().c_str() );
-    } else if( typeid(bool) == TI ) {
-        return PyBool_FromLong( isp->as<bool>() ? 1 : 0 );
-    } else if( isp->has_multiple_values() ) {
+    if( isp->has_multiple_values() ) {
         // Parameter is a tuple.
         # define _M_return_pyTuple( T )                                 \
-        if( typeid(std::list<T>) == TI ) {                              \
+        if( typeid(T) == TI ) {                                         \
             const std::list<T> & lst = isp->as_list_of<T>();            \
             PyObject * pyLst = PyTuple_New( lst.size() );               \
             uint32_t n = 0;                                             \
@@ -471,6 +510,13 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
             // Do nothing, forward execution to finalizing block that raises
             // an exception.
         }
+    } else
+    for_all_integer_datatypes( _M_return_pyInt )
+    for_all_floating_point_datatypes( _M_return_pyFloat )
+    if( typeid(std::string) == TI ) {
+        return PyString_FromString( isp->as<std::string>().c_str() );
+    } else if( typeid(bool) == TI ) {
+        return PyBool_FromLong( isp->as<bool>() ? 1 : 0 );
     }
     // All the checks have failed.
     char bf[128];
