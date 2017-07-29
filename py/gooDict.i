@@ -56,12 +56,46 @@ static void _insert_parameter(
     );
 
 //
-// Generic template value acquizition helpers
+// Template value check helpers for simple type XXX?
+
+template<typename PyT> bool
+py_value_type_check( PyObject * );  // None default implementation
+
+template<> bool
+py_value_type_check<bool>( PyObject * o ) {
+    return PyBool_Check(o);
+}
+
+template<> bool
+py_value_type_check<long>( PyObject * o ) {
+    return PyInt_Check(o);
+}
+
+template<> bool
+py_value_type_check<double>( PyObject * o ) {
+    return PyFloat_Check(o);
+}
+
+template<> bool
+py_value_type_check<std::string>( PyObject * o ) {
+    return PyString_Check(o);
+}
+
+# define for_each_py_conversion_type( m, ... )  \
+    m( bool         , ## __VA_ARGS__ )          \
+    m( long         , ## __VA_ARGS__ )          \
+    m( double       , ## __VA_ARGS__ )          \
+    m( std::string  , ## __VA_ARGS__ )
+
+//
+// Template value acquizition helpers for simple type
 
 template<typename T> T
 get_C_value(PyObject *);  // None default implementation
 
-# define _M_get_C_value_implem(T, fun)                                      \
+// TODO: re-write the implementation below to support imlicit type conversion
+// between arithmetic types!
+# define _M_get_C_value_implem(T, fun)                           \
 template<> T get_C_value<T>(PyObject * o) { return fun (o); }
 _M_get_C_value_implem( bool, PyObject_IsTrue ) // Note: implemented as subclass of integers
 _M_get_C_value_implem( long, PyInt_AsLong )
@@ -94,6 +128,7 @@ new_Py_value<bool>( const bool & val ) {
 
 // ...
 
+// WARNING: no PyTuple_Check() inside!
 template<typename T> std::list<T>
 get_C_list( PyObject * pyTuple ) {
     std::list<T> lst;
@@ -127,6 +162,27 @@ set_parameter( goo::dict::iSingularParameter * isp, PyObject * pyVal ) {
             isp->target_type_info().name(), typeid(EntryT).name() );
     }
     pPtr->set_value( (EntryT) get_C_value<ValueT>(pyVal) );
+}
+
+// ...
+
+// WARNING: no PyTuple_Check() inside!
+template<typename T, typename pyT> void
+set_list_parameter( goo::dict::iSingularParameter * isp, PyObject * pyVal ) {
+    std::list<pyT> lst_ = get_C_list<pyT>( pyVal );
+    std::list<T> lst;
+    for( auto v : lst_ ) {
+        lst.push_back( (T) v);   // actual conversion here
+    }
+    goo::dict::Parameter<std::list<T>> * pPtr
+                    = dynamic_cast<goo::dict::Parameter<std::list<T>> *>(isp);
+    if( !pPtr ) {
+        // Same note as in set_parameter()
+        emraise(badCast, "Internal error: unable to cast parameter declared "
+            "with target type \"%s\" to iParameter<list<\"%s\">>.",
+            isp->target_type_info().name(), typeid(T).name() );
+    }
+    pPtr->assign( lst );
 }
 
 %}  // %runtime
@@ -170,6 +226,10 @@ def _nearest_name( name, namesList ):
 
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
 def p(self, *args, **kwargs):
+    if 1 == len(args) and args[0] is bool:
+        if 'default' not in kwargs.keys():
+            kwargs = dict(kwargs)
+            kwargs['default'] = False
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
 
@@ -407,10 +467,9 @@ def __setattr__(self, pyStrKey, pyVal):
 
 
 //
-// Parameter insertion helper macros and routine
-///////////////////////////////////////////////
+// Parameter insertion helper macros and routine {{{
 
-# define _M_insert_parameter_generic( parType ) \
+# define _M_insert_parameter_generic( parType )                     \
     if( name && shortcut && pyDefault_ ) {                          \
         self.p<parType>( shortcut, name, description, get_C_value<parType>(pyDefault_) ); \
     } else if( name && shortcut && !pyDefault_ ) {                  \
@@ -553,6 +612,17 @@ void _insert_parameter(
     // https://docs.python.org/2/c-api/exceptions.html#c.PyErr_Occurred
 }
 
+# undef _M_insert_parameter_generic
+# undef _M_insert_parameter
+# undef _M_insert_parameter_string
+# undef _M_insert_list_p
+# undef _M_insert_parameter_list
+# undef _M_insert_parameter_list_strings
+
+// }}} Parameter insertion helper macros and routine
+//
+
+
 static PyObject *
 iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
     // Parameter found. Now resolve its type and return as python object.
@@ -611,24 +681,34 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
         TI.name() );
     PyErr_SetString( PyExc_TypeError, bf );
     return NULL;
+    # undef _M_return_pyInt
+    # undef _M_return_pyFloat
 }
 
 static int
 iSingularParameterSetFromPyObject(
             goo::dict::iSingularParameter * isp,
             PyObject * pyValue ) {
+    // NOTE: the float and int variables shall be implicitly convertible!
     const std::type_info & TI = isp->target_type_info();
-    if(PyTuple_Check( pyValue )) {
-        // TODO: set tuple
-        emraise( unimplemented, "Tuple parameter set." );
+    if( PyTuple_Check( pyValue ) && isp->has_multiple_values() ) {
+        # define _M_set_list_parameter( gooCode, cType, t1, t2, pyCT )      \
+        if( typeid(cType) == TI ) {                                         \
+            set_list_parameter<cType, pyCT>(isp, pyValue); return 0;        \
+        }
+        for_all_integer_datatypes( _M_set_list_parameter, long )
+        for_all_floating_point_datatypes( _M_set_list_parameter, double )
+        _M_set_list_parameter( xxx, bool, xxx, xxx, bool )
+        _M_set_list_parameter( xxx, std::string, xxx, xxx, std::string )
+        # undef _M_set_list_parameter
+        // ... custom types?
     } else if(PyBool_Check( pyValue )) {
         if( typeid(bool) == TI ) { set_parameter<bool, bool>( isp, pyValue ); return 0; }
-    } else if(PyInt_Check( pyValue )) {
+    } else if( PyInt_Check( pyValue ) || PyFloat_Check( pyValue )) {
         # define _M_set_int_parameter( gooCode, cType, t1, t2 ) \
         if( typeid(cType) == TI ) { set_parameter<cType, long>(isp, pyValue); return 0; }
         for_all_integer_datatypes( _M_set_int_parameter )
         # undef _M_set_int_parameter
-    } else if(PyFloat_Check( pyValue )) {
         # define _M_set_float_parameter( gooCode, cType, t1, t2 ) \
         if( typeid(cType) == TI ) { set_parameter<cType, double>(isp, pyValue); return 0; }
         for_all_floating_point_datatypes( _M_set_float_parameter )
@@ -642,6 +722,13 @@ iSingularParameterSetFromPyObject(
             set_parameter<std::string, std::string>( isp, pyValue );
             return 0;
         }
+    }
+    // We have to also consider a special case when user sets the boolean
+    // value from python object. It has to be generally legit.
+    if( typeid(bool) == TI ) {
+        auto & pRef = *static_cast<goo::dict::iParameter<bool>*>( isp );
+        pRef.set_value( PyObject_IsTrue(pyValue) );
+        return 0;
     }
     PyObject * valRepr = PyObject_Repr( pyValue );
     char shrtctBf[2] = " ";

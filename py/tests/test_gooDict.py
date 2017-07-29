@@ -105,7 +105,11 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         ip.p( (int,), name='int-list', description='Some list of integers to ' \
                 'check tuple acquizition', default=(1, 2, 3, 4, 5) ) \
             .p( (str,), shortcut='s', description='Some list of strings to ' \
-                'check tuple acquizition', default=('foo', 'bar') )
+                'check tuple acquizition', default=('foo', 'bar') ) \
+            .p( (int,), name='int-list-2', description='Some list of integers to ' \
+                'check tuple assignment', default=(1, 2, 3) ) \
+            .p( (str,), name='str-list-2', description='Some list of strings to ' \
+                'check tuple assignment.', default=('me unused',) ) \
         # Check insertion of parameter with non-uniq name:
         self.assertRaisesRegexp( GooException,
                 "Duplicated option name",
@@ -148,8 +152,43 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         self.dct.string_parameter_2 = stringToBeChecked
         self.assertEqual( self.dct.string_parameter_2, stringToBeChecked )
 
-    def test_tuple_parameter_Setting(self):
-        pass
+    def test_scalar_parameter_casting_Setting(self):
+        # setting integer parameter from floating point
+        self.dct.int_parameter_to_set = floatValueToBeChecked
+        self.assertEqual( self.dct.int_parameter_to_set, int(floatValueToBeChecked) )
+        self.dct.int_parameter_to_set = 0.
+        self.assertEqual( self.dct.int_parameter_to_set, 0. )
+        # setting float parameter from integer
+        self.dct.sub1.subsub1.flt_param_test = 2*intValueToBeChecked
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 2*intValueToBeChecked)
+        self.dct.sub1.subsub1.flt_param_test = 3*intValueToBeChecked
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 3*intValueToBeChecked)
+        # setting bool parameter from floating point and integer
+        self.dct.bool_parameter = False
+        self.assertFalse( self.dct.bool_parameter )
+        self.dct.bool_parameter = intValueToBeChecked
+        self.assertTrue( self.dct.bool_parameter )
+        self.dct.bool_parameter = False
+        self.assertFalse( self.dct.bool_parameter )
+        self.dct.bool_parameter = floatValueToBeChecked
+        self.assertTrue( self.dct.bool_parameter )
+        # setting string parameter
+        self.dct.string_parameter_2 = stringToBeChecked
+        self.assertEqual( self.dct.string_parameter_2, stringToBeChecked )
+        # TODO: this is a question to answer: shall we provide the parsing
+        # mechanism for setting a parameters of complex types within usual
+        # assignment operator? This involves parsing of a parameter from
+        # string, e.g.:
+        #self.dct.path_parameter = '$(ENV:LD_LIBRARY_PATH)/libSome.so'
+        #self.dct.histogram = '100[-1:1]'
+        # Wouldn't it be better to implement a dedicated mechanism, like:
+        #self.dct.set_from_string('path_parameter', '/some/path')
+
+    def test_tuple_parameter_setting(self):
+        self.dct.int_list_2 = (3, 2, 1)
+        self.assertTrue( self.dct.int_list, (3, 2, 1) )
+        self.dct.str_list_2 = ('me', 'used', 'to check', 'assignment')
+        self.assertTrue( self.dct.str_list_2, ('me', 'used', 'to check', 'assignment') )
 
     #def test_inconsistent(self):
     # Has no sense without recursive traversal
