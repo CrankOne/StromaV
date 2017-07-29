@@ -31,6 +31,8 @@ from StromaV.gooDict import Dictionary
 from StromaV import GooException
 
 stringToBeChecked='Klaata baradu nikto.'
+floatValueToBeChecked=1.476e+2
+intValueToBeChecked=42
 
 class TestDictionaryBasics(unittest.TestCase):
     def setUp(self):
@@ -47,7 +49,10 @@ class TestDictionaryBasics(unittest.TestCase):
                 description="Parameter 4, str.",
                 default=stringToBeChecked )  \
             .p( (int,), shortcut='e', name='tuple-parameter',
-                description="Parameter 5, str." )
+                description="Parameter 5, str." ) \
+            .p( int, name='int-parameter-to-set',
+                description='This parameter has to be set and its value '
+                'will be checked further.')
         # ...
 
     def test_base_access(self):
@@ -75,6 +80,7 @@ class TestDictionaryBasics(unittest.TestCase):
                 "has not been set while its value required",
                 getattr, self.dct, 'float-parameter' )
 
+
 class TestDictionaryAdvanced( TestDictionaryBasics ):
     def setUp(self):
         super( TestDictionaryAdvanced, self ).setUp()
@@ -89,14 +95,21 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
                     .p( (float,), shortcut='F', description='Some list of floats to ' \
                         'check tuple acquizition', default=(1.276, 512, 2.1e-32) ) \
                     .p( float, name='flt_param_test', description='Some float to extract',
-                        default=3.14 ) \
+                        default=floatValueToBeChecked ) \
                 .end_sect('subsub1') \
             .end_sect('sub1') \
-            .bgn_sect('sub2', 'Empty subsection.').end_sect('sub2')
+            .bgn_sect('sub2', 'Empty subsection.').end_sect('sub2') \
+            .p( str, name='string-parameter-2',
+                    description='Some string parameter to check.' ) \
+            .p( bool, name='bool-parameter' )
         ip.p( (int,), name='int-list', description='Some list of integers to ' \
                 'check tuple acquizition', default=(1, 2, 3, 4, 5) ) \
             .p( (str,), shortcut='s', description='Some list of strings to ' \
                 'check tuple acquizition', default=('foo', 'bar') )
+        # Check insertion of parameter with non-uniq name:
+        self.assertRaisesRegexp( GooException,
+                "Duplicated option name",
+                ip.p, int, name='int-parameter-to-set' )
 
     def test_list_access(self):
         self.assertTrue( self.dct.int_list, (1, 2, 3, 4, 5) )
@@ -108,7 +121,35 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         self.assertTrue(type(self.dct.sub1) is Dictionary)
         self.assertTrue(type(self.dct.sub2) is Dictionary)
         self.assertTrue(type(self.dct.sub1.subsub1) is Dictionary)
-        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 3.14)
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, floatValueToBeChecked)
+
+    def test_scalar_parameter_setting( self ):
+        self.assertRaisesRegexp( GooException,
+                "has not been set while its value required",
+                getattr, self.dct, 'int-parameter-to-set' )
+        # setting integer parameter 
+        self.dct.int_parameter_to_set = intValueToBeChecked
+        self.assertEqual( self.dct.int_parameter_to_set, intValueToBeChecked )
+        self.dct.int_parameter_to_set = 0
+        self.assertEqual( self.dct.int_parameter_to_set, 0 )
+        # setting float parameter
+        self.dct.sub1.subsub1.flt_param_test = 2*floatValueToBeChecked
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 2*floatValueToBeChecked)
+        self.dct.sub1.subsub1.flt_param_test = 3*floatValueToBeChecked
+        self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 3*floatValueToBeChecked)
+        # setting bool parameter
+        #   NOTE: bool parameters are always set to false by default. Attempt
+        #   to get them DOES NOT raises the exception when they're not set.
+        #self.dct.bool_parameter = False
+        self.assertFalse( self.dct.bool_parameter )
+        self.dct.bool_parameter = True
+        self.assertTrue( self.dct.bool_parameter )
+        # setting string parameter
+        self.dct.string_parameter_2 = stringToBeChecked
+        self.assertEqual( self.dct.string_parameter_2, stringToBeChecked )
+
+    def test_tuple_parameter_Setting(self):
+        pass
 
     #def test_inconsistent(self):
     # Has no sense without recursive traversal

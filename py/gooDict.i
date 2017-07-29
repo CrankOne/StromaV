@@ -104,8 +104,30 @@ get_C_list( PyObject * pyTuple ) {
     return lst;
 }
 
-PyObject *
+static PyObject *
 iSingularParameter2PyObject( goo::dict::iSingularParameter * isp );
+
+static int
+iSingularParameterSetFromPyObject(
+            goo::dict::iSingularParameter * isp,
+            PyObject * pyValue );
+
+// ...
+
+template<typename EntryT, typename ValueT> void
+set_parameter( goo::dict::iSingularParameter * isp, PyObject * pyVal ) {
+    goo::dict::iParameter<EntryT> * pPtr
+                        = dynamic_cast<goo::dict::iParameter<EntryT>*>(isp);
+    if( !pPtr ) {
+        // Should not happen if I there is no mistake with type check. But it
+        // is still safer to check this.
+        emraise(badCast, "Internal error: unable to cast parameter declared "
+            "with target type \"%s\" to iParameter<> parameterised with "
+            "type \"%s\".",
+            isp->target_type_info().name(), typeid(EntryT).name() );
+    }
+    pPtr->set_value( (EntryT) get_C_value<ValueT>(pyVal) );
+}
 
 %}  // %runtime
 
@@ -119,7 +141,31 @@ self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::bg
 self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::end_sect )
 
 %pythoncode %{
-import re  # need for Dictionary.__getattr__
+import re
+
+def _nearest_name( name, namesList ):
+    """
+    This function searches the given string among given ones following the
+    substitution rule: the underscore symbol ('_') may correspond to
+    hyphen-minus symbol ('-', dash) as well. This was introduced to support
+    dash characters in goo::dict names.
+    If no matches found, the original name will be ketp to raise original
+    error in user code.
+    Returns found name (or original, if it was not found) and bool value
+    indicating whether the name (original or found one) was found in list.
+    """
+    if '_' in name:
+        rxsLookup = '^' + name.replace( "_", "[-_]" ) + '$'
+        rxeLookup = re.compile( rxsLookup )
+        candidates = list(filter( rxeLookup.match, namesList ))
+        if len(candidates) > 1:
+            raise KeyError( "Disambiguation. The \"%s\" identifier may "
+                "refer to parameters named: %s. Consider manual getattr() "
+                "invokation."%(
+                name, str(candidates) ) )
+        elif 1 == len(candidates):
+            name = candidates[0]
+    return name, name in namesList
 %}
 
 %feature("shadow") goo::dict::InsertionProxy::p( PyObject *, PyObject * ) %{
@@ -144,23 +190,22 @@ def dictionaries( self ):
 
 %feature("shadow") goo::dict::Dictionary::__getattr__( PyObject * pyStrKey ) %{
 def __getattr__(self, pyStrKey):
-    # Note: if no matches found, keep default behaviour to raise original error.
-    rxeLookup = None
-    if '_' in pyStrKey:
-        rxsLookup = pyStrKey.replace( "_", "[-_]" )
-        rxeLookup = re.compile( rxsLookup )
-        candidates = list(filter( rxeLookup.match,
-                self.parameters() + self.dictionaries() ))
-        if len(candidates) > 1:
-            raise KeyError( "Disambiguation. The \"%s\" identifier may "
-                "refer to parameters named: %s. Consider manual getattr() "
-                "invokation."%(
-                pyStrKey, str(candidates) ) )
-        elif 1 == len(candidates):
-            pyStrKey = candidates[0]
+    pyStrKey, found = _nearest_name(pyStrKey, self.parameters() + self.dictionaries())
     if pyStrKey in self.dictionaries():
         return self.subsection( pyStrKey )
     return $action(self, pyStrKey)
+%}
+
+%feature("shadow") goo::dict::Dictionary::__setattr__( PyObject * pyStrKey, PyObject * pyValue ) %{
+def __setattr__(self, pyStrKey, pyVal):
+    if 'this' == pyStrKey:
+        _swig_setattr(self, self.__class__, pyStrKey, pyVal)
+        return
+    eName, isEntry = _nearest_name(pyStrKey, self.parameters() + self.dictionaries())
+    if isEntry:
+        $action(self, eName, pyVal)
+    else:
+        _swig_setattr(self, self.__class__, pyStrKey, pyVal)
 %}
 
 %include "goo_dict/parameter.tcc"
@@ -176,7 +221,8 @@ def __getattr__(self, pyStrKey):
 
         // - check args:
         if( !PyTuple_Check(args) || 1 != PyTuple_Size(args) ) {
-            emraise( badParameter, "Tuple of size carrying type expected as "
+            emraise( badParameter, "Python native type (str, float, int or "
+                "bool) or tuple of size 1 carrying type expected as "
                 "the first argument of p().");
         }
         PyObject * pyType_ = PyTuple_GET_ITEM(args, 0);
@@ -266,8 +312,8 @@ def __getattr__(self, pyStrKey):
         if( !parameter && !sub ) {
             char bf[128];
             snprintf( bf, sizeof(bf),
-                "Entry \"%s\" not found in parameter dictionary %p.",
-                attrKey, $self );
+                "Entry \"%s\" not found in parameters dictionary \"%s\" (%p).",
+                attrKey, $self->name(), $self );
             PyErr_SetString( PyExc_KeyError, bf );
             return NULL;
         } else if ( parameter ) {
@@ -281,6 +327,45 @@ def __getattr__(self, pyStrKey):
                 "requested as a parameter. Consider use of subsection() "
                 "method.", sub->name(), sub,
                 $self->name(), $self );
+        }
+    }
+
+    int __setattr__( PyObject * pyStrKey, PyObject * pyValue ) {
+        /* the C setattr function should return an integer, 0 on success, -1
+         * when an exception is raised.  When the given value is NULL, then
+         * "delattr" was called instead of "setattr". */
+        if( !PyString_Check( pyStrKey ) ) {
+            PyObject * typeRepr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "Goo's dictionary __setattr__ called "
+                "with not a string type argument: %s.",
+                PyString_AsString( typeRepr ) );
+        }
+        const char * attrKey = PyString_AS_STRING(pyStrKey);
+        if( !pyValue ) {
+            emraise( badArchitect, "Goo's dictionary doesn't support "
+                "attribute deletion (deletion of attribute \"%s\" requested).",
+                PyString_AsString( pyStrKey ) );
+        }
+        goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
+        goo::dict::Dictionary * sub = $self->probe_subsection( attrKey );
+
+        if( !parameter && !sub ) {
+            char bf[128];
+            snprintf( bf, sizeof(bf),
+                "Entry \"%s\" not found in parameters dictionary \"%s\" (%p).",
+                attrKey, $self->name(), $self );
+            PyErr_SetString( PyExc_KeyError, bf );
+            return -1;
+        } else if ( parameter ) {
+            return iSingularParameterSetFromPyObject( parameter, pyValue );
+        } else {
+            // This case is possible when user tries to trick our
+            // overriden "__setattr__()" method and somehow got access to
+            // native underlying SWIG lambda function or similar...
+            emraise( badState, "The dictionary \"%s\" (%p) is declared as "
+                "a subsection of dictionary \"%s\" (%p) while it was "
+                "requested as a (scalar or tuple) parameter to be setted.",
+                sub->name(), sub, $self->name(), $self );
         }
     }
 
@@ -468,7 +553,7 @@ void _insert_parameter(
     // https://docs.python.org/2/c-api/exceptions.html#c.PyErr_Occurred
 }
 
-PyObject *
+static PyObject *
 iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
     // Parameter found. Now resolve its type and return as python object.
     const std::type_info & TI = isp->target_type_info();
@@ -526,6 +611,51 @@ iSingularParameter2PyObject( goo::dict::iSingularParameter * isp ) {
         TI.name() );
     PyErr_SetString( PyExc_TypeError, bf );
     return NULL;
+}
+
+static int
+iSingularParameterSetFromPyObject(
+            goo::dict::iSingularParameter * isp,
+            PyObject * pyValue ) {
+    const std::type_info & TI = isp->target_type_info();
+    if(PyTuple_Check( pyValue )) {
+        // TODO: set tuple
+        emraise( unimplemented, "Tuple parameter set." );
+    } else if(PyBool_Check( pyValue )) {
+        if( typeid(bool) == TI ) { set_parameter<bool, bool>( isp, pyValue ); return 0; }
+    } else if(PyInt_Check( pyValue )) {
+        # define _M_set_int_parameter( gooCode, cType, t1, t2 ) \
+        if( typeid(cType) == TI ) { set_parameter<cType, long>(isp, pyValue); return 0; }
+        for_all_integer_datatypes( _M_set_int_parameter )
+        # undef _M_set_int_parameter
+    } else if(PyFloat_Check( pyValue )) {
+        # define _M_set_float_parameter( gooCode, cType, t1, t2 ) \
+        if( typeid(cType) == TI ) { set_parameter<cType, double>(isp, pyValue); return 0; }
+        for_all_floating_point_datatypes( _M_set_float_parameter )
+        # undef _M_set_float_parameter
+    } else if( PyString_Check(pyValue) ) {
+        // The string value may be implicitly parsed for non-string types. Here
+        // we have to check the parameter type first. If it is a std::string
+        // parameter we will just set the string. However, if it is not a
+        // string... Shall we parse it? TODO: decide.
+        if( typeid(std::string) == TI ) { 
+            set_parameter<std::string, std::string>( isp, pyValue );
+            return 0;
+        }
+    }
+    PyObject * valRepr = PyObject_Repr( pyValue );
+    char shrtctBf[2] = " ";
+    const char * name = shrtctBf;
+    if( isp->name() ) {
+        name = isp->name();
+    } else {
+        shrtctBf[0] = isp->shortcut();
+    }
+    emraise( badParameter, "Given Python value \"%s\" can not be "
+        "set as a value of a parameter \"%s\" of type \"%s\".",
+        PyString_AsString( valRepr ),
+        name, TI.name() );
+    return -1;
 }
 
 %}
