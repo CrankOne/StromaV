@@ -191,6 +191,7 @@ set_list_parameter( goo::dict::iSingularParameter * isp, PyObject * pyVal ) {
 // We do not need this method in python since we won't work with parameter
 // instances.
 %ignore goo::dict::InsertionProxy::insert_copy_of;
+%ignore goo::dict::InsertionProxy::flag;
 
 self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::p)
 self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::bgn_sect )
@@ -713,13 +714,17 @@ iSingularParameterSetFromPyObject(
         if( typeid(cType) == TI ) { set_parameter<cType, double>(isp, pyValue); return 0; }
         for_all_floating_point_datatypes( _M_set_float_parameter )
         # undef _M_set_float_parameter
-    } else if( PyString_Check(pyValue) ) {
+    } else if( PyString_Check( pyValue ) ) {
         // The string value may be implicitly parsed for non-string types. Here
         // we have to check the parameter type first. If it is a std::string
-        // parameter we will just set the string. However, if it is not a
-        // string... Shall we parse it? TODO: decide.
+        // parameter we will just set the string. Otherwise, when it is not a
+        // plain string parameter, we have invoke the parsing method to set
+        // value from string.
         if( typeid(std::string) == TI ) { 
             set_parameter<std::string, std::string>( isp, pyValue );
+            return 0;
+        } else {
+            isp->parse_argument( PyString_AsString(pyValue) );
             return 0;
         }
     }

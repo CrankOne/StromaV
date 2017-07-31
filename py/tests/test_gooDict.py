@@ -146,7 +146,7 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         #   to get them DOES NOT raises the exception when they're not set.
         #self.dct.bool_parameter = False
         self.assertFalse( self.dct.bool_parameter )
-        self.dct.bool_parameter = True
+        self.dct.bool_parameter = 'no'
         self.assertTrue( self.dct.bool_parameter )
         # setting string parameter
         self.dct.string_parameter_2 = stringToBeChecked
@@ -186,9 +186,9 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
 
     def test_tuple_parameter_setting(self):
         self.dct.int_list_2 = (3, 2, 1)
-        self.assertTrue( self.dct.int_list, (3, 2, 1) )
+        self.assertEqual( self.dct.int_list_2, (3, 2, 1) )
         self.dct.str_list_2 = ('me', 'used', 'to check', 'assignment')
-        self.assertTrue( self.dct.str_list_2, ('me', 'used', 'to check', 'assignment') )
+        self.assertEqual( self.dct.str_list_2, ('me', 'used', 'to check', 'assignment') )
 
     #def test_inconsistent(self):
     # Has no sense without recursive traversal
