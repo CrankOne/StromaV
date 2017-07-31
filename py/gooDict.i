@@ -93,8 +93,9 @@ py_value_type_check<std::string>( PyObject * o ) {
 template<typename T> T
 get_C_value(PyObject *);  // None default implementation
 
-// TODO: re-write the implementation below to support imlicit type conversion
-// between arithmetic types!
+# if 1
+// Seems that Python somehow performs implicit conversion of types, similar to
+// defined in #else-block, so there is apparently no need in manual conversion.
 # define _M_get_C_value_implem(T, fun)                           \
 template<> T get_C_value<T>(PyObject * o) { return fun (o); }
 _M_get_C_value_implem( bool, PyObject_IsTrue ) // Note: implemented as subclass of integers
@@ -102,6 +103,50 @@ _M_get_C_value_implem( long, PyInt_AsLong )
 _M_get_C_value_implem( double, PyFloat_AsDouble )
 _M_get_C_value_implem( std::string, PyString_AsString )
 # undef _M_get_C_value_implem
+# else
+template<> bool
+get_C_value<bool>(PyObject * o) {
+    return PyObject_IsTrue( o );
+}
+
+template<> long
+get_C_value<long>(PyObject * o) {
+    if( PyInt_Check(o) ) {
+        return PyInt_AsLong( o );
+    }
+    if( PyFloat_Check(o) ) {
+        // implicit conversion from double to long
+        return (long) PyFloat_AsDouble(o);
+    }
+    PyObject * repr = PyObject_Repr( o );
+    emraise( badParameter, "Numeric (integer) value expected insted of \"%s\".",
+            PyString_AsString( repr ) );
+}
+
+template<> double
+get_C_value<double>(PyObject * o) {
+    if( PyFloat_Check(o) ) {
+        return PyFloat_AsDouble(o);
+    }
+    if( PyInt_Check(o) ) {
+        // implicit conversion from long to double
+        return (double) PyInt_AsLong( o );
+    }
+    PyObject * repr = PyObject_Repr( o );
+    emraise( badParameter, "Numeric (floating point) value expected insted of \"%s\".",
+            PyString_AsString( repr ) );
+}
+
+template<> std::string
+get_C_value<std::string>(PyObject * o) {
+    if( ! PyString_Check(o) ) {
+        PyObject * repr = PyObject_Repr( o );
+        emraise( badParameter, "String value expected instead of \"%s\".",
+            PyString_AsString( repr ) );
+    }
+    return PyString_AsString( o );
+}
+# endif
 
 //
 // Generic template value creation helpers

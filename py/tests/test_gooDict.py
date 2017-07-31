@@ -26,7 +26,6 @@ It is also a good check for the attendant InsertionProxy class.
 
 from __future__ import print_function
 import unittest
-from castlib3.models.filesystem import Folder, File, DeclBase
 from StromaV.gooDict import Dictionary
 from StromaV import GooException
 
@@ -35,7 +34,13 @@ floatValueToBeChecked=1.476e+2
 intValueToBeChecked=42
 
 class TestDictionaryBasics(unittest.TestCase):
+    """
+    Tests most basic dictionary functions.
+    """
     def setUp(self):
+        """
+        Creates a basic dictionary of float structure to test basic
+        """
         self.dct = Dictionary( "test", "Testing dictionary." )
         self.dct.insertion_proxy()  \
             .p( int, shortcut='a', name="int-parameter",
@@ -53,9 +58,11 @@ class TestDictionaryBasics(unittest.TestCase):
             .p( int, name='int-parameter-to-set',
                 description='This parameter has to be set and its value '
                 'will be checked further.')
-        # ...
 
     def test_base_access(self):
+        """
+        Check dictionary initial state.
+        """
         # This may be extended further, so we need to check that AT LEAST the
         # inserted parameters are present.
         self.assertTrue(
@@ -72,6 +79,10 @@ class TestDictionaryBasics(unittest.TestCase):
             0 == len(self.dct.tuple_parameter) )
 
     def test_no_key(self):
+        """
+        Checks acquizition by non-existing key and unset parameter. The
+        KeyError and GooException have to be raised correspondingly.
+        """
         self.assertRaises( KeyError, getattr, self.dct, 'blam' )
         # Shall raise "has not been set while its value required" exception.
         # Since GooException is not slightly typed, we just testing its its
@@ -81,7 +92,12 @@ class TestDictionaryBasics(unittest.TestCase):
                 getattr, self.dct, 'float-parameter' )
 
 
+
 class TestDictionaryAdvanced( TestDictionaryBasics ):
+    """
+    Tests some advanced functions within the dictionary facility: folded
+    structure, assignment of scalar and tuples, type casting, etc.
+    """
     def setUp(self):
         super( TestDictionaryAdvanced, self ).setUp()
         ip = self.dct.insertion_proxy()
@@ -89,13 +105,15 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
                 .p( int, name='int-sub1', description='Some int-typed parameter.' ) \
                 .p( int, name='int-sub2', description='Another int-typed parameter.' ) \
                 .bgn_sect('subsub1', "Testing subsection #2") \
-                    .p( float, name='int-sub1', description='Some float-typed parameter.' ) \
-                    .p( float, name='int-sub2', description='Another float-typed parameter.' ) \
-                    .p( float, name='int-sub3', description='Yet another float-typed parameter.' ) \
+                    .p( float,  name='float-sub1',  description='Some int-typed parameter.' ) \
+                    .p( int,    name='int-sub1',    description='Another float-typed parameter.' ) \
+                    .p( bool,   name='bool-sub1',   description='Yet another bool-typed parameter.' ) \
                     .p( (float,), shortcut='F', description='Some list of floats to ' \
                         'check tuple acquizition', default=(1.276, 512, 2.1e-32) ) \
                     .p( float, name='flt_param_test', description='Some float to extract',
                         default=floatValueToBeChecked ) \
+                    .p( (int,), shortcut='I', description='Tuple of integers to be set.' ) \
+                    .p( (bool,), shortcut='B', description='Tuple of bools to be set.' ) \
                 .end_sect('subsub1') \
             .end_sect('sub1') \
             .bgn_sect('sub2', 'Empty subsection.').end_sect('sub2') \
@@ -190,14 +208,98 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         self.dct.str_list_2 = ('me', 'used', 'to check', 'assignment')
         self.assertEqual( self.dct.str_list_2, ('me', 'used', 'to check', 'assignment') )
 
+    def test_implicit_type_conversion(self):
+        # Check scalar parameter setting
+        dct = self.dct.sub1.subsub1
+        # Note, that dct hereby is a reference-proxying object (not a copy!)
+        dct.float_sub1 = intValueToBeChecked
+        dct.int_sub1 = floatValueToBeChecked
+        dct.bool_sub1 = 115
+        self.assertEqual( self.dct.sub1.subsub1.float_sub1, float(intValueToBeChecked) )
+        self.assertEqual( self.dct.sub1.subsub1.int_sub1, int(floatValueToBeChecked) )
+        self.assertTrue( self.dct.sub1.subsub1.bool_sub1 )
+        # Check the list type casting:
+        self.assertEqual( self.dct.sub1.subsub1.F, (1.276, 512, 2.1e-32) )
+        dct.F = (115, 225, 335)
+        self.assertAlmostEqual( self.dct.sub1.subsub1.F, (float(115), float(225), float(335)) )
+        dct.I = (floatValueToBeChecked*2, floatValueToBeChecked, 1.5*floatValueToBeChecked)
+        self.assertAlmostEqual( self.dct.sub1.subsub1.I,
+                ( int(floatValueToBeChecked*2),
+                  int(floatValueToBeChecked),
+                  int(1.5*floatValueToBeChecked) ) )
+        dct.B = ( 'some', '', None, [1,], [], 1.23, {} )
+        self.assertEqual( self.dct.sub1.subsub1.B,
+                ( True,   # non-empty string
+                  False,  # empty string
+                  False,  # None
+                  True,   # non-empty list
+                  False,  # empty list
+                  True,   # non-zero float value
+                  False,  # empty dict
+                  ) )
+
     #def test_inconsistent(self):
     # Has no sense without recursive traversal
     #    self.assertFalse( self.dct.inconsistent )
 
-# See: https://stackoverflow.com/questions/35282222/in-python-how-do-i-cast-a-class-object-to-a-dict
-#def __iter__(self):
-#    yield 'a', self.a
-#    yield 'b', self.b
-#    yield 'c', self.c
+
+#
+# Integration of unwrapped parameter type declared in C++ into Python
+from StromaV.gooDict import ForeignParameter
+
+class TestDictionaryCustomTypes(unittest.TestCase):
+    """
+    Tests foreign parameters integration.
+    """
+    def setUp(self):
+        self.dct = Dictionary( "test", "Testing dictionary." )
+        self.dct.insertion_proxy()  \
+            .p( 'Path', name='some-path',
+                    description='Path parameter.' )
+
+    def test_foreign_parameter(self):
+        # Recommended way:
+        self.dct.some_path = ForeignParameter( 'Path', '/bin/bash' )
+        self.assertEqual( '/bin/bash' == self.dct.strval_of( 'some-path' ) )
+        # Alternative (not recommended) way:
+        self.dct.some_path.set_from_string( '/bin/sh' )
+        self.assertEqual( '/bin/sh' == self.dct.strval_of( 'some-path' ) )
+
+
+#
+# Integration of parameter type declared in python into C++
+from StromaV.gooDict import PyParameter
+
+class SomeCustomType(object):
+    __metaclass__ = PyParameter
+
+    def getter_one(self):
+        # ... may performs some operations here
+        return intValueToBeChecked
+
+    def getter_two(self):
+        # ... may performs some operations here
+        return floatValueToBeChecked
+
+    # This dictionary may be dynamically utilized from within C++.
+    __getters = {
+            'one' : (int,   setter_one, getter_one),
+            'two' : (float, setter_two, getter_one)
+        }
+
+
+class TestDictionaryCustomTypes(unittest.TestCase):
+    """
+    Tests custom types integration.
+    """
+    def setUp(self):
+        self.dct = Dictionary( "test", "Testing dictionary." )
+        self.dct.insertion_proxy()  \
+            .p( SomeCustomType, name='some-typed',
+                    description='Parameter of custom type.' )
+
+    def test_foreign_parameter(self):
+        self.assertTrue(type(self.dct.some_typed) is SomeCustomType)
+        # TODO: operate with bindings here
 
 
