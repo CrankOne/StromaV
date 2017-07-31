@@ -154,6 +154,13 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         self.assertEqual( self.dct.int_parameter_to_set, intValueToBeChecked )
         self.dct.int_parameter_to_set = 0
         self.assertEqual( self.dct.int_parameter_to_set, 0 )
+        # To check the from-string parsing capabilities:
+        self.dct.set_from_str( 'int-parameter-to-set', hex(-intValueToBeChecked) )
+        self.assertEqual( self.dct.int_parameter_to_set, -intValueToBeChecked )
+        # The = 'whatever' stlye is prohibited (considered as a bad style)
+        self.assertRaisesRegexp( GooException,
+                "can not be implicitly",
+                setattr, self.dct, 'int-parameter-to-set', 'blam!' )
         # setting float parameter
         self.dct.sub1.subsub1.flt_param_test = 2*floatValueToBeChecked
         self.assertAlmostEqual(self.dct.sub1.subsub1.flt_param_test, 2*floatValueToBeChecked)
@@ -164,8 +171,11 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         #   to get them DOES NOT raises the exception when they're not set.
         #self.dct.bool_parameter = False
         self.assertFalse( self.dct.bool_parameter )
-        self.dct.bool_parameter = 'no'
+        self.dct.bool_parameter = True
         self.assertTrue( self.dct.bool_parameter )
+        # Check parsing
+        self.dct.set_from_str( 'bool-parameter', 'no' )
+        self.assertFalse( self.dct.bool_parameter )
         # setting string parameter
         self.dct.string_parameter_2 = stringToBeChecked
         self.assertEqual( self.dct.string_parameter_2, stringToBeChecked )
@@ -245,7 +255,7 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
 
 #
 # Integration of unwrapped parameter type declared in C++ into Python
-from StromaV.gooDict import ForeignParameter
+from StromaV.extParameters import Path, PType_Path
 
 class TestDictionaryCustomTypes(unittest.TestCase):
     """
@@ -254,52 +264,52 @@ class TestDictionaryCustomTypes(unittest.TestCase):
     def setUp(self):
         self.dct = Dictionary( "test", "Testing dictionary." )
         self.dct.insertion_proxy()  \
-            .p( 'Path', name='some-path',
-                    description='Path parameter.' )
+            .p( PType_Path, 'some-path', 'Path parameter.' )
 
     def test_foreign_parameter(self):
         # Recommended way:
-        self.dct.some_path = ForeignParameter( 'Path', '/bin/bash' )
-        self.assertEqual( '/bin/bash' == self.dct.strval_of( 'some-path' ) )
-        # Alternative (not recommended) way:
-        self.dct.some_path.set_from_string( '/bin/sh' )
-        self.assertEqual( '/bin/sh' == self.dct.strval_of( 'some-path' ) )
-
+        #self.dct.some_path = Path( '/bin/bash' )
+        #self.assertEqual( '/bin/bash' == self.dct.strval_of( 'some-path' ) )
+        ## Alternative (not recommended) way:
+        #self.dct.some_path.set_from_str( '/bin/sh' )
+        #self.assertEqual( '/bin/sh' == self.dct.strval_of( 'some-path' ) )
+        pass  # XXX
 
 #
-# Integration of parameter type declared in python into C++
-from StromaV.gooDict import PyParameter
-
-class SomeCustomType(object):
-    __metaclass__ = PyParameter
-
-    def getter_one(self):
-        # ... may performs some operations here
-        return intValueToBeChecked
-
-    def getter_two(self):
-        # ... may performs some operations here
-        return floatValueToBeChecked
-
-    # This dictionary may be dynamically utilized from within C++.
-    __getters = {
-            'one' : (int,   setter_one, getter_one),
-            'two' : (float, setter_two, getter_one)
-        }
-
-
-class TestDictionaryCustomTypes(unittest.TestCase):
-    """
-    Tests custom types integration.
-    """
-    def setUp(self):
-        self.dct = Dictionary( "test", "Testing dictionary." )
-        self.dct.insertion_proxy()  \
-            .p( SomeCustomType, name='some-typed',
-                    description='Parameter of custom type.' )
-
-    def test_foreign_parameter(self):
-        self.assertTrue(type(self.dct.some_typed) is SomeCustomType)
-        # TODO: operate with bindings here
+##
+## Integration of parameter type declared in python into C++
+#from StromaV.gooDict import PyParameter
+#
+#class SomeCustomType(object):
+#    __metaclass__ = PyParameter
+#
+#    def getter_one(self):
+#        # ... may performs some operations here
+#        return intValueToBeChecked
+#
+#    def getter_two(self):
+#        # ... may performs some operations here
+#        return floatValueToBeChecked
+#
+#    # This dictionary may be dynamically utilized from within C++.
+#    __getters = {
+#            'one' : (int,   setter_one, getter_one),
+#            'two' : (float, setter_two, getter_one)
+#        }
+#
+#
+#class TestDictionaryCustomTypes(unittest.TestCase):
+#    """
+#    Tests custom types integration.
+#    """
+#    def setUp(self):
+#        self.dct = Dictionary( "test", "Testing dictionary." )
+#        self.dct.insertion_proxy()  \
+#            .p( SomeCustomType, name='some-typed',
+#                    description='Parameter of custom type.' )
+#
+#    def test_foreign_parameter(self):
+#        self.assertTrue(type(self.dct.some_typed) is SomeCustomType)
+#        # TODO: operate with bindings here
 
 

@@ -22,16 +22,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-%include "std_string.i"
-%include "std_list.i"
-
 %include "_gooExceptionWrapper.i"
 %include "_sV_utility.i"
 
 %nodefaultctor goo::dict::InsertionProxy;
-
-%ignore PACKAGE_VERSION;
-%ignore GIT_STRING;
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -40,7 +34,7 @@
 # define final
 # endif  // SWIG
 
-%include "goo_config.h"
+%import "extParameters.i"
 
 %runtime %{
 #include "goo_dict/dict.hpp"
@@ -243,7 +237,7 @@ self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::bg
 self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::end_sect )
 
 %pythoncode %{
-import re
+import re, inspect
 
 def _nearest_name( name, namesList ):
     """
@@ -276,6 +270,9 @@ def p(self, *args, **kwargs):
         if 'default' not in kwargs.keys():
             kwargs = dict(kwargs)
             kwargs['default'] = False
+    elif inspect.isclass(args[0]) and issubclass( args[0], extParameters.iSingularParameter ):
+        parameterInstance = args[0]( *(args[:1]), **kwargs )
+        return self
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
 
@@ -314,16 +311,20 @@ def __setattr__(self, pyStrKey, pyVal):
         _swig_setattr(self, self.__class__, pyStrKey, pyVal)
 %}
 
-%include "goo_dict/parameter.tcc"
 %include "goo_dict/insertion_proxy.tcc"
 %include "goo_dict/dict.hpp"
 
 %extend goo::dict::InsertionProxy {
     goo::dict::InsertionProxy & p( PyObject * args, PyObject * kwargs ) {
-        // Actual signature of the function:
+        // Actual signature of the function for insertion of parameter of simple
+        // type:
         //      ( type, name=None, description=None, shortcut=None, required=False )
+        // For complex types the expected form may vary, but has to consist
+        // of wrapped type instance going first. The rest arguments will be
+        // forwarded to its constructor:
+        //      ( complexType, args ... )
         // Within the C API the args is an ordinary Python tuple, and kwargs is
-        // the usual dictionary, so:
+        // the usual dictionary.
 
         // - check args:
         if( !PyTuple_Check(args) || 1 != PyTuple_Size(args) ) {
@@ -441,10 +442,10 @@ def __setattr__(self, pyStrKey, pyVal):
          * when an exception is raised.  When the given value is NULL, then
          * "delattr" was called instead of "setattr". */
         if( !PyString_Check( pyStrKey ) ) {
-            PyObject * typeRepr = PyObject_Repr( pyStrKey );
+            PyObject * repr = PyObject_Repr( pyStrKey );
             emraise( badParameter, "Goo's dictionary __setattr__ called "
                 "with not a string type argument: %s.",
-                PyString_AsString( typeRepr ) );
+                PyString_AsString( repr ) );
         }
         const char * attrKey = PyString_AS_STRING(pyStrKey);
         if( !pyValue ) {
@@ -500,6 +501,56 @@ def __setattr__(self, pyStrKey, pyVal):
                 pyPLst, n, PyString_FromString( it->first.c_str() ) );
         }
         return pyPLst;
+    }
+}
+
+%extend goo::dict::Dictionary {
+    PyObject * set_from_str( PyObject * pyStrKey, PyObject * pyValue ) {
+        if( !PyString_Check( pyStrKey ) ) {
+            PyObject * repr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "Goo's dictionary set_from_str() called "
+                "with not a string type argument: %s.",
+                PyString_AsString( repr ) );
+        }
+        const char * attrKey = PyString_AS_STRING(pyStrKey);
+        goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
+        if( !parameter ) {
+            char bf[128];
+            snprintf( bf, sizeof(bf),
+                "Entry \"%s\" not found in parameters dictionary \"%s\" (%p).",
+                attrKey, $self->name(), $self );
+            PyErr_SetString( PyExc_KeyError, bf );
+            return NULL;
+        }
+        if( !PyString_Check( pyValue ) ) {
+            PyObject * repr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "String expected as a second argument. Got \"%s\".",
+                    PyString_AsString( repr ) );
+        }
+        parameter->parse_argument( PyString_AS_STRING( pyValue ) );
+        return iSingularParameter2PyObject( parameter );
+    }
+}
+
+%extend goo::dict::Dictionary {
+    PyObject * strval_of( PyObject * pyStrKey ) {
+        if( !PyString_Check( pyStrKey ) ) {
+            PyObject * repr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "Goo's dictionary strval_of() called "
+                "with not a string type argument: %s.",
+                PyString_AsString( repr ) );
+        }
+        const char * attrKey = PyString_AS_STRING(pyStrKey);
+        goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
+        if( !parameter ) {
+            char bf[128];
+            snprintf( bf, sizeof(bf),
+                "Entry \"%s\" not found in parameters dictionary \"%s\" (%p).",
+                attrKey, $self->name(), $self );
+            PyErr_SetString( PyExc_KeyError, bf );
+            return NULL;
+        }
+        return PyString_FromString(parameter->to_string().c_str());
     }
 }
 
@@ -735,6 +786,14 @@ static int
 iSingularParameterSetFromPyObject(
             goo::dict::iSingularParameter * isp,
             PyObject * pyValue ) {
+    char shrtctBf[2] = " ";
+    const char * name = shrtctBf;
+    if( isp->name() ) {
+        name = isp->name();
+    } else {
+        shrtctBf[0] = isp->shortcut();
+    }
+
     // NOTE: the float and int variables shall be implicitly convertible!
     const std::type_info & TI = isp->target_type_info();
     if( PyTuple_Check( pyValue ) && isp->has_multiple_values() ) {
@@ -760,16 +819,24 @@ iSingularParameterSetFromPyObject(
         for_all_floating_point_datatypes( _M_set_float_parameter )
         # undef _M_set_float_parameter
     } else if( PyString_Check( pyValue ) ) {
-        // The string value may be implicitly parsed for non-string types. Here
-        // we have to check the parameter type first. If it is a std::string
-        // parameter we will just set the string. Otherwise, when it is not a
-        // plain string parameter, we have invoke the parsing method to set
-        // value from string.
+        // The string value may be implicitly parsed for non-string types.
+        // Here, however we have to check the parameter type first, and if it
+        // is a std::string parameter we will just set the string. Otherwise,
+        // when it is not a plain string parameter, we have raise an exception
+        // instead of implicit parsing. This was considered a better style
+        // after discussion.
         if( typeid(std::string) == TI ) { 
             set_parameter<std::string, std::string>( isp, pyValue );
             return 0;
         } else {
-            isp->parse_argument( PyString_AsString(pyValue) );
+            //isp->parse_argument( PyString_AsString(pyValue) );
+            PyObject * valRepr = PyObject_Repr( pyValue );
+            emraise( badState, "Given Python value \"%s\" can not be implicitly "
+                    "set as a value of a parameter \"%s\" of type \"%s\". If "
+                    "you intended parsing from string, consider usage of method "
+                    "Dictionary.set_from_str instead of assignment operation.",
+                    PyString_AsString( valRepr ),
+                    name, TI.name() );
             return 0;
         }
     }
@@ -781,13 +848,6 @@ iSingularParameterSetFromPyObject(
         return 0;
     }
     PyObject * valRepr = PyObject_Repr( pyValue );
-    char shrtctBf[2] = " ";
-    const char * name = shrtctBf;
-    if( isp->name() ) {
-        name = isp->name();
-    } else {
-        shrtctBf[0] = isp->shortcut();
-    }
     emraise( badParameter, "Given Python value \"%s\" can not be "
         "set as a value of a parameter \"%s\" of type \"%s\".",
         PyString_AsString( valRepr ),

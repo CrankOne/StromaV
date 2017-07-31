@@ -1,4 +1,4 @@
-%module(directors="1") pipeline
+%module extParameters
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
@@ -22,14 +22,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-%ignore PACKAGE_VERSION;
-
 %import "std_string.i"
 %include "_gooExceptionWrapper.i"
 
-%import(module="StromaV.sVEvents") "sVEvents.i"
+%import(module="StromaV.appUtils") "appUtils.i"
 
-%nodefaultctor std::type_index;
+//%nodefaultctor std::type_index;
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -39,8 +37,6 @@
 # endif  // SWIG
 
 %import "sV_config.h"
-
-%feature("director") sV::aux::iEventProcessor;
 
 %{
 
@@ -57,12 +53,47 @@
 "build analysis module."
 #endif
 
-#include "ctrs_dict.hpp"
+#include "goo_dict/parameters/path_parameter.hpp"
+#include "goo_dict/parameter.tcc"
+#include "goo_path.hpp"
+
+//using namespace goo::filesystem;
+
+# if 0
+namespace goo {
+namespace mixins {
+
+template<typename BaseT, typename SelfT, typename ParentT>
+class iDuplicable : BaseT {
+};
+
+}  // namespace mixins
+}  // namespace goo
+# endif
 
 %}
 
-%import "sV_config.h"
-%include "analysis/pipeline.hpp"
-%import "ctrs_dict.hpp"
+%nodefaultctor goo::mixins::iDuplicable<
+            goo::dict::iAbstractParameter,
+            goo::dict::Parameter< goo::filesystem::Path >,
+            goo::dict::iParameter< goo::filesystem::Path > >;
+
+%include "goo_path.hpp"
+%include "goo_vcopy.tcc"  // XXX?
+%template(_AbstractParameter_DuplicableShim) ::goo::mixins::iDuplicable<
+            goo::dict::iAbstractParameter,
+            goo::dict::iAbstractParameter,
+            goo::dict::iAbstractParameter,
+            false, true>;
+%include "goo_dict/parameter.tcc"
+%template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
+%template(_PType_Path_DuplicableShim) goo::mixins::iDuplicable<
+            goo::dict::iAbstractParameter,
+            goo::dict::Parameter< goo::filesystem::Path >,
+            goo::dict::iParameter< goo::filesystem::Path > >;
+
+%include "goo_dict/parameters/path_parameter.hpp"
+%template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
 
 // vim: ft=swig
+
