@@ -255,7 +255,7 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
 
 #
 # Integration of unwrapped parameter type declared in C++ into Python
-from StromaV.extParameters import Path, PType_Path
+from StromaV.extParameters import Path, PType_Path, iSingularParameter
 
 class TestDictionaryCustomTypes(unittest.TestCase):
     """
@@ -265,10 +265,11 @@ class TestDictionaryCustomTypes(unittest.TestCase):
         self.dct = Dictionary( "test", "Testing dictionary." )
         self.dct.insertion_proxy()  \
             .p( PType_Path, 'some-path', 'Path parameter.' )
+        self.assertTrue( issubclass(PType_Path, iSingularParameter) )
 
     def test_foreign_parameter(self):
         # Recommended way:
-        #self.dct.some_path = Path( '/bin/bash' )
+        self.dct.some_path = Path( '/bin/bash' )
         #self.assertEqual( '/bin/bash' == self.dct.strval_of( 'some-path' ) )
         ## Alternative (not recommended) way:
         #self.dct.some_path.set_from_str( '/bin/sh' )

@@ -229,7 +229,7 @@ set_list_parameter( goo::dict::iSingularParameter * isp, PyObject * pyVal ) {
 %newobject goo::dict::Dictionary::insertion_proxy;
 // We do not need this method in python since we won't work with parameter
 // instances.
-%ignore goo::dict::InsertionProxy::insert_copy_of;
+//%ignore goo::dict::InsertionProxy::insert_copy_of;
 %ignore goo::dict::InsertionProxy::flag;
 
 self_returning_method( goo::dict::InsertionProxy & goo::dict::InsertionProxy::p)
@@ -272,8 +272,7 @@ def p(self, *args, **kwargs):
             kwargs['default'] = False
     elif inspect.isclass(args[0]) \
                 and issubclass( args[0], extParameters.iSingularParameter ):
-        print( 'got one!' )  # XXX
-        parameterInstance = args[0]( *(args[:1]), **kwargs )
+        self.insert_copy_of( args[0]( *(args[1:]), **kwargs ) )
         return self
     return _gooDict.InsertionProxy_p(self, args, kwargs)
 %}
@@ -827,7 +826,7 @@ iSingularParameterSetFromPyObject(
         // when it is not a plain string parameter, we have raise an exception
         // instead of implicit parsing. This was considered a better style
         // after discussion.
-        if( typeid(std::string) == TI ) { 
+        if( typeid(std::string) == TI ) {
             set_parameter<std::string, std::string>( isp, pyValue );
             return 0;
         } else {
@@ -841,6 +840,10 @@ iSingularParameterSetFromPyObject(
                     name, TI.name() );
             return 0;
         }
+    } else if( PyObject_HasAttrString( pyValue, "this" ) ) {
+        // This may be a SWIG-wrapped proxy...
+        PyObject * _thisPyPtr = PyObject_GetAttrString(pyValue, "this");
+        printf( "XXX: %s\n", typeid(_thisPyPtr).name() );
     }
     // We have to also consider a special case when user sets the boolean
     // value from python object. It has to be generally legit.

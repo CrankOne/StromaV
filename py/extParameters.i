@@ -110,5 +110,17 @@ class iDuplicable {};
 %include "goo_dict/parameters/path_parameter.hpp"
 %template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
 
+%{
+static void _static_assign_path(
+        goo::dict::iSingularParameter * ispPtr,
+        const goo::filesystem::Path & value ) {
+    auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+    if(pPtr) {
+        emraise( badCast, "Type mismatch. Unable to assign parameter value." );
+    }
+    pPtr->set_value( value );
+}
+%}
+
 // vim: ft=swig
 
