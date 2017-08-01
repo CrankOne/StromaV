@@ -98,8 +98,7 @@ class iDuplicable {};
 }  // namespace goo
 # endif
 %}
-//%template(_AbstractParameter_DuplicableShim) goo::mixins::iDuplicable<
-//            goo::dict::iAbstractParameter>;
+// TODO: below has to bemoved to a macro to simplify wrapping of foreign types:
 %include "goo_vcopy.tcc"  // XXX?
 %include "goo_dict/parameter.tcc"
 %template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
@@ -110,17 +109,23 @@ class iDuplicable {};
 %include "goo_dict/parameters/path_parameter.hpp"
 %template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
 
-%{
-static void _static_assign_path(
-        goo::dict::iSingularParameter * ispPtr,
-        const goo::filesystem::Path & value ) {
-    auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
-    if(pPtr) {
-        emraise( badCast, "Type mismatch. Unable to assign parameter value." );
+%extend goo::filesystem::Path {
+    void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
+        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+        if(!pPtr) {
+            emraise( badCast, "Type mismatch. Unable to assign parameter value." );
+        }
+        pPtr->set_value( *$self );
     }
-    pPtr->set_value( value );
+
+    Path(goo::dict::iSingularParameter * ispPtr) const {
+        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+        if(!pPtr) {
+            emraise( badCast, "Type mismatch. Unable to extract parameter value." );
+        }
+        return new goo::filesystem::Path(pPtr->as<goo::filesystem::Path>());
+    }
 }
-%}
 
 // vim: ft=swig
 

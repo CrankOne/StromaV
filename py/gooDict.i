@@ -307,6 +307,9 @@ def __setattr__(self, pyStrKey, pyVal):
         return
     eName, isEntry = _nearest_name(pyStrKey, self.parameters() + self.dictionaries())
     if isEntry:
+        if hasattr( pyVal, '_assign_to_parameter' ):
+            pyVal._assign_to_parameter(self.parameter(eName))
+            return
         $action(self, eName, pyVal)
     else:
         _swig_setattr(self, self.__class__, pyStrKey, pyVal)
@@ -529,7 +532,7 @@ def __setattr__(self, pyStrKey, pyVal):
                     PyString_AsString( repr ) );
         }
         parameter->parse_argument( PyString_AS_STRING( pyValue ) );
-        return iSingularParameter2PyObject( parameter );
+        return Py_True;
     }
 }
 
@@ -552,6 +555,34 @@ def __setattr__(self, pyStrKey, pyVal):
             return NULL;
         }
         return PyString_FromString(parameter->to_string().c_str());
+    }
+}
+
+%extend goo::dict::Dictionary {
+    PyObject * strval_of( PyObject * pyStrKey ) {
+        if( !PyString_Check( pyStrKey ) ) {
+            PyObject * repr = PyObject_Repr( pyStrKey );
+            emraise( badParameter, "Goo's dictionary strval_of() called "
+                "with not a string type argument: %s.",
+                PyString_AsString( repr ) );
+        }
+        const char * attrKey = PyString_AS_STRING(pyStrKey);
+        goo::dict::iSingularParameter * parameter = $self->probe_parameter( attrKey );
+        if( !parameter ) {
+            char bf[128];
+            snprintf( bf, sizeof(bf),
+                "Entry \"%s\" not found in parameters dictionary \"%s\" (%p).",
+                attrKey, $self->name(), $self );
+            PyErr_SetString( PyExc_KeyError, bf );
+            return NULL;
+        }
+        return PyString_FromString(parameter->to_string().c_str());
+    }
+}
+
+%extend goo::dict::Dictionary {
+    const goo::dict::iSingularParameter & __getitem__( const std::string & key ) {
+        return $self->operator[](key.c_str());
     }
 }
 
@@ -840,11 +871,11 @@ iSingularParameterSetFromPyObject(
                     name, TI.name() );
             return 0;
         }
-    } else if( PyObject_HasAttrString( pyValue, "this" ) ) {
+    } /*else if( PyObject_HasAttrString( pyValue, "this" ) ) {
         // This may be a SWIG-wrapped proxy...
         PyObject * _thisPyPtr = PyObject_GetAttrString(pyValue, "this");
         printf( "XXX: %s\n", typeid(_thisPyPtr).name() );
-    }
+    }*/
     // We have to also consider a special case when user sets the boolean
     // value from python object. It has to be generally legit.
     if( typeid(bool) == TI ) {

@@ -268,13 +268,15 @@ class TestDictionaryCustomTypes(unittest.TestCase):
         self.assertTrue( issubclass(PType_Path, iSingularParameter) )
 
     def test_foreign_parameter(self):
-        # Recommended way:
+        # Set from wrapped object (available only for wrapped parameter classes):
         self.dct.some_path = Path( '/bin/bash' )
-        #self.assertEqual( '/bin/bash' == self.dct.strval_of( 'some-path' ) )
-        ## Alternative (not recommended) way:
-        #self.dct.some_path.set_from_str( '/bin/sh' )
-        #self.assertEqual( '/bin/sh' == self.dct.strval_of( 'some-path' ) )
-        pass  # XXX
+        self.assertEqual( '/bin/bash', self.dct.strval_of( 'some-path' ) )
+        # Alternative way (available for any parameter class):
+        self.dct.set_from_str( 'some-path', '/bin/sh' )
+        self.assertEqual( '/bin/sh', self.dct.strval_of( 'some-path' ) )
+        # Retrieve as a foreign type:
+        p = Path(self.dct['some-path'])
+        self.assertEqual( '/bin/sh', p.interpolated() )
 
 #
 ##
