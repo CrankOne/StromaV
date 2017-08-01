@@ -77,21 +77,36 @@ class iDuplicable : BaseT {
             goo::dict::iAbstractParameter,
             goo::dict::Parameter< goo::filesystem::Path >,
             goo::dict::iParameter< goo::filesystem::Path > >;
+%nodefaultctor goo::mixins::iDuplicable<
+            goo::dict::iAbstractParameter,
+            goo::dict::iAbstractParameter,
+            goo::dict::iAbstractParameter>;
 
+//%feature("flatnested") Path::PathInterpolator;?
 %include "goo_path.hpp"
+%{
+# if 0
+namespace goo {
+namespace mixins {
+template<typename BaseTypeT,
+         typename SelfTypeT=BaseTypeT,
+         typename ParentT=BaseTypeT,
+         bool forceImplement=false,
+         bool isSame=std::is_same<BaseTypeT, SelfTypeT>::value>
+class iDuplicable {};
+}  // namespace mixins
+}  // namespace goo
+# endif
+%}
+//%template(_AbstractParameter_DuplicableShim) goo::mixins::iDuplicable<
+//            goo::dict::iAbstractParameter>;
 %include "goo_vcopy.tcc"  // XXX?
-%template(_AbstractParameter_DuplicableShim) ::goo::mixins::iDuplicable<
-            goo::dict::iAbstractParameter,
-            goo::dict::iAbstractParameter,
-            goo::dict::iAbstractParameter,
-            false, true>;
 %include "goo_dict/parameter.tcc"
 %template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
 %template(_PType_Path_DuplicableShim) goo::mixins::iDuplicable<
             goo::dict::iAbstractParameter,
             goo::dict::Parameter< goo::filesystem::Path >,
-            goo::dict::iParameter< goo::filesystem::Path > >;
-
+            goo::dict::iParameter< goo::filesystem::Path >, false, false >;
 %include "goo_dict/parameters/path_parameter.hpp"
 %template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
 

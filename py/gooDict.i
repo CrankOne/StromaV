@@ -270,7 +270,9 @@ def p(self, *args, **kwargs):
         if 'default' not in kwargs.keys():
             kwargs = dict(kwargs)
             kwargs['default'] = False
-    elif inspect.isclass(args[0]) and issubclass( args[0], extParameters.iSingularParameter ):
+    elif inspect.isclass(args[0]) \
+                and issubclass( args[0], extParameters.iSingularParameter ):
+        print( 'got one!' )  # XXX
         parameterInstance = args[0]( *(args[:1]), **kwargs )
         return self
     return _gooDict.InsertionProxy_p(self, args, kwargs)
