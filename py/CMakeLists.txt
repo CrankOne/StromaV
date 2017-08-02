@@ -23,22 +23,28 @@ include(${Goo_CMAKE_MODULES_DIR}/PyExtensions.cmake)
 set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
-    list( APPEND StromaV_PYMODULES sVEvents.i appUtils.i pipeline.i gooDict.i
-        extParameters.i )
+    list( APPEND StromaV_PYMODULES
+                sVEvents.i
+                appUtils.i
+                pipeline.i
+                gooDict.i
+                extParameters.i
+                gooVCopy.i )
     install( FILES
-             # System types:
-             std_unique_ptr.i
-             std_stream.i
-             # Common includes
-             _commonProtobuf.i
-             _gooExceptionWrapper.i
-             # sV binding modules:
-             appUtils.i
-             sVEvents.i
-             pipeline.i
-             gooDict.i
-             extParameters.i
-             DESTINATION ${SWIG_IFACES_DIR}/sV  )
+                # System types:
+                std_unique_ptr.i
+                std_stream.i
+                # Common includes
+                _commonProtobuf.i
+                _gooExceptionWrapper.i
+                # sV binding modules:
+                appUtils.i
+                sVEvents.i
+                pipeline.i
+                gooDict.i
+                extParameters.i
+                gooVCopy.i
+            DESTINATION ${SWIG_IFACES_DIR}/sV  )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 if ( StromaV_PYMODULES )

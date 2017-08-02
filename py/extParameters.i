@@ -26,8 +26,7 @@
 %include "_gooExceptionWrapper.i"
 
 %import(module="StromaV.appUtils") "appUtils.i"
-
-//%nodefaultctor std::type_index;
+%import(module="StromaV.gooVCopy") "gooVCopy.i"
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -39,8 +38,7 @@
 %import "sV_config.h"
 
 %{
-
-# include "sV_config.h"
+#include "sV_config.h"
 
 #if !defined( RPC_PROTOCOLS )
 #error "RPC_PROTOCOLS is not " \
@@ -55,21 +53,12 @@
 
 #include "goo_dict/parameters/path_parameter.hpp"
 #include "goo_dict/parameter.tcc"
+
 #include "goo_path.hpp"
-
-//using namespace goo::filesystem;
-
-# if 0
-namespace goo {
-namespace mixins {
-
-template<typename BaseT, typename SelfT, typename ParentT>
-class iDuplicable : BaseT {
-};
-
-}  // namespace mixins
-}  // namespace goo
-# endif
+#include "app/cvalidators.hpp"
+# ifdef GEANT4_MC_MODEL
+#   include <G4ThreeVector.hh>
+# endif  // GEANT4_MC_MODEL
 
 %}
 
@@ -83,49 +72,80 @@ class iDuplicable : BaseT {
             goo::dict::iAbstractParameter>;
 
 //%feature("flatnested") Path::PathInterpolator;?
-%include "goo_path.hpp"
-%{
-# if 0
-namespace goo {
-namespace mixins {
-template<typename BaseTypeT,
-         typename SelfTypeT=BaseTypeT,
-         typename ParentT=BaseTypeT,
-         bool forceImplement=false,
-         bool isSame=std::is_same<BaseTypeT, SelfTypeT>::value>
-class iDuplicable {};
-}  // namespace mixins
-}  // namespace goo
-# endif
-%}
-// TODO: below has to bemoved to a macro to simplify wrapping of foreign types:
-%include "goo_vcopy.tcc"  // XXX?
-%include "goo_dict/parameter.tcc"
-%template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
-%template(_PType_Path_DuplicableShim) goo::mixins::iDuplicable<
-            goo::dict::iAbstractParameter,
-            goo::dict::Parameter< goo::filesystem::Path >,
-            goo::dict::iParameter< goo::filesystem::Path >, false, false >;
-%include "goo_dict/parameters/path_parameter.hpp"
-%template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
 
-%extend goo::filesystem::Path {
+//
+// This macro designed to automate wrapping of the custom parameters wrapping.
+%define sV_M_wrap_parameter_type(
+            typeName, nsTypeName,
+            typeHeader, parameterHeader )
+%include typeHeader
+%include "goo_dict/parameter.tcc"
+%template(_PType_ ## typeName ## _IFace) goo::dict::iParameter< nsTypeName >;
+gooVCopy_shim_consumer( PType_ ## typeName
+        , goo::dict::iAbstractParameter
+        , goo::dict::Parameter< nsTypeName >
+        , goo::dict::iParameter< nsTypeName > )
+%include parameterHeader
+%template(PType_ ## typeName) goo::dict::Parameter<:: nsTypeName>;
+%extend nsTypeName {
     void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
-        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+        auto pPtr = dynamic_cast<goo::dict::Parameter< nsTypeName >*>(ispPtr);
         if(!pPtr) {
             emraise( badCast, "Type mismatch. Unable to assign parameter value." );
         }
         pPtr->set_value( *$self );
     }
-
-    Path(goo::dict::iSingularParameter * ispPtr) const {
-        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
-        if(!pPtr) {
+    typeName ( goo::dict::iSingularParameter * ispPtr ) {
+        auto pPtr = dynamic_cast<goo::dict::Parameter< nsTypeName >*>(ispPtr);
+        if( !pPtr ) {
             emraise( badCast, "Type mismatch. Unable to extract parameter value." );
         }
-        return new goo::filesystem::Path(pPtr->as<goo::filesystem::Path>());
+        return new nsTypeName( pPtr->as<nsTypeName>() );
     }
 }
+%enddef
+
+sV_M_wrap_parameter_type(
+        Path, goo::filesystem::Path,
+        "goo_path.hpp", "goo_dict/parameters/path_parameter.hpp" )
+
+sV_M_wrap_parameter_type(
+        HistogramParameters1D, sV::aux::HistogramParameters1D,
+        "app/cvalidators.hpp", "app/cvalidators.hpp")
+sV_M_wrap_parameter_type(
+        HistogramParameters2D, sV::aux::HistogramParameters2D,
+        "app/cvalidators.hpp", "app/cvalidators.hpp")
+# ifdef GEANT4_MC_MODEL
+sV_M_wrap_parameter_type(
+        Hep3Vector, CLHEP::Hep3Vector,
+        "CLHEP/Vector/ThreeVector.h", "app/cvalidators.hpp")
+# endif   //GEANT4_MC_MODEL
+
+//%include "goo_path.hpp"
+//%include "goo_dict/parameter.tcc"
+//%template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
+//gooVCopy_shim_consumer( PType_Path
+//        , goo::dict::iAbstractParameter
+//        , goo::dict::Parameter< goo::filesystem::Path >
+//        , goo::dict::iParameter< goo::filesystem::Path > )
+//%include "goo_dict/parameters/path_parameter.hpp"
+//%template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
+//%extend goo::filesystem::Path {
+//    void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
+//        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+//        if(!pPtr) {
+//            emraise( badCast, "Type mismatch. Unable to assign parameter value." );
+//        }
+//        pPtr->set_value( *$self );
+//    }
+//    Path(goo::dict::iSingularParameter * ispPtr) const {
+//        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
+//        if(!pPtr) {
+//            emraise( badCast, "Type mismatch. Unable to extract parameter value." );
+//        }
+//        return new goo::filesystem::Path(pPtr->as<goo::filesystem::Path>());
+//    }
+//}
 
 // vim: ft=swig
 

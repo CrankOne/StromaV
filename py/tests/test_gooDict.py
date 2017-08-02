@@ -255,7 +255,11 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
 
 #
 # Integration of unwrapped parameter type declared in C++ into Python
-from StromaV.extParameters import Path, PType_Path, iSingularParameter
+from StromaV.extParameters import \
+            PType_Path, Path, \
+            PType_HistogramParameters1D, HistogramParameters1D, \
+            PType_HistogramParameters2D, HistogramParameters2D, \
+            iSingularParameter
 
 class TestDictionaryCustomTypes(unittest.TestCase):
     """
@@ -277,6 +281,28 @@ class TestDictionaryCustomTypes(unittest.TestCase):
         # Retrieve as a foreign type:
         p = Path(self.dct['some-path'])
         self.assertEqual( '/bin/sh', p.interpolated() )
+
+class TestHistogramParametersWrap(unittest.TestCase):
+    """
+    Tests foreign parameters integration.
+    """
+    def setUp(self):
+        self.dct = Dictionary( "test", "Testing dictionary." )
+        self.dct.insertion_proxy()  \
+            .p( PType_HistogramParameters1D, 'hst1D', 'Histogram 1D parameter.',
+                    HistogramParameters1D(10, -10, 10) ) \
+            .p( PType_HistogramParameters2D, 'hst2D', 'Histogram 2D parameter.',
+                    HistogramParameters2D(10, -10, 10, 20, -20, 20) )
+        self.assertTrue( issubclass(PType_HistogramParameters1D, iSingularParameter) )
+        self.assertTrue( issubclass(PType_HistogramParameters2D, iSingularParameter) )
+
+    def test_hst(self):
+        self.assertEqual( self.dct.strval_of( 'hst1D' ), '{10:[-10:10]}' )
+        self.dct.hst1D = HistogramParameters1D( 100, -1, 1 )
+        self.assertEqual( self.dct.strval_of( 'hst1D' ), '{100[-1:1]}' )
+        self.assertEqual( self.dct.strval_of( 'hst2D' ), '{10[-10:10]x20[-20:20]}' )
+        self.dct.hst2D = HistogramParameters2D( 100, -1, 1, 200, -2, 2 )
+        self.assertEqual( self.dct.strval_of( 'hst2D' ), '{100[-1:1]x200[-2:2]}' )
 
 #
 ##

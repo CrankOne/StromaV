@@ -157,7 +157,11 @@ template<>
 class Parameter<sV::aux::HistogramParameters2D> : public
                         mixins::iDuplicable< iAbstractParameter,
                         Parameter<sV::aux::HistogramParameters2D>,
-                        iParameter<sV::aux::HistogramParameters2D> > {
+                        iParameter<sV::aux::HistogramParameters2D>
+                        # ifdef SWIG
+                        , false, false
+                        # endif
+                        > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
@@ -179,7 +183,11 @@ template<>
 class Parameter<sV::aux::HistogramParameters1D> : public
                         mixins::iDuplicable< iAbstractParameter,
                         Parameter<sV::aux::HistogramParameters1D>,
-                        iParameter<sV::aux::HistogramParameters1D> > {
+                        iParameter<sV::aux::HistogramParameters1D>
+                        # ifdef SWIG
+                        , false, false
+                        # endif
+                        > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
@@ -203,7 +211,11 @@ template<>
 class Parameter<G4ThreeVector> : public
                         mixins::iDuplicable< iAbstractParameter,
                             Parameter<G4ThreeVector>,
-                            iParameter<G4ThreeVector> > {
+                            iParameter<G4ThreeVector>
+                            # ifdef SWIG
+                            , false, false
+                            # endif
+                            > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
