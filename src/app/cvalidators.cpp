@@ -126,13 +126,13 @@ namespace dict {
 
 Parameter<sV::aux::HistogramParameters2D>::Parameter( const char * name_,
                const char * description_,
-               const sV::aux::HistogramParameters2D & ) :
+               const sV::aux::HistogramParameters2D & dft ) :
                         DuplicableParent( name_,
                               description_,
                               0x0 | iAbstractParameter::set
                                   | iAbstractParameter::atomic
                                   | iAbstractParameter::singular,
-                              '\0' ) {}
+                              '\0' ) { _set_value(dft); }
 
 Parameter<sV::aux::HistogramParameters2D>::Value
 Parameter<sV::aux::HistogramParameters2D>::_V_parse( const char * s ) const {
@@ -175,13 +175,13 @@ Parameter<sV::aux::HistogramParameters2D>::_V_stringify_value( const Value & v )
 
 Parameter<sV::aux::HistogramParameters1D>::Parameter( const char * name_,
                const char * description_,
-               const sV::aux::HistogramParameters1D & ) :
+               const sV::aux::HistogramParameters1D & dft ) :
                         DuplicableParent( name_,
                               description_,
                               0x0 | iAbstractParameter::set
                                   | iAbstractParameter::atomic
                                   | iAbstractParameter::singular,
-                              '\0' ) {}
+                              '\0' ) { _set_value(dft); }
 
 sV::aux::HistogramParameters1D
 Parameter<sV::aux::HistogramParameters1D>::_V_parse( const char * s ) const {

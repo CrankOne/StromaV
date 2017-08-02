@@ -78,15 +78,6 @@
 %define sV_M_wrap_parameter_type(
             typeName, nsTypeName,
             typeHeader, parameterHeader )
-%include typeHeader
-%include "goo_dict/parameter.tcc"
-%template(_PType_ ## typeName ## _IFace) goo::dict::iParameter< nsTypeName >;
-gooVCopy_shim_consumer( PType_ ## typeName
-        , goo::dict::iAbstractParameter
-        , goo::dict::Parameter< nsTypeName >
-        , goo::dict::iParameter< nsTypeName > )
-%include parameterHeader
-%template(PType_ ## typeName) goo::dict::Parameter<:: nsTypeName>;
 %extend nsTypeName {
     void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
         auto pPtr = dynamic_cast<goo::dict::Parameter< nsTypeName >*>(ispPtr);
@@ -103,49 +94,60 @@ gooVCopy_shim_consumer( PType_ ## typeName
         return new nsTypeName( pPtr->as<nsTypeName>() );
     }
 }
+%include typeHeader
+%include "goo_dict/parameter.tcc"
+%template(_PType_ ## typeName ## _IFace) goo::dict::iParameter< nsTypeName >;
+gooVCopy_shim_consumer( PType_ ## typeName
+        , goo::dict::iAbstractParameter
+        , goo::dict::Parameter< nsTypeName >
+        , goo::dict::iParameter< nsTypeName > )
+%include parameterHeader
+%template(PType_ ## typeName) goo::dict::Parameter< nsTypeName>;
 %enddef
 
+//
+// How this macro can be applied for C++-defined types:
 sV_M_wrap_parameter_type(
         Path, goo::filesystem::Path,
         "goo_path.hpp", "goo_dict/parameters/path_parameter.hpp" )
-
 sV_M_wrap_parameter_type(
         HistogramParameters1D, sV::aux::HistogramParameters1D,
         "app/cvalidators.hpp", "app/cvalidators.hpp")
 sV_M_wrap_parameter_type(
         HistogramParameters2D, sV::aux::HistogramParameters2D,
         "app/cvalidators.hpp", "app/cvalidators.hpp")
-# ifdef GEANT4_MC_MODEL
-sV_M_wrap_parameter_type(
-        Hep3Vector, CLHEP::Hep3Vector,
-        "CLHEP/Vector/ThreeVector.h", "app/cvalidators.hpp")
-# endif   //GEANT4_MC_MODEL
 
-//%include "goo_path.hpp"
-//%include "goo_dict/parameter.tcc"
-//%template(_PType_Path_IFace) goo::dict::iParameter< goo::filesystem::Path >;
-//gooVCopy_shim_consumer( PType_Path
-//        , goo::dict::iAbstractParameter
-//        , goo::dict::Parameter< goo::filesystem::Path >
-//        , goo::dict::iParameter< goo::filesystem::Path > )
-//%include "goo_dict/parameters/path_parameter.hpp"
-//%template(PType_Path) goo::dict::Parameter<::goo::filesystem::Path>;
-//%extend goo::filesystem::Path {
-//    void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
-//        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
-//        if(!pPtr) {
-//            emraise( badCast, "Type mismatch. Unable to assign parameter value." );
-//        }
-//        pPtr->set_value( *$self );
-//    }
-//    Path(goo::dict::iSingularParameter * ispPtr) const {
-//        auto pPtr = dynamic_cast<goo::dict::Parameter<goo::filesystem::Path>*>(ispPtr);
-//        if(!pPtr) {
-//            emraise( badCast, "Type mismatch. Unable to extract parameter value." );
-//        }
-//        return new goo::filesystem::Path(pPtr->as<goo::filesystem::Path>());
-//    }
-//}
+# ifdef GEANT4_MC_MODEL
+// Welp, some types will still require customized wrapper description. Note the
+// %rename() instruction followed by the original/alias headers here.
+%extend CLHEP::Hep3Vector {
+    void _assign_to_parameter(goo::dict::iSingularParameter * ispPtr) const {
+        auto pPtr = dynamic_cast<goo::dict::Parameter< CLHEP::Hep3Vector >*>(ispPtr);
+        if(!pPtr) {
+            emraise( badCast, "Type mismatch. Unable to assign parameter value." );
+        }
+        pPtr->set_value( *$self );
+    }
+    Hep3Vector ( goo::dict::iSingularParameter * ispPtr ) {
+        auto pPtr = dynamic_cast<goo::dict::Parameter< CLHEP::Hep3Vector >*>(ispPtr);
+        if( !pPtr ) {
+            emraise( badCast, "Type mismatch. Unable to extract parameter value." );
+        }
+        return new G4ThreeVector( pPtr->as<G4ThreeVector>() );
+    }
+}
+%rename(G4ThreeVector) CLHEP::Hep3Vector;   // < Here goes
+%include "CLHEP/Vector/ThreeVector.h"       // < the custom
+%include "G4ThreeVector.hh"                 // < block.
+%template(_PType_G4ThreeVector_IFace) goo::dict::iParameter< G4ThreeVector >;
+gooVCopy_shim_consumer( PType_G4ThreeVector
+        , goo::dict::iAbstractParameter
+        , goo::dict::Parameter< G4ThreeVector >
+        , goo::dict::iParameter< G4ThreeVector > )
+%template(PType_G4ThreeVector) goo::dict::Parameter<G4ThreeVector>;
+# else
+#   warning "The G4ThreeVector wrapper will not be generated."
+# endif   //GEANT4_MC_MODEL
 
 // vim: ft=swig
 

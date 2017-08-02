@@ -222,13 +222,13 @@ public:
     /// Only long option ctr.
     Parameter( const char * name_,
                const char * description_,
-               const G4ThreeVector & ) :
+               const G4ThreeVector & dft ) :
                     DuplicableParent( name_,
                               description_,
                               0x0 | iAbstractParameter::set
                                   | iAbstractParameter::atomic
                                   | iAbstractParameter::singular,
-                              '\0' ) {}
+                              '\0' ) { _set_value(dft); }
 
     Parameter( const Parameter<G4ThreeVector> & o ) : DuplicableParent( o ) {}
     friend class ::goo::dict::InsertionProxy;

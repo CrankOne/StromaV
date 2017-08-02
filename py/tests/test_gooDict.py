@@ -259,6 +259,7 @@ from StromaV.extParameters import \
             PType_Path, Path, \
             PType_HistogramParameters1D, HistogramParameters1D, \
             PType_HistogramParameters2D, HistogramParameters2D, \
+            PType_G4ThreeVector, G4ThreeVector, \
             iSingularParameter
 
 class TestDictionaryCustomTypes(unittest.TestCase):
@@ -284,25 +285,41 @@ class TestDictionaryCustomTypes(unittest.TestCase):
 
 class TestHistogramParametersWrap(unittest.TestCase):
     """
-    Tests foreign parameters integration.
+    Tests foreign parameters integration: HistogramParameters[1D,2D]
     """
     def setUp(self):
+        self.assertTrue( issubclass(PType_HistogramParameters1D, iSingularParameter) )
+        self.assertTrue( issubclass(PType_HistogramParameters2D, iSingularParameter) )
         self.dct = Dictionary( "test", "Testing dictionary." )
         self.dct.insertion_proxy()  \
             .p( PType_HistogramParameters1D, 'hst1D', 'Histogram 1D parameter.',
-                    HistogramParameters1D(10, -10, 10) ) \
+                    HistogramParameters1D(11, -15, 16.5) ) \
             .p( PType_HistogramParameters2D, 'hst2D', 'Histogram 2D parameter.',
-                    HistogramParameters2D(10, -10, 10, 20, -20, 20) )
-        self.assertTrue( issubclass(PType_HistogramParameters1D, iSingularParameter) )
-        self.assertTrue( issubclass(PType_HistogramParameters2D, iSingularParameter) )
+                    HistogramParameters2D(11, -14, 14, 21, -43, 55) )
 
     def test_hst(self):
-        self.assertEqual( self.dct.strval_of( 'hst1D' ), '{10:[-10:10]}' )
+        self.assertEqual( self.dct.strval_of( 'hst1D' ), '{11[-15:16.5]}' )
         self.dct.hst1D = HistogramParameters1D( 100, -1, 1 )
         self.assertEqual( self.dct.strval_of( 'hst1D' ), '{100[-1:1]}' )
-        self.assertEqual( self.dct.strval_of( 'hst2D' ), '{10[-10:10]x20[-20:20]}' )
+        self.assertEqual( self.dct.strval_of( 'hst2D' ), '{11[-14:14]x21[-43:55]}' )
         self.dct.hst2D = HistogramParameters2D( 100, -1, 1, 200, -2, 2 )
         self.assertEqual( self.dct.strval_of( 'hst2D' ), '{100[-1:1]x200[-2:2]}' )
+
+class TestG4ThreeVectorWrap(unittest.TestCase):
+    """
+    Tests foreign parameters integration: Hep3Vector (G4ThreeVector).
+    """
+    def setUp(self):
+        self.assertTrue( issubclass(PType_G4ThreeVector, iSingularParameter) )
+        self.dct = Dictionary( "test", "Testing dictionary." )
+        self.dct.insertion_proxy()  \
+            .p( PType_G4ThreeVector, 'somevec', 'Some 3D vector to test.',
+                    G4ThreeVector(1., 2.5, 3.) )
+
+    def test_G4ThreeVector(self):
+        v = G4ThreeVector( self.dct['somevec'] )
+        self.assertAlmostEqual( (1., 2.5, 3.),
+            (v.x(), v.y(), v.z()) )
 
 #
 ##
