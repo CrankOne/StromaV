@@ -1,4 +1,4 @@
-%module(directors="1") pipeline
+%module buckets
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
@@ -22,14 +22,11 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-%ignore PACKAGE_VERSION;
-
 %import "std_string.i"
 %include "_gooExceptionWrapper.i"
 
-%import(module="StromaV.sVEvents") "sVEvents.i"
-
-%nodefaultctor std::type_index;
+%import(module="StromaV.pipeline") "pipeline.i"
+%import(module="StromaV.gooDict") "gooDict.i"
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -39,8 +36,6 @@
 # endif  // SWIG
 
 %import "sV_config.h"
-
-%feature("director") sV::aux::iEventProcessor;
 
 %{
 
@@ -57,12 +52,19 @@
 "build analysis module."
 #endif
 
-//#include "ctrs_dict.hpp"  // XXX
+# include "analysis/dsources/svbs/buckets.hpp"
 
 %}
 
-//%import "sV_config.h"  //XXX
-%include "analysis/pipeline.hpp"
-//%import "ctrs_dict.hpp"  //XXX
+%include "analysis/dsources/svbs/bucketReader.hpp"
+%include "analysis/dsources/svbs/suppInfoBucketReader.hpp"
+%include "analysis/dsources/svbs/compressedBucketReader.hpp"
+%include "analysis/dsources/svbs/aux.hpp"
+%include "analysis/dsources/svbs/bucketStreamReader.tcc"
+%template(BucketStreamReader_SHA256_Common) sV::buckets::BucketStreamReader<
+                                sV::aux::SHA256BucketHash,
+                                sV::events::CommonBucketDescriptor>;
+%include "analysis/dsources/svbs/buckets.hpp"
 
 // vim: ft=swig
+

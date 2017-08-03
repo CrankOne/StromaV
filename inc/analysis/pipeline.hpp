@@ -291,7 +291,15 @@ protected:
                 assert(unpack_payload);
                 unpack_payload( uEventPtr );
             }
-            return _V_process_event_payload( _reentrantPayloadPtr );
+            bool result = _V_process_event_payload( _reentrantPayloadPtr );
+            /*std::cout << "===1===" << std::endl;
+            if( _reentrantPayloadPtr ) {
+                std::cout << "===2===" << std::endl;
+                assert(pack_payload);
+                pack_payload( uEventPtr );
+                std::cout << "===3===" << std::endl;
+            }*/
+            return result;
         }
         return false;
     }
@@ -347,6 +355,9 @@ private:
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
         delete Parent::_reentrantPayloadPtr;
         Parent::_reentrantPayloadPtr = nullptr;
+        //std::cout << "======================================" <<
+        //    "Bank!!1!!"
+        //    << std::endl;
     }
 protected:
     iTExperimentalEventPayloadProcessor( const std::string & pn ) :

@@ -108,7 +108,7 @@ public:
     const OffsetsMap & offsets_map() const;
 
     /// Prints human-readable excerpt of buckets available in the stream.
-    void dump_offsets_map( std::ostream & );
+    //void dump_offsets_map( std::ostream & );
 
     /// Reads the supp info message from given stream.
     bool read_supp_info( std::istream &, size_t );

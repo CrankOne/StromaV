@@ -47,8 +47,6 @@
  * necessary.
  */
 # if GOOGLE_PROTOBUF_VERSION > 3001000
-%include "google/protobuf/generated_message_util.h"
-%include "google/protobuf/generated_message_table_driven.h"
 /* Generating wrapper to this function yields a weird issue in recent versions
  * of protobufs. The mangled symbol is, like:
  * _ZN6google8protobuf8internal27MergePartialFromCodedStreamEPNS0_11MessageLiteERKNS1_10ParseTableEPNS0_2io16CodedInputStreamE
@@ -56,6 +54,8 @@
  * it isn't defined at any of the system libraries. Since we're not planning to
  * actually use partial encoded stream we do omit this intenral function. */
 %ignore google::protobuf::internal::MergePartialFromCodedStream;
+%include "google/protobuf/generated_message_util.h"
+%include "google/protobuf/generated_message_table_driven.h"
 # endif  // GOOGLE_PROTOBUF_VERSION > 3001000
 
 %include "google/protobuf/message_lite.h"

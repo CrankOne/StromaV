@@ -24,7 +24,7 @@ set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
     list( APPEND StromaV_PYMODULES sVEvents.i appUtils.i pipeline.i gooDict.i
-        extParameters.i )
+        extParameters.i buckets.i )
     install( FILES
              # System types:
              std_unique_ptr.i
@@ -38,6 +38,7 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
              pipeline.i
              gooDict.i
              extParameters.i
+             buckets.i
              DESTINATION ${SWIG_IFACES_DIR}/sV  )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 

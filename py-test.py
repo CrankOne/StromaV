@@ -4,6 +4,7 @@
 # In[1]: %run sources/StromaV/py-test.py
 
 from StromaV import pipeline as svp
+from StromaV import buckets as bucketsMod
 
 pipe = svp.AnalysisPipeline()
 
@@ -23,4 +24,6 @@ class MyProcessor( svp.iEventProcessor ):
 myProc = MyProcessor()
 
 pipe.push_back_processor( myProc )
+
+buckets = bucketsMod.Buckets()
 
