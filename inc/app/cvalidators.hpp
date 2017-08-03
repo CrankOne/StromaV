@@ -157,7 +157,11 @@ template<>
 class Parameter<sV::aux::HistogramParameters2D> : public
                         mixins::iDuplicable< iAbstractParameter,
                         Parameter<sV::aux::HistogramParameters2D>,
-                        iParameter<sV::aux::HistogramParameters2D> > {
+                        iParameter<sV::aux::HistogramParameters2D>
+                        # ifdef SWIG
+                        , false, false
+                        # endif
+                        > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
@@ -179,7 +183,11 @@ template<>
 class Parameter<sV::aux::HistogramParameters1D> : public
                         mixins::iDuplicable< iAbstractParameter,
                         Parameter<sV::aux::HistogramParameters1D>,
-                        iParameter<sV::aux::HistogramParameters1D> > {
+                        iParameter<sV::aux::HistogramParameters1D>
+                        # ifdef SWIG
+                        , false, false
+                        # endif
+                        > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
@@ -203,20 +211,24 @@ template<>
 class Parameter<G4ThreeVector> : public
                         mixins::iDuplicable< iAbstractParameter,
                             Parameter<G4ThreeVector>,
-                            iParameter<G4ThreeVector> > {
+                            iParameter<G4ThreeVector>
+                            # ifdef SWIG
+                            , false, false
+                            # endif
+                            > {
 public:
     typedef typename DuplicableParent::Parent::Value Value;
 public:
     /// Only long option ctr.
     Parameter( const char * name_,
                const char * description_,
-               const G4ThreeVector & ) :
+               const G4ThreeVector & dft ) :
                     DuplicableParent( name_,
                               description_,
                               0x0 | iAbstractParameter::set
                                   | iAbstractParameter::atomic
                                   | iAbstractParameter::singular,
-                              '\0' ) {}
+                              '\0' ) { _set_value(dft); }
 
     Parameter( const Parameter<G4ThreeVector> & o ) : DuplicableParent( o ) {}
     friend class ::goo::dict::InsertionProxy;
