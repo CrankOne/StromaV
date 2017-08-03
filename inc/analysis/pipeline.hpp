@@ -77,7 +77,6 @@ protected:
     iEventSequence * _evSeq;
     /// List of handlers.
     std::list<iEventProcessor *> _processorsChain;
-
 private:
     std::set<void (*)()> _invalidators;
     std::set<void (*)(Event*)> _payloadPackers;
@@ -194,13 +193,22 @@ public:
 class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
+    enum ProcessingResultFlags : int8_t {
+        CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupt
+        ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupt
+        DISCRIMINATE        = 0x4,  ///< processing continues, but the current event/payload has to be considered as discriminated
+        OMITTED             = 0x8,  ///< the current event or payload wasn't taken into consideration by callee
+        NOT_MODIFIED        = 0x10  ///< the event or data payload wasn't modified
+        // ... shortcuts?
+    };
+    typedef int8_t ProcRes;
 private:
     const std::string _pName;
 protected:
     /// Should return 'false' if processing in chain should be aborted.
-    virtual bool _V_process_event( Event * ) = 0;
+    virtual ProcRes _V_process_event( Event * ) = 0;
     /// Called after single event processed by all the processors.
-    virtual void _V_finalize_event_processing( Event * ) {}
+    virtual ProcRes _V_finalize_event_processing( Event * ) {}
     /// Called after all events read and source closed to cleanup statistics.
     virtual void _V_finalize() const {}
     /// Called after all events read and all processors finalized.
@@ -208,16 +216,14 @@ protected:
 public:
     iEventProcessor( const std::string & pn ) : _pName(pn) {}
     virtual ~iEventProcessor(){}
-    virtual bool process_event( Event * e ) { return _V_process_event( e ); }
-    virtual void finalize_event( Event * e )
-                                    { _V_finalize_event_processing( e ); }
+    virtual ProcRes process_event( Event * e ) { return _V_process_event( e ); }
+    virtual ProcRes finalize_event( Event * e )
+                                { return _V_finalize_event_processing( e ); }
     virtual void print_brief_summary( std::ostream & os ) const
-                                    { _V_print_brief_summary( os ); }
+                                { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
-
     virtual bool operator()( Event * e ) { return process_event( e ); }
-
     friend class ::sV::AnalysisPipeline;
 };
 
