@@ -31,16 +31,16 @@ App::_V_run() {
     if( _processorsChain.empty() ) {
         sV_logw( "No processors specified --- will do nothing with events read.\n" );
     }
-    if( !event_sequence() ) {
+    if( !event_sequence_set() ) {
         sV_loge( "No data source specified. Has nothing to do.\n" );
         return EXIT_FAILURE;
     }
 
-    AnalysisPipeline::iEventSequence * evseq = event_sequence();
+    AnalysisPipeline::iEventSequence & evseq = event_sequence();
 
     int rc = this->AnalysisPipeline::process( evseq );
 
-    evseq->print_brief_summary( goo::app<App>().ls() );
+    evseq.print_brief_summary( goo::app<App>().ls() );
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
         (**it).print_brief_summary( goo::app<App>().ls() );

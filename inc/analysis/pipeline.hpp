@@ -52,17 +52,32 @@ class iEventPayloadProcessorBase;
 /**@class AnalysisPipeline
  * @brief Representation for data analysis pipeline.
  *
- * The pipeline receives the data from object defined as a data sequence and
- * then performs sequentional operations defined in handlers. Handlers may or
- * may not change the data object and accumulate statistics.
+ * The analysis pipeline is merely a container for a sequence of handlers
+ * designed to process individual event.
+ *
+ * The handlers are represented by a
+ * subclasses of iEventProcessor. The common functions of data sources are
+ * summirized within iEventSequence base class.
+ *
+ * The pipeline receives the data from source (iEventSequence or per individual
+ * events basis) and then performs sequentional operations defined in stacked
+ * handlers. Handlers may or may not change the data object and accumulate
+ * various side statistics.
  *
  * The pipeline can be configured at the run-time by dynamic registering data
  * source and handlers.
  *
  * Data source and handlers have to be configured outside of this class.
  *
- * The lifetime of data source and handlers are not maintained by instance of
- * this class.
+ * The lifetime of data source and handlers are not maintained by this class.
+ *
+ * The particular responsibility of AnalysisPipeline is to track consistency
+ * of passing data and accumulate some common statistics: number of events
+ * read, processed by individual processors, number of events discriminated by
+ * particular processors and so on.
+ *
+ * Considering the event representation level, the pipeline also ensures that
+ * event data payload caches are also properly [un]packed during processing.
  *
  * @ingroup analysis
  * */
@@ -72,11 +87,39 @@ public:
     typedef aux::iEventSequence iEventSequence;
     typedef aux::iEventProcessor iEventProcessor;
     typedef aux::iEventPayloadProcessorBase iEventPayloadProcessorBase;
+
+    /// The entry referencing particular processor once being stacked up with
+    /// others becomes a handler.
+    class Handler {
+    public:
+        struct Statistics {
+            size_t nConsidered
+                 , nDiscriminated
+                 , nAborted
+                 ;
+            Statistics() :  nConsidered(0), nDiscriminated(0), nAborted(0) {}
+        };
+    private:
+        iEventProcessor & _processor;
+        Statistics _stats;
+        struct PayloadTraits {
+            const std::type_info & TI;
+            bool forcePack;
+            // ...
+            PayloadTraits( const std::type_info & TI_ ) :
+                        TI(TI_), forcePack(false) {}
+        } * _payloadTraits;
+    protected:
+        Handler( iEventProcessor & processor_ );
+        ~Handler();
+
+        const Statistics & stats() { return _stats; }
+        bool payload_traits_available() const { return !!_payloadTraits; }
+        PayloadTraits & payload_traits() { return *_payloadTraits; }
+    };
 protected:
-    /// Pointer to data source.
-    iEventSequence * _evSeq;
     /// List of handlers.
-    std::list<iEventProcessor *> _processorsChain;
+    std::list<Handler> _processorsChain;
 private:
     std::set<void (*)()> _invalidators;
     std::set<void (*)(Event*)> _payloadPackers;
@@ -89,7 +132,7 @@ protected:
                                      void(*packer)(Event*) );
     virtual int _process_chain( Event * );
     virtual void _finalize_event( Event * );
-    virtual void _finalize_sequence( iEventSequence * );
+    virtual void _finalize_sequence( iEventSequence & );
 public:
     AnalysisPipeline();
     virtual ~AnalysisPipeline() {}  // todo?
@@ -101,21 +144,13 @@ public:
     std::list<iEventProcessor *> & processors()
         { return _processorsChain; }
 
-    /// Current event sequence getter.
-    iEventSequence * event_sequence()  // TODO: return ref instead of ptr
-        { return _evSeq; }
-
-    // TODO: iEventSequence & event_sequence() const;
-    // TODO: bool event_sequence_set() const { return !!_evSeq; }
-    // TODO: void event_sequence( iEventSequence * ) const;
-
     /// Evaluates pipeline on the single event. If event was denied,
     /// returns the ordering number of processor which did the discrimination
     /// starting from 1. 0 is returned if event passed.
     virtual int process( Event * );
 
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
-    virtual int process( iEventSequence * );
+    virtual int process( iEventSequence & );
 
     template<typename EventClassT, typename PayloadT>
     friend class aux::iTEventPayloadProcessor;
@@ -193,13 +228,31 @@ public:
 class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
+    /// Possible result flags and composite shortcuts that may be returned by
+    /// procedure. Note, that flags itself may be counter-intuitive, so better
+    /// stand for shortcuts (the have RC_ prefix).
     enum ProcessingResultFlags : int8_t {
         CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupt
         ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupt
         DISCRIMINATE        = 0x4,  ///< processing continues, but the current event/payload has to be considered as discriminated
-        OMITTED             = 0x8,  ///< the current event or payload wasn't taken into consideration by callee
         NOT_MODIFIED        = 0x10  ///< the event or data payload wasn't modified
-        // ... shortcuts?
+        // shortcuts:
+        /// For invasive processor task (e.g. reconstruction, applying calibration)
+        , RC_CORRECTED                      = CONTINUE_PROCESSING
+        /// For non-invasive processors (e.g. stats accumulators)
+        , RC_ACCOUNTED                      = CONTINUE_PROCESSING | NOT_MODIFIED
+        /// For invasive processor revealed cut condition (event still valid!)
+        , RC_DISCRIMINATE_CORRECTED         = CONTINUE_PROCESSING | DISCRIMINATE
+        /// For non-invasive cutter, to exclude event from physical analysis
+        , RC_DISCRIMINATE                   = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
+        /// May be useful for invasive data look-up procedures (xxx?)
+        , RC_DONE                           = CONTINUE_PROCESSING | ABORT_CURRENT
+        /// Useful for non-invasive data look-up procedures
+        , RC_ABORT_CURRENT                  = CONTINUE_PROCESSING | ABORT_CURRENT | NOT_MODIFIED
+        /// Invasive processor encountered invalid event that shouldn't be analysed further
+        , RC_ABORT_DISCRIMINATE_CORRECTED   = CONTINUE_PROCESSING | DISCRIMINATE
+        /// Non-invasive processor encountered invalid event that shouldn't be analysed further
+        , RC_ABORT_DISCRIMINATE             = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
     };
     typedef int8_t ProcRes;
 private:
@@ -208,7 +261,7 @@ protected:
     /// Should return 'false' if processing in chain should be aborted.
     virtual ProcRes _V_process_event( Event * ) = 0;
     /// Called after single event processed by all the processors.
-    virtual ProcRes _V_finalize_event_processing( Event * ) {}
+    virtual ProcRes _V_finalize_event_processing( Event * ) { return RC_ACCOUNTED; }
     /// Called after all events read and source closed to cleanup statistics.
     virtual void _V_finalize() const {}
     /// Called after all events read and all processors finalized.
@@ -236,6 +289,13 @@ protected:
     /// Must be overriden by payload processor.
     virtual void register_hooks( AnalysisPipeline * ) = 0;
 
+    /// Has to return C++ RTTI identifier of payload type.
+    virtual const std::type_info & _V_payload_type_info() const = 0;
+public:
+    /// Returns C++ RTTI identifier of payload type.
+    const std::type_info & payload_type_info() const {
+        return _V_payload_type_info(); }
+
     friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
 
@@ -253,66 +313,57 @@ template<typename EventClassT,
 class iTEventPayloadProcessor : public iEventPayloadProcessorBase {
 public:
     typedef AnalysisPipeline::Event Event;
+private:
+    /// When set, forces event finalizing procedure to perform payload packing
+    /// at the end. Usually set for certain instance by pipeline on
+    /// push_back_processor() to force payload pack prior to further processing
+    /// of an entire event.
+    mutable bool _forcePayloadPack;
 protected:
     /// Reentrant static field. Should be initialized to NULL by analysis
     /// application at the beginning of each new event.
     static PayloadT * _reentrantPayloadPtr;
-public:
-    /// Must be called at the beginning of each new event by management class.
-    static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
-protected:
+    /// Has to return true if data of PayloadT is precent at the given event.
+    /// Usually done with ->has_experimental()/->has_simulated()/etc.
+    static bool (*has_payload)(const Event *);
     /// Will be called if current event has payload of required type.
     static void (*unpack_payload)( Event * );
-    //static void unpack_payload( Event * uEventPtr ) {
-    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-    //             ->mutable_payload()
-    //             ->UnpackTo(_reentrantPayloadPtr);
-    //}
     /// Will be called at the end of event processing pipeline.
     static void (*pack_payload)( Event * );
-    //static void pack_payload( Event * uEventPtr ) {
-    //    uEventPtr->mutable_experimental()  // <<< TODO: must be exp/simtd
-    //             ->mutable_payload()
-    //             ->PackFrom(*_reentrantPayloadPtr);
-    //}
-protected:
-    iTEventPayloadProcessor( const std::string & pn ) :
-                            iEventPayloadProcessorBase(pn) {}
+    /// Must be called at the beginning of each new event by management class.
+    static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
 
     /// Should return 'false' if processing in chain has to be aborted.
-    virtual bool _V_process_event( Event * uEventPtr ) override {
-        if( uEventPtr->has_experimental() ) {  // TODO: has_simulated()?
-            if( ! uEventPtr->mutable_experimental()
-                           ->mutable_payload()
-                           ->Is<PayloadT>() ) {
-                sV_logw( "Malformed experimental event message payload "
-                             "\"%s\" for processor "
-                             "\"%s\". Payload ignored.",
-                             uEventPtr->experimental()
-                                      .payload().GetTypeName().c_str(),
-                             this->processor_name().c_str() );
-                return false;
-            }
+    virtual ProcRes _V_process_event( Event * uEventPtr ) override {
+        if( has_payload(uEventPtr) ) {
             if( !_reentrantPayloadPtr ) {
                 assert(unpack_payload);
                 unpack_payload( uEventPtr );
             }
-            return _V_process_event_payload( _reentrantPayloadPtr );
+            ProcRes rs = _V_process_event_payload( _reentrantPayloadPtr );
+            if( _forcePayloadPack && !(ABORT_CURRENT & rs) ) {
+                pack_payload( uEventPtr );
+            }
+            return rs;
         }
-        return false;
+        return iEventProcessor::RC_ACCOUNTED;
     }
-
+    /// Helper method registering pack/unpack caching functions. Invoked by
+    /// pipeline
     virtual void register_hooks( AnalysisPipeline * ppl ) final {
         assert( pack_payload );
         ppl->register_packing_functions( nullate_cache,
                                          pack_payload );
     }
-
+    /// Returns RTTI type info for payload type.
+    virtual std::type_info & _V_payload_type_info() const final {
+        return typeid(PayloadT); }
     /// One has to implement all the payload processing here.
-    virtual bool _V_process_event_payload( PayloadT * ) = 0;
-public:
-    /// Helper method registering pack/unpack caching functions. Invoked by
-    /// pipeline
+    virtual ProcRes _V_process_event_payload( PayloadT * ) = 0;
+
+    iTEventPayloadProcessor( const std::string & pn ) :
+                            iEventPayloadProcessorBase(pn) {}
+
     friend class ::sV::AnalysisPipeline;
 };  // class iTEventPayloadProcessor
 
@@ -320,6 +371,11 @@ template<typename EventClassT,
          typename PayloadT>
 PayloadT * iTEventPayloadProcessor<EventClassT, PayloadT>
                                             ::_reentrantPayloadPtr = nullptr;
+
+template<typename EventClassT,
+         typename PayloadT>
+bool (*iTEventPayloadProcessor<EventClassT, PayloadT>::has_payload)
+                               ( const AnalysisPipeline::Event * ) = nullptr;
 
 template<typename EventClassT,
          typename PayloadT>
@@ -332,6 +388,10 @@ void (*iTEventPayloadProcessor<EventClassT, PayloadT>::pack_payload)
                                     ( AnalysisPipeline::Event * ) = nullptr;
 
 
+//
+// Specialization for experimental payload
+/////////////////////////////////////////
+
 template<typename PayloadT>
 class iTExperimentalEventPayloadProcessor :
         public iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> {
@@ -339,6 +399,25 @@ public:
     typedef AnalysisPipeline::Event Event;
     typedef iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> Parent;
 private:
+    static bool _has_payload( const Event * uEventPtr ) {
+        if( !uEventPtr->has_experimental() ) {
+            return false;
+        }
+        # ifndef NDEBUG
+        if( ! uEventPtr->mutable_experimental()
+                       ->mutable_payload()
+                       ->Is<PayloadT>() ) {
+            sV_logw( "Malformed experimental event message payload "
+                         "\"%s\" for processor "
+                         "\"%s\". Payload ignored.",
+                         uEventPtr->experimental()
+                                  .payload().GetTypeName().c_str(),
+                         this->processor_name().c_str() );
+            return false;
+        }
+        # endif
+        return true;
+    }
     /// Will be called if current event has payload of required type.
     static void _unpack_payload( Event * uEventPtr ) {
         Parent::_reentrantPayloadPtr = new PayloadT();
@@ -357,6 +436,69 @@ private:
 protected:
     iTExperimentalEventPayloadProcessor( const std::string & pn ) :
                             Parent(pn) {
+        if( !Parent::has_payload ) {
+            Parent::has_payload = _has_payload;
+        }
+        if( !Parent::unpack_payload ) {
+            Parent::unpack_payload = _unpack_payload;
+        }
+        if( !Parent::pack_payload ) {
+            Parent::pack_payload = _pack_payload;
+        }
+    }
+};  // class iExperimentalEventPayloadProcessor
+
+//
+// Specialization for simulated payload:
+/////////////////////////////////////////
+
+template<typename PayloadT>
+class iTSimulatedEventPayloadProcessor :
+        public iTEventPayloadProcessor<events::SimulatedEvent, PayloadT> {
+public:
+    typedef AnalysisPipeline::Event Event;
+    typedef iTEventPayloadProcessor<events::SimulatedEvent, PayloadT> Parent;
+private:
+    static bool _has_payload( const Event * uEventPtr ) {
+        if( !uEventPtr->has_simulated() ) {
+            return false;
+        }
+        # ifndef NDEBUG
+        if( ! uEventPtr->mutable_simulated()
+                       ->mutable_payload()
+                       ->Is<PayloadT>() ) {
+            sV_logw( "Malformed simulated event message payload "
+                         "\"%s\" for processor "
+                         "\"%s\". Payload ignored.",
+                         uEventPtr->simulated()
+                                  .payload().GetTypeName().c_str(),
+                         this->processor_name().c_str() );
+            return false;
+        }
+        # endif
+        return true;
+    }
+    /// Will be called if current event has payload of required type.
+    static void _unpack_payload( Event * uEventPtr ) {
+        Parent::_reentrantPayloadPtr = new PayloadT();
+        uEventPtr->mutable_simulated()
+                 ->mutable_payload()
+                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+    }
+    /// Will be called at the end of event processing pipeline.
+    static void _pack_payload( Event * uEventPtr ) {
+        uEventPtr->mutable_experimental()
+                 ->mutable_payload()
+                 ->PackFrom(*Parent::_reentrantPayloadPtr);
+        delete Parent::_reentrantPayloadPtr;
+        Parent::_reentrantPayloadPtr = nullptr;
+    }
+protected:
+    iTSimulatedEventPayloadProcessor( const std::string & pn ) :
+                            Parent(pn) {
+        if( !Parent::has_payload ) {
+            Parent::has_payload = _has_payload;
+        }
         if( !Parent::unpack_payload ) {
             Parent::unpack_payload = _unpack_payload;
         }
@@ -367,7 +509,6 @@ protected:
 };  // class iExperimentalEventPayloadProcessor
 
 }  // namespace aux
-
 }  // namespace sV
 
 # endif  // RPC_PROTOCOLS

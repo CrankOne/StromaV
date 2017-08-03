@@ -67,6 +67,9 @@ class AnalysisApplication :
         public mixins::RootApplication,
         public AnalysisPipeline,
         public virtual sV::AbstractApplication {
+private:
+    /// Pointer to data source.
+    iEventSequence * _evSeq;
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
@@ -85,6 +88,27 @@ protected:
     AnalysisApplication( Parent::Config * vm );
 public:
     virtual ~AnalysisApplication();
+
+    /// Current event sequence getter.
+    iEventSequence & event_sequence() {
+        const AnalysisApplication * cThis = this;
+        return const_cast<iEventSequence &>( cThis->event_sequence() );
+    }
+
+    /// Returns reference to an event sequence set.
+    const iEventSequence & event_sequence() const {
+        if( !event_sequence_set() ) {
+            emraise( badState, "Event sequence object is not set for pipeline "
+                    "%p.", this )
+        }
+        return *_evSeq;
+    }
+
+    /// Returns whether the event sequence had been set.
+    bool event_sequence_set() const { return !!_evSeq; }
+
+    /// Sets the event sequence for the pipeline.
+    // TODO: void event_sequence( iEventSequence * ) const;
 
     /// Find processor by name and push back it to chain.
     //void push_back_processor( const std::string & );

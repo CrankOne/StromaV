@@ -42,7 +42,7 @@ Benchmarking::Benchmarking( const goo::dict::Dictionary & ) :
 
 Benchmarking::~Benchmarking() {}
 
-bool
+aux::iEventProcessor::ProcRes
 Benchmarking::_V_process_event( Event * ) {
     if( !_initialEventSubmitted ) {
         timer_start( _start );
@@ -50,14 +50,15 @@ Benchmarking::_V_process_event( Event * ) {
     }
     timer_start( _latestEventStart );
     ++_n_events;
-    return true;
+    return iEventProcessor::RC_ACCOUNTED;
 }
 
-void
+aux::iEventProcessor::ProcRes
 Benchmarking::_V_finalize_event_processing( Event * ) {
     _dur_sumProcessing +=
         (_dur_latestEventProcessing = timer_end( _latestEventStart ) );
     _update_stat();
+    return iEventProcessor::RC_ACCOUNTED;
 }
 
 void

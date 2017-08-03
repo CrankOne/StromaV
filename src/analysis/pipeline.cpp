@@ -26,11 +26,27 @@
 
 namespace sV {
 
+AnalysisPipeline::Handler::Handler( iEventProcessor & processor_ ) :
+            _processor(processor_),
+            _payloadTraits(nullptr) {
+    bzero( &_stats, sizeof(Statistics) );
+    auto payloadProcPtr = dynamic_cast<iEventPayloadProcessorBase*>( &_processor );
+    if( payloadProcPtr ) {
+        _payloadTraits = new PayloadTraits( payloadProcPtr->payload_type_info() );
+    }
+}
+
+AnalysisPipeline::Handler::~Handler() {
+    if( _payloadTraits ) {
+        delete _payloadTraits;
+    }
+}
+
 AnalysisPipeline::AnalysisPipeline() :
             ASCII_Entry( goo::aux::iApp::exists() ?
                         &goo::app<AbstractApplication>() : nullptr, 1 ),
-                _evSeq(nullptr),
                 _nEventsAcquired(0) {}
+
 
 void
 AnalysisPipeline::_update_stat() {
@@ -39,15 +55,30 @@ AnalysisPipeline::_update_stat() {
 }
 
 void
-AnalysisPipeline::push_back_processor( iEventProcessor * proc ) {
-    if( !proc ) {
-        emraise( nullPtr, "Can't add a processor --- null pointer." );
+AnalysisPipeline::push_back_processor( iEventProcessor & proc ) {
+    Handler handler(proc);
+    if( !_processorsChain.empty() ) {
+        // We have to force payload packing of the previous processor in cases:
+        //  - When previous processor has unpacked payload cache and current
+        // has not (probably, current processor will deal with an entire
+        // event).
+        //  - When payload types of both caching processors differ.
+        Handler & prevHandler = _processorsChain.back();
+        // We shall not force to pack anything, if previous processor does not
+        // cache payload.
+        if( prevHandler.payload_traits_available() && (
+                (!handler.payload_traits_available())
+             || (prevHandler.payload_traits().TI != handler.payload_traits().TI)
+            )) {
+            prevHandler.payload_traits().forcePack = true;
+        }
     }
-    _processorsChain.push_back( proc );
-    auto payloadProcPtr = dynamic_cast<iEventPayloadProcessorBase*>( proc );
-    if( payloadProcPtr ) {
-        payloadProcPtr->register_hooks( this );
+    if( handler.payload_traits_available() ) {
+        _TODO_  // TODO:
+        //payloadProcPtr->register_hooks( this );
     }
+    _processorsChain.push_back();
+    
     sV_log3( "Processor %p now handles event pipeline.\n", proc );
 }
 
@@ -92,8 +123,8 @@ AnalysisPipeline::_finalize_event( Event * evPtr ) {
 
 void
 AnalysisPipeline::_finalize_sequence(
-                                AnalysisPipeline::iEventSequence * evSeqPtr ) {
-    evSeqPtr->finalize_reading();
+                                AnalysisPipeline::iEventSequence & evSeq ) {
+    evSeq.finalize_reading();
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
         (**it).finalize();
@@ -108,13 +139,7 @@ AnalysisPipeline::process( AnalysisPipeline::Event * evPtr ) {
 }
 
 int
-AnalysisPipeline::process( AnalysisPipeline::iEventSequence * evSeqPtr ) {
-    if( !(_evSeq = evSeqPtr) ) {
-        sV_loge( "No events source specified --- has nothing to do for "
-                     "pipeline %p.\n", this );
-        return -1;
-    }
-
+AnalysisPipeline::process( AnalysisPipeline::iEventSequence & evSeq ) {
     // Check if we actually have something to do
     if( _processorsChain.empty() ) {
         sV_loge( "No processors specified --- has nothing to do for "
@@ -122,17 +147,14 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence * evSeqPtr ) {
         return -1;
     }
     size_t nEventsProcessed = 0;
-    for( auto evPtr = evSeqPtr->initialize_reading();
-         evSeqPtr->is_good();
-         evSeqPtr->next_event( evPtr ), ++nEventsProcessed ) {
+    for( auto evPtr = evSeq.initialize_reading();
+         evSeq.is_good();
+         evSeq.next_event( evPtr ), ++nEventsProcessed ) {
         this->process( evPtr );
     }
     sV_log2( "Pipeline %p depleted the source %p with %zu events. Finalizing...\n",
-            this, evSeqPtr, nEventsProcessed );
-    _finalize_sequence( evSeqPtr );
-
-    _evSeq = nullptr;
-
+            this, &evSeq, nEventsProcessed );
+    _finalize_sequence( evSeq );
     return 0;
 }
 

@@ -57,7 +57,8 @@ AnalysisApplication::_finalize_event( Event * ep ) {
 AnalysisApplication::AnalysisApplication( Config * vm ) :
             sV::AbstractApplication(vm),
             mixins::PBEventApp(vm),
-            mixins::RootApplication(vm) {
+            mixins::RootApplication(vm),
+            _evSeq(nullptr) {
     # if 0 // XXX (dev)
     // Inject custom stacktrace info acauizition into boost exception construction
     // procedures; TODO: doesn't work; may be here `handler' means "how to treat" the
