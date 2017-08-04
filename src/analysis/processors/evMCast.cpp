@@ -46,11 +46,9 @@ EventPipelineStorage::~EventPipelineStorage() {
 
 AnalysisPipeline::iEventProcessor::ProcRes
 EventPipelineStorage::_V_process_event( Event * eventPtr ) {
-    if( _push_event_to_queue(*eventPtr) ) {
-        return sV::aux::iEventProcessor::RC_ACCOUNTED;
-    } else {
-        return sV::aux::iEventProcessor::RC_OMITTED;
-    }
+    bool pushed = _push_event_to_queue(*eventPtr);
+    (void)(pushed);  // not useful further
+    return sV::aux::iEventProcessor::RC_ACCOUNTED;
 }
 
 AnalysisPipeline::iEventProcessor::ProcRes

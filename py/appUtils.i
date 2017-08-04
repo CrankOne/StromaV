@@ -52,6 +52,9 @@
 %include "app/analysis.hpp"
 %include "app/py_session.hpp"
 
+//
+//%import analysis/pipeline.hpp
+
 %init %{
 sV::PythonSession::initialize_exception_type();
 %}

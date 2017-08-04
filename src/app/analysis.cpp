@@ -119,9 +119,11 @@ AnalysisApplication::~AnalysisApplication() {
         delete _evSeq;
         _evSeq = nullptr;
     }
+    // Since we allocate processor within _V_concrete_app_configure() within
+    // this class, it's our responsibility here to delete allocated processors.
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        delete *it;
+        delete &(it->processor());
     }
     _processorsChain.clear();
     if(gFile) {
@@ -178,7 +180,7 @@ AnalysisApplication::_V_concrete_app_configure() {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
-            AnalysisPipeline::push_back_processor( generic_new<aux::iEventProcessor>(*it) );
+            AnalysisPipeline::push_back_processor( *generic_new<aux::iEventProcessor>(*it) );
         }
     }
 }

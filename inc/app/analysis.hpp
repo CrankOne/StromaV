@@ -65,11 +65,11 @@ namespace sV {
 class AnalysisApplication :
         public mixins::PBEventApp,
         public mixins::RootApplication,
-        public AnalysisPipeline,
+        public sV::AnalysisPipeline,
         public virtual sV::AbstractApplication {
 private:
     /// Pointer to data source.
-    iEventSequence * _evSeq;
+    sV::aux::iEventSequence * _evSeq;
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
@@ -90,13 +90,13 @@ public:
     virtual ~AnalysisApplication();
 
     /// Current event sequence getter.
-    iEventSequence & event_sequence() {
+    sV::aux::iEventSequence & event_sequence() {
         const AnalysisApplication * cThis = this;
         return const_cast<iEventSequence &>( cThis->event_sequence() );
     }
 
     /// Returns reference to an event sequence set.
-    const iEventSequence & event_sequence() const {
+    const sV::aux::iEventSequence & event_sequence() const {
         if( !event_sequence_set() ) {
             emraise( badState, "Event sequence object is not set for pipeline "
                     "%p.", this )

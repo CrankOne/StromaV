@@ -36,6 +36,15 @@ AnalysisPipeline::Handler::Handler( iEventProcessor & processor_ ) :
     }
 }
 
+AnalysisPipeline::Handler::PayloadTraits &
+AnalysisPipeline::Handler::payload_traits() {
+    if( ! payload_traits_available() ) {
+        emraise( badState, "Handler of processors %p has no payload traits.",
+            &_processor );
+    }
+    return *_payloadTraits;
+}
+
 AnalysisPipeline::Handler::~Handler() {
     if( _payloadTraits ) {
         delete _payloadTraits;
@@ -74,12 +83,11 @@ AnalysisPipeline::push_back_processor( iEventProcessor & proc ) {
         }
     }
     if( handler.payload_traits_available() ) {
-        _TODO_  // TODO:
-        //payloadProcPtr->register_hooks( this );
+        static_cast<iEventPayloadProcessorBase&>(proc).register_hooks( this );
     }
-    _processorsChain.push_back();
+    _processorsChain.push_back( handler );
     
-    sV_log3( "Processor %p now handles event pipeline.\n", proc );
+    sV_log3( "Processor %p now handles event pipeline.\n", &proc );
 }
 
 void
@@ -98,8 +106,9 @@ AnalysisPipeline::_process_chain( Event * evPtr ) {
     int n = 0;
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it, n++ ) {
-        if(!(**it)( evPtr )) {
-            // Processor has to return false to break the loop.
+        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor()( evPtr );
+        if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
+           || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
             break;
         }
     }
@@ -110,7 +119,11 @@ void
 AnalysisPipeline::_finalize_event( Event * evPtr ) {
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        (**it).finalize_event( evPtr );
+        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor().finalize_event( evPtr );
+        if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
+           || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
+            break;
+        }
     }
     for( auto & packer : _payloadPackers ) {
         packer( evPtr );
@@ -127,7 +140,7 @@ AnalysisPipeline::_finalize_sequence(
     evSeq.finalize_reading();
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        (**it).finalize();
+        it->processor().finalize();
     }
 }
 

@@ -43,7 +43,7 @@ App::_V_run() {
     evseq.print_brief_summary( goo::app<App>().ls() );
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        (**it).print_brief_summary( goo::app<App>().ls() );
+        it->processor().print_brief_summary( goo::app<App>().ls() );
     }
     sV_log2( "Pipeline analysis done.\n" );
 

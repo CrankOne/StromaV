@@ -109,17 +109,19 @@ public:
             PayloadTraits( const std::type_info & TI_ ) :
                         TI(TI_), forcePack(false) {}
         } * _payloadTraits;
-    protected:
-        Handler( iEventProcessor & processor_ );
-        ~Handler();
-
+    public:
         const Statistics & stats() { return _stats; }
         bool payload_traits_available() const { return !!_payloadTraits; }
-        PayloadTraits & payload_traits() { return *_payloadTraits; }
+        PayloadTraits & payload_traits();
+        Handler( iEventProcessor & processor_ );
+        iEventProcessor & processor() { return _processor; }
+        const iEventProcessor & processor() const { return _processor; }
+        ~Handler();
     };
+    typedef std::list<Handler> Chain;
 protected:
     /// List of handlers.
-    std::list<Handler> _processorsChain;
+    Chain _processorsChain;
 private:
     std::set<void (*)()> _invalidators;
     std::set<void (*)(Event*)> _payloadPackers;
@@ -138,10 +140,10 @@ public:
     virtual ~AnalysisPipeline() {}  // todo?
 
     /// Adds processor to processor chain.
-    void push_back_processor( iEventProcessor * );
+    void push_back_processor( iEventProcessor & );
 
     /// Processor chain getter.
-    std::list<iEventProcessor *> & processors()
+    const Chain & processors() const
         { return _processorsChain; }
 
     /// Evaluates pipeline on the single event. If event was denied,
@@ -399,20 +401,18 @@ public:
     typedef AnalysisPipeline::Event Event;
     typedef iTEventPayloadProcessor<events::ExperimentalEvent, PayloadT> Parent;
 private:
-    static bool _has_payload( const Event * uEventPtr ) {
-        if( !uEventPtr->has_experimental() ) {
+    static bool _has_payload( const Event & uEvent ) {
+        if( !uEvent.has_experimental() ) {
             return false;
         }
         # ifndef NDEBUG
-        if( ! uEventPtr->mutable_experimental()
-                       ->mutable_payload()
-                       ->Is<PayloadT>() ) {
+        if( ! uEvent.experimental()
+                       .payload()
+                       .Is<PayloadT>() ) {
             sV_logw( "Malformed experimental event message payload "
-                         "\"%s\" for processor "
                          "\"%s\". Payload ignored.",
-                         uEventPtr->experimental()
-                                  .payload().GetTypeName().c_str(),
-                         this->processor_name().c_str() );
+                         uEvent.experimental()
+                                  .payload().GetTypeName().c_str());
             return false;
         }
         # endif
@@ -459,20 +459,18 @@ public:
     typedef AnalysisPipeline::Event Event;
     typedef iTEventPayloadProcessor<events::SimulatedEvent, PayloadT> Parent;
 private:
-    static bool _has_payload( const Event * uEventPtr ) {
-        if( !uEventPtr->has_simulated() ) {
+    static bool _has_payload( const Event & uEvent ) {
+        if( !uEvent.has_simulated() ) {
             return false;
         }
         # ifndef NDEBUG
-        if( ! uEventPtr->mutable_simulated()
-                       ->mutable_payload()
-                       ->Is<PayloadT>() ) {
+        if( ! uEvent.simulated()
+                    .payload()
+                    .Is<PayloadT>() ) {
             sV_logw( "Malformed simulated event message payload "
-                         "\"%s\" for processor "
                          "\"%s\". Payload ignored.",
-                         uEventPtr->simulated()
-                                  .payload().GetTypeName().c_str(),
-                         this->processor_name().c_str() );
+                         uEvent.simulated()
+                                .payload().GetTypeName().c_str() );
             return false;
         }
         # endif
