@@ -124,16 +124,16 @@ protected:
     Chain _processorsChain;
 private:
     std::set<void (*)()> _invalidators;
-    std::set<void (*)(Event*)> _payloadPackers;
+    std::set<void (*)(Event&)> _payloadPackers;
 
     size_t _nEventsAcquired;
     /// ASCII_Entry-related internal function.
     void _update_stat();
 protected:
     void register_packing_functions( void(*invalidator)(),
-                                     void(*packer)(Event*) );
-    virtual int _process_chain( Event * );
-    virtual void _finalize_event( Event * );
+                                     void(*packer)(Event&) );
+    virtual int _process_chain( Event & );
+    virtual void _finalize_event( Event & );
     virtual void _finalize_sequence( iEventSequence & );
 public:
     AnalysisPipeline();
@@ -149,7 +149,7 @@ public:
     /// Evaluates pipeline on the single event. If event was denied,
     /// returns the ordering number of processor which did the discrimination
     /// starting from 1. 0 is returned if event passed.
-    virtual int process( Event * );
+    virtual int process( Event & );
 
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
     virtual int process( iEventSequence & );
@@ -257,13 +257,16 @@ public:
         , RC_ABORT_DISCRIMINATE             = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
     };
     typedef int8_t ProcRes;
+
+    /// Returns true if current processing has to be aborted.
+    static bool consider_interim_result( ProcRes sub, ProcRes & current );
 private:
     const std::string _pName;
 protected:
     /// Should return 'false' if processing in chain should be aborted.
-    virtual ProcRes _V_process_event( Event * ) = 0;
+    virtual ProcRes _V_process_event( Event & ) = 0;
     /// Called after single event processed by all the processors.
-    virtual ProcRes _V_finalize_event_processing( Event * ) { return RC_ACCOUNTED; }
+    virtual ProcRes _V_finalize_event_processing( Event & ) { return RC_ACCOUNTED; }
     /// Called after all events read and source closed to cleanup statistics.
     virtual void _V_finalize() const {}
     /// Called after all events read and all processors finalized.
@@ -271,14 +274,14 @@ protected:
 public:
     iEventProcessor( const std::string & pn ) : _pName(pn) {}
     virtual ~iEventProcessor(){}
-    virtual ProcRes process_event( Event * e ) { return _V_process_event( e ); }
-    virtual ProcRes finalize_event( Event * e )
+    virtual ProcRes process_event( Event & e ) { return _V_process_event( e ); }
+    virtual ProcRes finalize_event( Event & e )
                                 { return _V_finalize_event_processing( e ); }
     virtual void print_brief_summary( std::ostream & os ) const
                                 { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
-    virtual bool operator()( Event * e ) { return process_event( e ); }
+    virtual bool operator()( Event & e ) { return process_event( e ); }
     friend class ::sV::AnalysisPipeline;
 };
 
@@ -327,24 +330,24 @@ protected:
     static PayloadT * _reentrantPayloadPtr;
     /// Has to return true if data of PayloadT is precent at the given event.
     /// Usually done with ->has_experimental()/->has_simulated()/etc.
-    static bool (*has_payload)(const Event *);
+    static bool (*has_payload)(const Event &);
     /// Will be called if current event has payload of required type.
-    static void (*unpack_payload)( Event * );
+    static void (*unpack_payload)( Event & );
     /// Will be called at the end of event processing pipeline.
-    static void (*pack_payload)( Event * );
+    static void (*pack_payload)( Event & );
     /// Must be called at the beginning of each new event by management class.
     static void nullate_cache() { _reentrantPayloadPtr = nullptr; }
 
     /// Should return 'false' if processing in chain has to be aborted.
-    virtual ProcRes _V_process_event( Event * uEventPtr ) override {
-        if( has_payload(uEventPtr) ) {
+    virtual ProcRes _V_process_event( Event & uEvent ) override {
+        if( has_payload(uEvent) ) {
             if( !_reentrantPayloadPtr ) {
                 assert(unpack_payload);
-                unpack_payload( uEventPtr );
+                unpack_payload( uEvent );
             }
-            ProcRes rs = _V_process_event_payload( _reentrantPayloadPtr );
+            ProcRes rs = _V_process_event_payload( *_reentrantPayloadPtr );
             if( _forcePayloadPack && !(ABORT_CURRENT & rs) ) {
-                pack_payload( uEventPtr );
+                pack_payload( uEvent );
             }
             return rs;
         }
@@ -358,10 +361,10 @@ protected:
                                          pack_payload );
     }
     /// Returns RTTI type info for payload type.
-    virtual std::type_info & _V_payload_type_info() const final {
+    virtual const std::type_info & _V_payload_type_info() const final {
         return typeid(PayloadT); }
     /// One has to implement all the payload processing here.
-    virtual ProcRes _V_process_event_payload( PayloadT * ) = 0;
+    virtual ProcRes _V_process_event_payload( PayloadT & ) = 0;
 
     iTEventPayloadProcessor( const std::string & pn ) :
                             iEventPayloadProcessorBase(pn) {}
@@ -377,17 +380,17 @@ PayloadT * iTEventPayloadProcessor<EventClassT, PayloadT>
 template<typename EventClassT,
          typename PayloadT>
 bool (*iTEventPayloadProcessor<EventClassT, PayloadT>::has_payload)
-                               ( const AnalysisPipeline::Event * ) = nullptr;
+                               ( const AnalysisPipeline::Event & ) = nullptr;
 
 template<typename EventClassT,
          typename PayloadT>
 void (*iTEventPayloadProcessor<EventClassT, PayloadT>::unpack_payload)
-                                    ( AnalysisPipeline::Event * ) = nullptr;
+                                    ( AnalysisPipeline::Event & ) = nullptr;
 
 template<typename EventClassT,
          typename PayloadT>
 void (*iTEventPayloadProcessor<EventClassT, PayloadT>::pack_payload)
-                                    ( AnalysisPipeline::Event * ) = nullptr;
+                                    ( AnalysisPipeline::Event & ) = nullptr;
 
 
 //
@@ -419,15 +422,15 @@ private:
         return true;
     }
     /// Will be called if current event has payload of required type.
-    static void _unpack_payload( Event * uEventPtr ) {
+    static void _unpack_payload( Event & uEvent ) {
         Parent::_reentrantPayloadPtr = new PayloadT();
-        uEventPtr->mutable_experimental()
-                 ->mutable_payload()
-                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+        uEvent.mutable_experimental()
+                ->mutable_payload()
+                ->UnpackTo(Parent::_reentrantPayloadPtr);
     }
     /// Will be called at the end of event processing pipeline.
-    static void _pack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
+    static void _pack_payload( Event & uEvent ) {
+        uEvent.mutable_experimental()
                  ->mutable_payload()
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
         delete Parent::_reentrantPayloadPtr;
@@ -477,17 +480,17 @@ private:
         return true;
     }
     /// Will be called if current event has payload of required type.
-    static void _unpack_payload( Event * uEventPtr ) {
+    static void _unpack_payload( Event & uEvent ) {
         Parent::_reentrantPayloadPtr = new PayloadT();
-        uEventPtr->mutable_simulated()
-                 ->mutable_payload()
-                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+        uEvent.mutable_simulated()
+                ->mutable_payload()
+                ->UnpackTo(Parent::_reentrantPayloadPtr);
     }
     /// Will be called at the end of event processing pipeline.
-    static void _pack_payload( Event * uEventPtr ) {
-        uEventPtr->mutable_experimental()
-                 ->mutable_payload()
-                 ->PackFrom(*Parent::_reentrantPayloadPtr);
+    static void _pack_payload( Event & uEvent ) {
+        uEvent.mutable_experimental()
+                ->mutable_payload()
+                ->PackFrom(*Parent::_reentrantPayloadPtr);
         delete Parent::_reentrantPayloadPtr;
         Parent::_reentrantPayloadPtr = nullptr;
     }

@@ -47,7 +47,7 @@ namespace sV {
 //}
 
 void
-AnalysisApplication::_finalize_event( Event * ep ) {
+AnalysisApplication::_finalize_event( Event & ep ) {
     AnalysisPipeline::_finalize_event( ep );
     notify_ascii_display();
 }

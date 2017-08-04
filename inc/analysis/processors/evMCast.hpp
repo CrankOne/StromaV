@@ -63,7 +63,7 @@ protected:
     std::mutex _queueMutex;
 
     virtual ProcRes _push_event_to_queue( const Event & );
-    virtual ProcRes _V_process_event( Event * ) override;
+    virtual ProcRes _V_process_event( Event & ) override;
 public:
     EventPipelineStorage( const std::string & pName, size_t queueLength );
     ~EventPipelineStorage();
@@ -95,7 +95,7 @@ private:
 protected:
     virtual bool _V_do_continue_transmission() const override;
     virtual void _V_send_next_message() override;
-    virtual ProcRes _V_process_event( Event * eventPtr ) override;
+    virtual ProcRes _V_process_event( Event & event ) override;
     virtual void _V_print_brief_summary( std::ostream & os ) const override;
 public:
     EventMulticaster( const std::string & pn,

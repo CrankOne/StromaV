@@ -43,7 +43,7 @@ Benchmarking::Benchmarking( const goo::dict::Dictionary & ) :
 Benchmarking::~Benchmarking() {}
 
 aux::iEventProcessor::ProcRes
-Benchmarking::_V_process_event( Event * ) {
+Benchmarking::_V_process_event( Event & ) {
     if( !_initialEventSubmitted ) {
         timer_start( _start );
         _initialEventSubmitted = true;
@@ -54,7 +54,7 @@ Benchmarking::_V_process_event( Event * ) {
 }
 
 aux::iEventProcessor::ProcRes
-Benchmarking::_V_finalize_event_processing( Event * ) {
+Benchmarking::_V_finalize_event_processing( Event & ) {
     _dur_sumProcessing +=
         (_dur_latestEventProcessing = timer_end( _latestEventStart ) );
     _update_stat();

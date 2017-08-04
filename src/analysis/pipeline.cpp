@@ -92,7 +92,7 @@ AnalysisPipeline::push_back_processor( iEventProcessor & proc ) {
 
 void
 AnalysisPipeline::register_packing_functions( void(*invalidator)(),
-                                              void(*packer)(Event*) ) {
+                                              void(*packer)(Event&) ) {
     if( _invalidators.end() == _invalidators.find( invalidator ) ) {
         _invalidators.insert( invalidator );
     }
@@ -102,11 +102,11 @@ AnalysisPipeline::register_packing_functions( void(*invalidator)(),
 }
 
 int
-AnalysisPipeline::_process_chain( Event * evPtr ) {
+AnalysisPipeline::_process_chain( Event & event ) {
     int n = 0;
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it, n++ ) {
-        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor()( evPtr );
+        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor()( event );
         if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
            || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
             break;
@@ -116,17 +116,17 @@ AnalysisPipeline::_process_chain( Event * evPtr ) {
 }
 
 void
-AnalysisPipeline::_finalize_event( Event * evPtr ) {
+AnalysisPipeline::_finalize_event( Event & event ) {
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor().finalize_event( evPtr );
+        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor().finalize_event( event );
         if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
            || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
             break;
         }
     }
     for( auto & packer : _payloadPackers ) {
-        packer( evPtr );
+        packer( event );
     }
     for( auto & nullate : _invalidators ) {
         nullate();
@@ -145,9 +145,9 @@ AnalysisPipeline::_finalize_sequence(
 }
 
 int
-AnalysisPipeline::process( AnalysisPipeline::Event * evPtr ) {
-    int n = _process_chain( evPtr );
-    _finalize_event( evPtr );
+AnalysisPipeline::process( AnalysisPipeline::Event & event ) {
+    int n = _process_chain( event );
+    _finalize_event( event );
     return n;
 }
 
@@ -163,7 +163,7 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & evSeq ) {
     for( auto evPtr = evSeq.initialize_reading();
          evSeq.is_good();
          evSeq.next_event( evPtr ), ++nEventsProcessed ) {
-        this->process( evPtr );
+        this->process( *evPtr );
     }
     sV_log2( "Pipeline %p depleted the source %p with %zu events. Finalizing...\n",
             this, &evSeq, nEventsProcessed );
@@ -172,6 +172,30 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & evSeq ) {
 }
 
 namespace aux {
+
+/** Accepts subprocess result as a first argument and reference to global as a
+ * second. The usual usage implies consideration of result returned by
+ * processing event data subsection (e.g. particular detector).
+ * TODO: usage snippet (may be taken from any existing implementation)
+ * */
+bool
+iEventProcessor::consider_interim_result( ProcRes local, ProcRes & global ) {
+    bool stopCurrent = false;
+    if( !(CONTINUE_PROCESSING & local) ) {
+        stopCurrent = true;
+        global &= ~CONTINUE_PROCESSING;  // unset global 'continue' flag.
+    }
+    if( ABORT_CURRENT & local ) {
+        stopCurrent = true;
+    }
+    if( DISCRIMINATE & local ) {
+        global |= DISCRIMINATE;
+    }
+    if( !(NOT_MODIFIED & local) ) {
+        global &= ~NOT_MODIFIED;  // unset global 'not modified' flag.
+    }
+    return stopCurrent;
+}
 
 //
 // iEventSequence impl

@@ -45,8 +45,8 @@ EventPipelineStorage::~EventPipelineStorage() {
 }
 
 AnalysisPipeline::iEventProcessor::ProcRes
-EventPipelineStorage::_V_process_event( Event * eventPtr ) {
-    bool pushed = _push_event_to_queue(*eventPtr);
+EventPipelineStorage::_V_process_event( Event & event ) {
+    bool pushed = _push_event_to_queue(event);
     (void)(pushed);  // not useful further
     return sV::aux::iEventProcessor::RC_ACCOUNTED;
 }
@@ -117,8 +117,8 @@ EventMulticaster::_V_send_next_message() {
 }
 
 AnalysisPipeline::iEventProcessor::ProcRes
-EventMulticaster::_V_process_event( Event * eventPtr ) {
-    ProcRes insertionResult = aux::EventPipelineStorage::_V_process_event( eventPtr );
+EventMulticaster::_V_process_event( Event & event ) {
+    ProcRes insertionResult = aux::EventPipelineStorage::_V_process_event( event );
     sending_mutex().lock();
     if( !net::iMulticastEventSender::is_operating() ) {
         _V_send_next_message();

@@ -111,8 +111,8 @@ EventsDispatcher::_generic_collector() {
 }
 
 aux::iEventProcessor::ProcRes
-EventsDispatcher::_V_process_event( Event * uEvent ){
-    push_event( *(uEvent) );
+EventsDispatcher::_V_process_event( Event & uEvent ){
+    push_event( uEvent );
     _update_stat();
     return RC_ACCOUNTED;
 }
