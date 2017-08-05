@@ -163,6 +163,11 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & evSeq ) {
     for( auto evPtr = evSeq.initialize_reading();
          evSeq.is_good();
          evSeq.next_event( evPtr ), ++nEventsProcessed ) {
+        #ifndef NDEBUG
+        if( !evPtr ) {
+            emraise( dbgBadArchitect, "Event sequnce returned a NULL event pointer!" );
+        }
+        #endif
         this->process( *evPtr );
     }
     sV_log2( "Pipeline %p depleted the source %p with %zu events. Finalizing...\n",

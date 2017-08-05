@@ -25,10 +25,13 @@
 %ignore PACKAGE_VERSION;
 
 %include "std_string.i"
+%include "pointer.i"  // xxx?
 %include "_commonProtobuf.i"
 %include "_gooExceptionWrapper.i"
 
 %import(module="StromaV.appUtils") "appUtils.i"
+
+//%pointer_class(sV::Event*, EventPtr); //xxx?
 
 /* SWIG concats enum names with their encompassing classes. The same does
  * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG

@@ -169,11 +169,9 @@ class iEventSequence {
 public:
     typedef AnalysisPipeline::Event Event;
     typedef uint8_t Features_t;
-    enum Features
-    # ifndef SWIG
-        : Features_t
-    # endif
+    enum Features : Features_t
     {
+        plain        = 0x0,
         randomAccess = 0x1,
         identifiable = 0x2,
     };
@@ -187,8 +185,8 @@ protected:
     virtual Event * _V_initialize_reading() = 0;
     virtual void _V_finalize_reading() = 0;
     virtual void _V_print_brief_summary( std::ostream & ) const {}
-    iEventSequence( Features_t fts );
 public:
+    iEventSequence( Features_t fts );
     virtual ~iEventSequence(){}
 
     /// Returns true if source initialized and next event can be read.
@@ -281,7 +279,7 @@ public:
                                 { _V_print_brief_summary( os ); }
     virtual void finalize() const { _V_finalize(); }
     const std::string & processor_name() const { return _pName; }
-    virtual bool operator()( Event & e ) { return process_event( e ); }
+    virtual ProcRes operator()( Event & e ) { return process_event( e ); }
     friend class ::sV::AnalysisPipeline;
 };
 

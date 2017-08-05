@@ -29,6 +29,14 @@
 # include "app/py_session.hpp"
 %}
 
+#ifdef SWIGPYTHON
+
+// NOTE: the Swig::DirectorException block is usually unused, since we
+// supersede default director exception with goo::Exception in director:except.
+// It is possible, however, that some external code may still throw this C++
+// exception. In this case, the Swig::DirectorException block ma help to
+// identify some additional details in future. Even now it is much better to
+// get the Python exception instead of unhandled C++ exception.
 %exception {
     try {
         $action
@@ -41,6 +49,9 @@
             e.dump( std::cerr );
         }
         return NULL;
+    } catch( Swig::DirectorException & e ) {
+        PyErr_SetString( PyExc_RuntimeError, e.what() );
+        return NULL;
     }
     // For other type of exceptions one may add:
     // catch( na64ee::Exception & e ) {
@@ -48,5 +59,22 @@
     //     return NULL;
     // }
 }
+
+%feature("director:except") {
+    if( $error != NULL ) {
+        PyObject * pyErrPtr = PyErr_Occurred();
+        if( !pyErrPtr ) {
+            emraise( thirdParty, "SWIG director common error. "
+                " Target method: $symname()." );
+        }
+        // TODO: think about the way to attach the Python exception to
+        // goo::Exception. For now, we just dump it with PyErr_PrintEx():
+        PyErr_PrintEx(1);
+        emraise( thirdParty, "SWIG director detects error in python code."
+                " Target method: \"$symname\"." );
+    }
+}
+
+#endif  //ifdef SWIGPYTHON
 
 // vim: ft=swig

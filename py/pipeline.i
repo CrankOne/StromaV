@@ -25,7 +25,9 @@
 %ignore PACKAGE_VERSION;
 
 %import "std_string.i"
+%import "stdint.i"
 %include "_gooExceptionWrapper.i"
+%include "pointer.i"
 
 %import(module="StromaV.sVEvents") "sVEvents.i"
 
@@ -38,9 +40,32 @@
 # define final
 # endif  // SWIG
 
+%inline %{
+void
+set_event_ptr(sV::events::Event ** dest, sV::events::Event * eventPtr) {
+   *dest = eventPtr;
+}
+
+sV::events::Event *
+dereference_event_ptr_ref(sV::events::Event ** v) {
+   return *v;
+}
+%}
+
 %import "sV_config.h"
 
 %feature("director") sV::aux::iEventProcessor;
+%feature("director") sV::aux::iEventSequence;
+
+//%rename(__call__) sV::AnalysisPipeline::process;
+
+//%typemap(in) sV::Event *& (sV::Event * ppEvent = NULL) %{
+//$1 = &ppEvent;
+//%}
+//
+//%typemap(argout) sV::Event *& {
+//*(sV::Event **)&arg = *$1;
+//}
 
 %{
 

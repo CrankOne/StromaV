@@ -25,28 +25,90 @@ iEventSequence, iEventProcessor and the event wrappers.
 """
 
 from __future__ import print_function
-import unittest
-from StromaV.pipeline import AnalysisPipeline, iEventProcessor, iEventSequence
+import unittest, pickle
+from StromaV.pipeline import AnalysisPipeline, iEventProcessor, iEventSequence, dereference_event_ptr_ref
+from StromaV.sVEvents import Event
+
+testingDataSeq = [
+    #  No, some txt,  do mod, abort#1
+      [ 1, "first",   True  , False]
+    , [ 2, "second",  True  , False]
+    , [ 3, "third",   True  , False]
+    , [ 4, "fourth",  False , False]
+    , [ 5, "fifth",   True  , True ]
+    , [ 6, "sixth",   False , False]
+    , [ 7, "seventh", False , True ]
+    , [ 8, "eithth",  True  , False]
+    , [ 9, "nineth",  True  , False]
+]
 
 class MockEventSequence(iEventSequence):
     """
     This class implements a somewhat basic event source class stub that
     generates testing data.
     """
+    def pack_data(self, event):
+        event.set_blob( pickle.dumps(testingDataSeq[self.idx]) )
+        self.idx += 1
+
+    def _V_initialize_reading(self):
+        """
+        Overloaded function called once the reading process begins.
+        """
+        self.reentrantEvent = Event()
+        self.idx = 0
+        self.pack_data( self.reentrantEvent )
+        return self.reentrantEvent
+
+    def _V_is_good(self):
+        return self.idx < len(testingDataSeq)
+
+    def _V_next_event(self, eventRef):
+        evPtr = dereference_event_ptr_ref(eventRef)
+        # NOTE, strange:
+        #print( str(evPtr), str(self.reentrantEvent) )
+        #self.ut.assertEqual( int(evPtr), int(self.reentrantEvent) )
+        self.pack_data( evPtr )
+
+    def _V_finalize_reading(self):
+        pass
+
     def __init__(self, ut):
         self.ut = ut
-        super(MockEventSequence, self).__init__(self)
+        self.reentrantEvent = None
+        super(MockEventSequence, self).__init__( 0 )
 
 class MockEventProcessor1(iEventProcessor):
     """
     This class implements a basic event processor class stub that
-    receives a testing events data from MockEventSequence instance and
+    receives a testing events data f]om MockEventSequence instance and
     tries to validate it. It also selectively discriminates some events to
-    check basic pipeline logic.
+    check basic pipeline logic.]
     """
     def __init__(self, ut):
         self.ut = ut
-        super(MockEventProcessor1, self).__init__(self)
+        self.idx = 1  # will be compared with index passing through the processor
+        super(MockEventProcessor1, self).__init__('mock-1')
+
+    def _V_process_event(self, event):
+        ret = iEventProcessor.RC_ACCOUNTED
+        # This way one may check to which type (within the "oneof" protobuf
+        # struct) the event is belonging:
+        self.ut.assertEqual( event.uevent_case(), Event.kBlob )
+        # ^^^ i.e., if this event will bring the simulated/experimental payload
+        # this as]ertion will fall.
+        entry = pickle.loads( event.blob() )
+        self.ut.assertEqual( self.idx, entry[0] )
+        if entry[2]:
+            entry.append({'extra-data' : self.idx})
+            event.set_blob( pickle.dumps(entry) )
+            ret = iEventProcessor.RC_CORRECTED
+        if entry[3]:
+            ret |= iEventProcessor.ABORT_CURRENT
+        if entry[0] == 8:
+            ret &= ~iEventProcessor.CONTINUE_PROCESSING
+        self.idx += 1
+        return ret
 
 class MockEventProcessor2(iEventProcessor):
     """
@@ -54,9 +116,18 @@ class MockEventProcessor2(iEventProcessor):
     receives a testing events data from MockEventProcessor2, with all the
     transformations applied by MockEventProcessor1.
     """
-    def __init__(self):
+    def __init__(self, ut):
         self.ut = ut
-        super(MockEventProcessor2, self).__init__(self)
+        super(MockEventProcessor2, self).__init__('mock-2')
+
+    def _V_process_event(self, event):
+        entry = pickle.loads( event.blob() )
+        print( entry )
+        if entry[2]:
+            self.ut.assertEqual( entry[0], entry[4]['extra-data'] )
+        self.ut.assertFalse( entry[3] )
+        self.ut.assertTrue( entry[0] < 8 )
+        return iEventProcessor.RC_ACCOUNTED
 
 #
 # Test Cases
@@ -84,4 +155,7 @@ class TestMockingPipeline(unittest.TestCase):
 
     def test_dataflow_logic(self):
         # generate few events and transmit it via the pipeline
-        self.pipeline( self.source )
+        self.pipeline.process( self.source )
+
+if __name__ == "__main__":
+    unittest.main()
