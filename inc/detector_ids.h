@@ -44,6 +44,11 @@
 
 # include <stdio.h>
 
+# ifdef SWIG
+# define sV_FUNCTION_WEAK
+# else
+# define sV_FUNCTION_WEAK __attribute__(( weak ))
+# endif
 /**\brief Detector family identifier hashable type. */
 typedef UShort  AFR_DetFamID;
 /**\brief Detector major section identifier type. Must have enough length to
@@ -154,23 +159,23 @@ void __AFR_decode_minor_to_indexes_dft( AFR_DetMnNo minorNo,
 
 /** Returns detector major number referenced with given string expression. */
 AFR_DetMjNo AFR_detector_major_by_name( const char * )
-    __attribute__(( weak ));
+    sV_FUNCTION_WEAK;
 
 /** Returns family identifier referenced with given string expression. */
 AFR_DetFamID AFR_family_id_by_name( const char * )
-    __attribute__(( weak ));
+    sV_FUNCTION_WEAK;
 
 /** Returns encoded major detector descriptor referenced with given family
  * number and multivariate indexes instance. Supports second parameter to be
  * NULL --- then returns major with only family number encoded. */
 AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarIndex * )
-    __attribute__(( weak ));
+    sV_FUNCTION_WEAK;
 
 /** Writes minor multivariate indexes decoded from given detector descriptor.
  * Note, that full signature is required since index encoding may vary
  * depending of particular detector family. */
 void AFR_decode_minor_to_indexes( AFR_DetSignature, struct sV_DSuL_MVarIndex * )
-    __attribute__(( weak ));
+    sV_FUNCTION_WEAK;
 
 # ifdef DSuL
 /** Produces new selector instance from given string performing lexical

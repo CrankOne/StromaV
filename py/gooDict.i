@@ -594,7 +594,8 @@ def __setattr__(self, pyStrKey, pyVal):
 #error "PYTHON_BINDINGS is not defined. Unable to build goo's dicts py-wrapper module."
 #endif
 
-
+// TODO Crutch
+#include "app/cvalidators.hpp"
 //
 // Parameter insertion helper macros and routine {{{
 

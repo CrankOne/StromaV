@@ -70,6 +70,19 @@ iDetectorIndex::name( AFR_DetMjNo n ) const {
 }
 
 }  // namespace aux
+
+# ifdef DSuL
+std::shared_ptr<DetectorSelector>
+DetectorSelector::compile_new( const char * expression ) {
+    _TODO_  // TODO
+}
+
+bool
+DetectorSelector::matches( const AFR_DetSignature ) const {
+    _TODO_  // TODO
+}
+# endif
+
 }  // namespace sV
 
 # if 1
