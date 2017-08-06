@@ -22,6 +22,16 @@
 """
 This testing unit checks the pipeline classes basics: the AnalysisPipeline,
 iEventSequence, iEventProcessor and the event wrappers.
+
+Subclass of iEventSequence will use Event::blob field to pack pickled python
+data structure that is further will be unpickled by the mock iEventProcessor
+subclasses to check the basic logic of the pipeline:
+    1. All the entries has to be transmitted by the pipeline in order.
+    2. Modifications made by mock1 has to be observable in mock2.
+    3. The pipeline should invoke the mock2 processor if no ABORT_CURRENT flag
+    was set in return result.
+    4. The pipeline should stop processing if CONTINUE_PROCESSING flag was not
+    set in return result at least once.
 """
 
 from __future__ import print_function
@@ -122,7 +132,6 @@ class MockEventProcessor2(iEventProcessor):
 
     def _V_process_event(self, event):
         entry = pickle.loads( event.blob() )
-        print( entry )
         if entry[2]:
             self.ut.assertEqual( entry[0], entry[4]['extra-data'] )
         self.ut.assertFalse( entry[3] )

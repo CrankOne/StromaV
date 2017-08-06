@@ -323,7 +323,7 @@ class TestG4ThreeVectorWrap(unittest.TestCase):
 
 #
 ##
-## Integration of parameter type declared in python into C++
+## Integration of parameter type declared in python into C++ (issue #164)
 #from StromaV.gooDict import PyParameter
 #
 #class SomeCustomType(object):
@@ -358,4 +358,6 @@ class TestG4ThreeVectorWrap(unittest.TestCase):
 #        self.assertTrue(type(self.dct.some_typed) is SomeCustomType)
 #        # TODO: operate with bindings here
 
+if __name__ == "__main__":
+    unittest.main()
 

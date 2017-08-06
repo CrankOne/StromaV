@@ -97,4 +97,13 @@ using std::string;
 
 %}
 
+%ignore google::protobuf::internal::AnyMetadata::AnyMetadata;
+%nodefaultctor google::protobuf::internal::AnyMetadata;
+%include "google/protobuf/any.h"
+
+%ignore google::protobuf::protobuf_google_2fprotobuf_2fany_2eproto::TableStruct;
+%ignore google::protobuf::protobuf_google_2fprotobuf_2fany_2eproto::AddDescriptors;
+%ignore google::protobuf::protobuf_google_2fprotobuf_2fany_2eproto::InitDefaults;
+%include "google/protobuf/any.pb.h"
+
 // vim: ft=swig
