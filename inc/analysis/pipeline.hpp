@@ -353,13 +353,13 @@ protected:
     }
     /// Helper method registering pack/unpack caching functions. Invoked by
     /// pipeline
-    virtual void register_hooks( AnalysisPipeline * ppl ) final {
+    virtual void register_hooks( AnalysisPipeline * ppl ) /*final*/ {
         assert( pack_payload );
         ppl->register_packing_functions( nullate_cache,
                                          pack_payload );
     }
     /// Returns RTTI type info for payload type.
-    virtual const std::type_info & _V_payload_type_info() const final {
+    virtual const std::type_info & _V_payload_type_info() const /*final*/ {
         return typeid(PayloadT); }
     /// One has to implement all the payload processing here.
     virtual ProcRes _V_process_event_payload( PayloadT & ) = 0;
