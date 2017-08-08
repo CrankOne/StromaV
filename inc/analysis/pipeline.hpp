@@ -114,6 +114,7 @@ public:
         bool payload_traits_available() const { return !!_payloadTraits; }
         PayloadTraits & payload_traits();
         Handler( iEventProcessor & processor_ );
+        Handler( const Handler & );
         iEventProcessor & processor() { return _processor; }
         const iEventProcessor & processor() const { return _processor; }
         ~Handler();
