@@ -74,7 +74,7 @@ class TestDictionaryBasics(unittest.TestCase):
         self.assertTrue( self.dct.int_parameter == 12 )
         self.assertTrue( self.dct.string_parameter == stringToBeChecked )
         self.assertTrue( self.dct.c )
-        self.assertTrue( 
+        self.assertTrue(
             type( self.dct.tuple_parameter ) is tuple and
             0 == len(self.dct.tuple_parameter) )
 
@@ -149,7 +149,7 @@ class TestDictionaryAdvanced( TestDictionaryBasics ):
         self.assertRaisesRegexp( GooException,
                 "has not been set while its value required",
                 getattr, self.dct, 'int-parameter-to-set' )
-        # setting integer parameter 
+        # setting integer parameter
         self.dct.int_parameter_to_set = intValueToBeChecked
         self.assertEqual( self.dct.int_parameter_to_set, intValueToBeChecked )
         self.dct.int_parameter_to_set = 0

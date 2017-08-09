@@ -1,4 +1,4 @@
-%module detector_ids
+%module detectorIds
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
@@ -25,6 +25,7 @@
 
 %import "std_string.i"
 %include "_gooExceptionWrapper.i"
+//%import "goo_types.h"
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -37,6 +38,7 @@
 
 %{
 
+# include "detector_ids.h"
 # include "detector_ids.hpp"
 
 %}

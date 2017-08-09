@@ -24,8 +24,8 @@ include(${Goo_CMAKE_MODULES_DIR}/PyExtensions.cmake)
 set( SWIG_IFACES_DIR share/StromaV/swig-interfaces )
 
 # Here we define py modules which should be created in any case
-list( APPEND StromaV_PYMODULES detector_ids.i )
-install( FILES detector_ids.i DESTINATION ${SWIG_IFACES_DIR}/sV )
+list( APPEND StromaV_PYMODULES detectorIds.i )
+install( FILES detectorIds.i DESTINATION ${SWIG_IFACES_DIR}/sV )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
     list( APPEND StromaV_PYMODULES sVEvents.i appUtils.i pipeline.i gooDict.i

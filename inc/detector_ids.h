@@ -50,19 +50,19 @@
 # define sV_FUNCTION_WEAK __attribute__(( weak ))
 # endif
 /**\brief Detector family identifier hashable type. */
-typedef UShort  AFR_DetFamID;
+typedef unsigned short  AFR_DetFamID;
 /**\brief Detector major section identifier type. Must have enough length to
  * contain all the generic detectors numbers. */
-typedef UShort  AFR_DetMjNo;
+typedef unsigned short  AFR_DetMjNo;
 /**\brief Detector minor section identifier type. Indexes particular detector,
  * instance or cell inside the detector class. */
-typedef UShort  AFR_DetMnNo;
+typedef unsigned short  AFR_DetMnNo;
 /**\brief Detector instance index for major identifier. Usually a plain number,
  * but it is possible to use multivariate encoded index.*/
-typedef UShort AFR_DetMjIndex;
+typedef unsigned short AFR_DetMjIndex;
 /**\brief Detector entire number containing hashable type. Have to provide
  * enough space to contain concatenated both the minor and the major numbers. */
-typedef UInt    AFR_DetSignature;
+typedef unsigned int   AFR_DetSignature;
 
 /**\union AFR_UniqueDetectorID
  * \brief Unites unque detector identifier in terms of StromaV library.
