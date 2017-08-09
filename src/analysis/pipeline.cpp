@@ -36,6 +36,15 @@ AnalysisPipeline::Handler::Handler( iEventProcessor & processor_ ) :
     }
 }
 
+AnalysisPipeline::Handler::Handler( const Handler & o ) :
+            _processor(o._processor),
+            _payloadTraits(nullptr) {
+    bzero( &_stats, sizeof(Statistics) );
+    if( o._payloadTraits ) {
+        _payloadTraits = new PayloadTraits( *(o._payloadTraits) );
+    }
+}
+
 AnalysisPipeline::Handler::PayloadTraits &
 AnalysisPipeline::Handler::payload_traits() {
     if( ! payload_traits_available() ) {
