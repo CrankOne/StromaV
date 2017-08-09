@@ -421,6 +421,12 @@ private:
     }
     /// Will be called if current event has payload of required type.
     static void _unpack_payload( Event & uEvent ) {
+        // # ifndef NDEBUG  // TODO: uncomment?
+        if( Parent::_reentrantPayloadPtr ) {
+            emraise(badArchitect, "Event payload (\"experimental\") caching logic "
+                "violated: substitutive unpacking." );
+        }
+        // # endif  // NDEBUG
         Parent::_reentrantPayloadPtr = new PayloadT();
         uEvent.mutable_experimental()
                 ->mutable_payload()
@@ -428,6 +434,13 @@ private:
     }
     /// Will be called at the end of event processing pipeline.
     static void _pack_payload( Event & uEvent ) {
+        // # ifndef NDEBUG  // TODO: uncomment?
+        if( !Parent::_reentrantPayloadPtr ) {
+            sV_logw( "Event payload (\"experimental\") caching logic "
+                "violated: redundant packing routine invokation.\n" );
+            return;
+        }
+        // # endif // NDEBUG
         uEvent.mutable_experimental()
                  ->mutable_payload()
                  ->PackFrom(*Parent::_reentrantPayloadPtr);

@@ -63,6 +63,7 @@ const uint8_t RootApplication::enableCommonFile     = 0x1,
 RootApplication::RootApplication(
                         AbstractApplication::Config * c ) :
             AbstractApplication(c),
+            _ROOTAppFeatures(0x0),
             _tApp(nullptr),
             _t_argc(0),
             _t_argv(nullptr) {
