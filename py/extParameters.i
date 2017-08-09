@@ -26,7 +26,8 @@
 %include "_gooExceptionWrapper.i"
 
 %import(module="StromaV.appUtils") "appUtils.i"
-%import(module="StromaV.gooVCopy") "gooVCopy.i"
+//%import(module="StromaV.gooVCopy") "gooVCopy.i"
+%include "gooVCopy.i"
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
