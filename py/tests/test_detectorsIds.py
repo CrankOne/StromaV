@@ -29,8 +29,8 @@ from __future__ import print_function
 import unittest
 
 # TODO: move to afNA64 and delete two lines velow:
-# import StromaV.appUtils
-# app = StromaV.appUtils.PythonSession.init_from_string( 'pyApp', 'Some python application', '' )
+import StromaV.appUtils
+app = StromaV.appUtils.PythonSession.init_from_string( 'pyApp', 'Some python application', '' )
 
 import afNA64.na64DetectorIds as dids
 
@@ -48,6 +48,23 @@ class TestDetTables(unittest.TestCase):
         self.assertEqual( detFamName, 'ECAL')
         # Test results from detector_major_by_name()
         self.assertEqual( mjNo, dids.EnumScope.d_ECAL0)
-
+    """
+    detector_complementary_Y_id() returns complementary major number of the
+    detectors. E.g. There are two chips in each MM detector (MM01X, MM01Y).
+    Here we check these functions.
+    10.08.17 - detector_complementary_Y_id(mjNoY) - meaningless, but does not
+    throw any assertion.
+    """
+    def test_compose_det(self):
+        mjNoY = dids.EnumScope.d_MM01Y
+        mjNoX = dids.EnumScope.d_MM01X
+        self.assertEqual( mjNoY, dids. detector_complementary_Y_id(mjNoX) )
+        self.assertEqual( mjNoX, dids. detector_complementary_X_id(mjNoY) )
+    """
+    Simple check for detector_subgroup_num().
+    """
+    def test_subgroup_num(self):
+        subN = detector_subgroup_num( dids.EnumScope.d_HCAL3 )
+        self.assertEqual( subN, 3 )
 
 
