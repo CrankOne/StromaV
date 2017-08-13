@@ -49,6 +49,7 @@ template<typename EventClassT, typename PayloadT>
 class iEventPayloadProcessorBase;
 }  // namespace aux
 
+
 /**@class AnalysisPipeline
  * @brief Representation for data analysis pipeline.
  *
@@ -119,7 +120,21 @@ public:
         const iEventProcessor & processor() const { return _processor; }
         ~Handler();
     };
+
+    /// Type alias referencing the stack of processors.
     typedef std::list<Handler> Chain;
+
+    /// The evaluation strategy indicators steering the event processing from
+    /// a set of consideration functions. Has to be returned by
+    /// iArbiter::consider_rc().
+    enum EvalStatus {
+        /// Invoke next handler.
+        NEXT = 0x0,
+        /// Abort current event processing.
+        ABORT_CURRENT,
+        /// 
+        ABORT_PROCESSING,
+    };
 protected:
     /// List of handlers.
     Chain _processorsChain;
@@ -229,6 +244,9 @@ public:
 class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
+
+    typedef uint8_t ProcRes;
+
     /// Possible result flags and composite shortcuts that may be returned by
     /// procedure. Note, that flags itself may be counter-intuitive, so better
     /// stand for shortcuts (the have RC_ prefix).
@@ -255,10 +273,6 @@ public:
         /// Non-invasive processor encountered invalid event that shouldn't be analysed further
         , RC_ABORT_DISCRIMINATE             = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
     };
-    typedef int8_t ProcRes;
-
-    /// Returns true if current processing has to be aborted.
-    static bool consider_interim_result( ProcRes sub, ProcRes & current );
 private:
     const std::string _pName;
 protected:
@@ -302,6 +316,35 @@ public:
 
     friend class ::sV::AnalysisPipeline;
 };  // class AnalysisPipeline::iEventPayloadProcessorBase
+
+
+/**@class iArbiter
+ * @brief Makes decision, whether the current event has to be omitted and
+ * whether the pipeline processing has to be interrupted.
+ *
+ * This abstract base has implement a strategy of making decisions during the
+ * event processing in a pipeline. The decisions are based on returned results
+ * of the latest handler evaluations, statistics, physical conditions and so
+ * on.
+ * */
+class iArbiter {
+public:
+    /// Type alias for code returning from analysis subroutines.
+    typedef iEventProcessor::ProcRes ProcRes;
+protected:
+    /// The major interface method making an actual decision. Has to return,
+    /// whether the current event processing has to be terminated. May return
+    /// an overall termination code as well.
+    virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
+public:
+    /// Accepts subprocess result as a first argument and reference to global as a
+    /// second. The usual usage implies consideration of result returned by
+    /// processing event data subsection (e.g. particular detector).
+    /// TODO: usage snippet (may be taken from any existing implementation)
+    AnalysisPipeline::EvalStatus consider_rc( ProcRes sub, ProcRes & current )
+                { return _V_consider_rc(sub, current); }
+};  // class iEvaluationArbiter
+
 
 /**@class AnalysisApplication::iTEventPayloadProcessor
  *
@@ -520,6 +563,15 @@ protected:
         }
     }
 };  // class iExperimentalEventPayloadProcessor
+
+/// A simple arbitration class.
+class ConservativeArbiter : public iArbiter {
+protected:
+    /// The global and local abort flags will considered in a natural way. The
+    /// discrimination flag will not cause immediate stop.
+    virtual AnalysisPipeline::EvalStatus _V_consider_rc(
+                ProcRes sub, ProcRes & current ) override;
+};  // ConservativeArbiter
 
 }  // namespace aux
 }  // namespace sV
