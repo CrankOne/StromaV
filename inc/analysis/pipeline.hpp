@@ -424,7 +424,7 @@ private:
     static void _unpack_payload( Event & uEvent ) {
         // # ifndef NDEBUG  // TODO: uncomment?
         if( Parent::_reentrantPayloadPtr ) {
-            emraise(badArchitect, "Event payload (\"experimental\") caching logic "
+            emraise(dbgBadArchitect, "Event payload (\"experimental\") caching logic "
                 "violated: substitutive unpacking." );
         }
         // # endif  // NDEBUG
@@ -437,7 +437,7 @@ private:
     static void _pack_payload( Event & uEvent ) {
         // # ifndef NDEBUG  // TODO: uncomment?
         if( !Parent::_reentrantPayloadPtr ) {
-            sV_logw( "Event payload (\"experimental\") caching logic "
+            sV_logw( "(debug) event payload (\"experimental\") caching logic "
                 "violated: redundant packing routine invokation.\n" );
             return;
         }
