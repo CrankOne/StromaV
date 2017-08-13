@@ -187,28 +187,23 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & evSeq ) {
 
 namespace aux {
 
-/** Accepts subprocess result as a first argument and reference to global as a
- * second. The usual usage implies consideration of result returned by
- * processing event data subsection (e.g. particular detector).
- * TODO: usage snippet (may be taken from any existing implementation)
- * */
-bool
-iEventProcessor::consider_interim_result( ProcRes local, ProcRes & global ) {
-    bool stopCurrent = false;
-    if( !(CONTINUE_PROCESSING & local) ) {
-        stopCurrent = true;
-        global &= ~CONTINUE_PROCESSING;  // unset global 'continue' flag.
+AnalysisPipeline::EvalStatus
+ConservativeArbiter::_V_consider_rc( ProcRes local, ProcRes & global ) {
+    AnalysisPipeline::EvalStatus ret = AnalysisPipeline::CONTINUE;
+    if( !(iEventProcessor::CONTINUE_PROCESSING & local) ) {
+        ret = AnalysisPipeline::ABORT_PROCESSING;
+        global &= ~iEventProcessor::CONTINUE_PROCESSING;  // unset global 'continue' flag.
     }
-    if( ABORT_CURRENT & local ) {
-        stopCurrent = true;
+    if( iEventProcessor::ABORT_CURRENT & local ) {
+        ret = AnalysisPipeline::ABORT_CURRENT;
     }
-    if( DISCRIMINATE & local ) {
-        global |= DISCRIMINATE;
+    if( iEventProcessor::DISCRIMINATE & local ) {
+        global |= iEventProcessor::DISCRIMINATE;
     }
-    if( !(NOT_MODIFIED & local) ) {
-        global &= ~NOT_MODIFIED;  // unset global 'not modified' flag.
+    if( !(iEventProcessor::NOT_MODIFIED & local) ) {
+        global &= ~iEventProcessor::NOT_MODIFIED;  // unset global 'not modified' flag.
     }
-    return stopCurrent;
+    return ret;
 }
 
 //
