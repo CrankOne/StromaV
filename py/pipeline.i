@@ -76,18 +76,20 @@ dereference_event_ptr_ref(sV::events::Event ** v) {
 "defined. Unable to build pipeline py-wrapper module."
 #endif
 
-#include "analysis/pipeline.hpp"
 #if !defined( RPC_PROTOCOLS ) || !defined( ANALYSIS_ROUTINES )
 #error "Either RPC_PROTOCOLS or ANALYSIS_ROUTINES not defined. Unable to " \
 "build analysis module."
 #endif
 
+#include "analysis/pipeline.hpp"
+#include "analysis/pipe_fj.hpp"
 #include "ctrs_dict.hpp"
 
 %}
 
 %import "sV_config.h"
 %include "analysis/pipeline.hpp"
+%include "analysis/pipe_fj.hpp"
 %import "ctrs_dict.hpp"
 
 // vim: ft=swig

@@ -42,6 +42,8 @@ namespace aux {
 class iEventSequence;
 /// Event processor reader object representation.
 class iEventProcessor;
+/// Evaluation strategy class.
+class iArbiter;
 /// Processor stub helper for concrete event processors.
 template<typename EventClassT, typename PayloadT>
             class iTEventPayloadProcessor;
@@ -110,15 +112,21 @@ public:
             PayloadTraits( const std::type_info & TI_ ) :
                         TI(TI_), forcePack(false) {}
         } * _payloadTraits;
+        aux::iEventSequence * _junction;  // TODO: nullate, initialize on set
     public:
-        const Statistics & stats() { return _stats; }
-        bool payload_traits_available() const { return !!_payloadTraits; }
-        PayloadTraits & payload_traits();
         Handler( iEventProcessor & processor_ );
         Handler( const Handler & );
+        ~Handler();
+
+        bool payload_traits_available() const { return !!_payloadTraits; }
+        PayloadTraits & payload_traits();
+
+        bool junction_available() const { return !!_junction; }
+        aux::iEventSequence * junction_ptr();
+
         iEventProcessor & processor() { return _processor; }
         const iEventProcessor & processor() const { return _processor; }
-        ~Handler();
+        const Statistics & stats() { return _stats; }
     };
 
     /// Type alias referencing the stack of processors.
@@ -128,12 +136,18 @@ public:
     /// a set of consideration functions. Has to be returned by
     /// iArbiter::consider_rc().
     enum EvalStatus {
-        /// Invoke next handler.
-        NEXT = 0x0,
-        /// Abort current event processing.
-        ABORT_CURRENT,
-        /// 
-        ABORT_PROCESSING,
+        /// Indicates that processing has to be continued in a usual manner.
+        Continue,
+        /// Indicates that processing of current event has to be terminated.
+        /// The current event won't be propagated through subsequent
+        /// processors.
+        AbortCurrent,
+        /// Indicates that overall processing has to be terminated causing
+        /// gentle termination of all processing handlers.
+        AbortProcessing,
+        /// Indicates that junction has been finalized and causes pull from
+        /// sources stack.
+        JunctionFinalized,
     };
 protected:
     /// List of handlers.
@@ -145,6 +159,9 @@ private:
     size_t _nEventsAcquired;
     /// ASCII_Entry-related internal function.
     void _update_stat();
+
+    bool defaultArbiter;
+    aux::iArbiter * _arbiter;
 protected:
     void register_packing_functions( void(*invalidator)(),
                                      void(*packer)(Event&) );
@@ -169,6 +186,13 @@ public:
 
     /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
     virtual int process( iEventSequence & );
+
+    /// Returns reference to arbiter instance.
+    aux::iArbiter & arbiter();
+    /// Returns reference to arbiter instance (const).
+    const aux::iArbiter & arbiter() const;
+    /// Sets external arbiter instance.
+    void arbiter( aux::iArbiter * );
 
     template<typename EventClassT, typename PayloadT>
     friend class aux::iTEventPayloadProcessor;
@@ -254,7 +278,8 @@ public:
         CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupt
         ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupt
         DISCRIMINATE        = 0x4,  ///< processing continues, but the current event/payload has to be considered as discriminated
-        NOT_MODIFIED        = 0x10  ///< the event or data payload wasn't modified
+        NOT_MODIFIED        = 0x8,  ///< the event or data payload wasn't modified
+        JUNCTION_DONE       = 0x10  ///< returned ONLY by f/j handlers. Has special meaning.
         // shortcuts:
         /// For invasive processor task (e.g. reconstruction, applying calibration)
         , RC_CORRECTED                      = CONTINUE_PROCESSING
@@ -344,7 +369,6 @@ public:
     AnalysisPipeline::EvalStatus consider_rc( ProcRes sub, ProcRes & current )
                 { return _V_consider_rc(sub, current); }
 };  // class iEvaluationArbiter
-
 
 /**@class AnalysisApplication::iTEventPayloadProcessor
  *
