@@ -79,12 +79,13 @@ AnalysisPipeline::Handler::junction_ptr() {
 AnalysisPipeline::AnalysisPipeline() :
             ASCII_Entry( goo::aux::iApp::exists() ?
                         &goo::app<AbstractApplication>() : nullptr, 1 ),
-                _nEventsAcquired(0) {}
+                _defaultArbiter(true),
+                _arbiter(new aux::ConservativeArbiter()) {
+}
 
 
 void
 AnalysisPipeline::_update_stat() {
-    ++_nEventsAcquired;
     // ...
 }
 
@@ -247,6 +248,25 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
     }
     _finalize_sequence( mainEvSeq );
     return 0;
+}
+
+aux::iArbiter &
+AnalysisPipeline::arbiter() {
+    return *_arbiter;
+}
+
+const aux::iArbiter &
+AnalysisPipeline::arbiter() const {
+    return *_arbiter;
+}
+
+void
+AnalysisPipeline::arbiter( aux::iArbiter * aPtr ) {
+    if( _defaultArbiter ) {
+        delete _arbiter;
+        _defaultArbiter = false;
+    }
+    _arbiter = aPtr;
 }
 
 namespace aux {

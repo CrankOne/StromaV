@@ -29,10 +29,6 @@
 %include "_commonProtobuf.i"
 %include "_gooExceptionWrapper.i"
 
-%import(module="StromaV.appUtils") "appUtils.i"
-
-//%pointer_class(sV::Event*, EventPtr); //xxx?
-
 /* SWIG concats enum names with their encompassing classes. The same does
  * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG
  * to process protoc output causes these identifiers to collide. Here we
@@ -44,6 +40,26 @@
 %ignore sV::events::protobuf_AddDesc_event_2eproto_impl;
 %ignore sV::events::protobuf_AssignDesc_event_2eproto;
 %ignore sV::events::protobuf_ShutdownFile_event_2eproto;
+
+//%ignore "sV::events::*::operator=";  // doesn't work
+%ignore sV::events::AssemblySummary::operator=;
+%ignore sV::events::SimulatedEvent::operator=;
+%ignore sV::events::ExperimentalEvent::operator=;
+%ignore sV::events::DetectorSummary::operator=;
+%ignore sV::events::Displayable::operator=;
+%ignore sV::events::Event::operator=;
+%ignore sV::events::MulticastMessage_SenderStatusMessage::operator=;
+%ignore sV::events::MulticastMessage::operator=;
+%ignore sV::events::BucketInfoEntry::operator=;
+%ignore sV::events::BucketInfo::operator=;
+%ignore sV::events::CommonBucketDescriptor::operator=;
+%ignore sV::events::Bucket::operator=;
+%ignore sV::events::ZLib_Parameters::operator=;
+%ignore sV::events::BZip2_Parameters::operator=;
+%ignore sV::events::LZMA_Parameters::operator=;
+%ignore sV::events::CompressedData::operator=;
+%ignore sV::events::DeflatedBucket::operator=;
+%ignore sV::events::TestingMessage::operator=;
 
 %include "event.pb.h"
 

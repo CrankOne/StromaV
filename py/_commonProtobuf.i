@@ -40,6 +40,8 @@
  * So here we have to manually defining these macro to pass by. */
 #define LIBPROTOBUF_EXPORT
 
+%ignore google::protobuf::Any::operator=;
+
 %include "google/protobuf/stubs/common.h"
 
 /* NOTE: not sure, whether the 3.1 is exact version number. At least for 3.1
@@ -56,6 +58,9 @@
 %ignore google::protobuf::internal::MergePartialFromCodedStream;
 %ignore google::protobuf::internal::TypeImplementsMergeBehaviorProbeForMergeFrom;
 %include "google/protobuf/generated_message_util.h"
+%ignore google::protobuf::internal::AuxillaryParseTableField::enum_aux;
+%ignore google::protobuf::internal::AuxillaryParseTableField::message_aux;
+%ignore google::protobuf::internal::AuxillaryParseTableField::string_aux;
 %include "google/protobuf/generated_message_table_driven.h"
 # endif  // GOOGLE_PROTOBUF_VERSION > 3001000
 

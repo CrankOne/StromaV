@@ -156,11 +156,10 @@ private:
     std::set<void (*)()> _invalidators;
     std::set<void (*)(Event&)> _payloadPackers;
 
-    size_t _nEventsAcquired;
     /// ASCII_Entry-related internal function.
     void _update_stat();
 
-    bool defaultArbiter;
+    bool _defaultArbiter;
     aux::iArbiter * _arbiter;
 protected:
     void register_packing_functions( void(*invalidator)(),
@@ -273,10 +272,18 @@ public:
 
     /// Possible result flags and composite shortcuts that may be returned by
     /// procedure. Note, that flags itself may be counter-intuitive, so better
-    /// stand for shortcuts (the have RC_ prefix).
+    /// stand for shortcuts (the have RC_ prefix). Priority of treatment:
+    /// 1. Global abort --- stop processing, gently finalize all the processing
+    /// handlers (flush buffers, build plots, close files, etc).
+    /// 2. Event abort  --- no further treatment of current shall be performed.
+    /// No modification have to be considered.
+    /// 3. Modification --- shall propagate modified flag to caller.
+    /// 4. Discriminate --- shall pull out the event/sub-event/sample. Arbiter,
+    /// depending of its modification, may keep process this event.
+    /// Note: all modification will be refused upon abort/discrimination.
     enum ProcessingResultFlags : int8_t {
-        CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupt
-        ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupt
+        CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupted
+        ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupted
         DISCRIMINATE        = 0x4,  ///< processing continues, but the current event/payload has to be considered as discriminated
         NOT_MODIFIED        = 0x8,  ///< the event or data payload wasn't modified
         JUNCTION_DONE       = 0x10  ///< returned ONLY by f/j handlers. Has special meaning.
@@ -357,9 +364,8 @@ public:
     /// Type alias for code returning from analysis subroutines.
     typedef iEventProcessor::ProcRes ProcRes;
 protected:
-    /// The major interface method making an actual decision. Has to return,
-    /// whether the current event processing has to be terminated. May return
-    /// an overall termination code as well.
+    /// The major interface method making an actual decision. Has to return one
+    /// of the enumerated values of EvalStatus.
     virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
 public:
     /// Accepts subprocess result as a first argument and reference to global as a
@@ -368,6 +374,7 @@ public:
     /// TODO: usage snippet (may be taken from any existing implementation)
     AnalysisPipeline::EvalStatus consider_rc( ProcRes sub, ProcRes & current )
                 { return _V_consider_rc(sub, current); }
+    virtual ~iArbiter() {}
 };  // class iEvaluationArbiter
 
 /**@class AnalysisApplication::iTEventPayloadProcessor

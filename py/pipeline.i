@@ -27,7 +27,7 @@
 %import "std_string.i"
 %import "stdint.i"
 %include "_gooExceptionWrapper.i"
-%include "pointer.i"
+%include "cpointer.i"
 
 %import(module="StromaV.sVEvents") "sVEvents.i"
 
@@ -40,6 +40,9 @@
 # define final
 # endif  // SWIG
 
+
+//%pointer_class(sV::Event*, EventPtr); //xxx?
+
 %inline %{
 void
 set_event_ptr(sV::events::Event ** dest, sV::events::Event * eventPtr) {
@@ -51,7 +54,6 @@ dereference_event_ptr_ref(sV::events::Event ** v) {
    return *v;
 }
 %}
-
 %import "sV_config.h"
 
 %feature("director") sV::aux::iEventProcessor;
@@ -87,9 +89,11 @@ dereference_event_ptr_ref(sV::events::Event ** v) {
 
 %}
 
+%ignore sV::AnalysisPipeline::Handler; 
+
 %import "sV_config.h"
 %include "analysis/pipeline.hpp"
 %include "analysis/pipe_fj.hpp"
-%import "ctrs_dict.hpp"
+//%import "ctrs_dict.hpp"
 
 // vim: ft=swig
