@@ -217,14 +217,14 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
         // Reference pointing to the current event source.
         iEventSequence & evSeq = *sourcesStack.top().first;
         // Iterator pointing to the current handler in chain.
-        Chain::iterator procIt =  sourcesStack.top().second;
+        Chain::iterator procStart =  sourcesStack.top().second;
         sourcesStack.pop();
         // Global processing result considered by iArbiter subclass instance.
         iEventProcessor::ProcRes globalProcRC = aux::iEventProcessor::RC_ACCOUNTED;
 
         for( auto evPtr = evSeq.initialize_reading(); evSeq.is_good();
                  evSeq.next_event( evPtr ) ) {
-            for( ; procIt != _processorsChain.end(); ++procIt ) {
+            for( Chain::iterator procIt = procStart; procIt != _processorsChain.end(); ++procIt ) {
                 iEventProcessor::ProcRes localProcRC = procIt->processor()( *evPtr );
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );
                 if( AnalysisPipeline::JunctionFinalized == evalStatus ) {
@@ -235,7 +235,7 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
                 if( AnalysisPipeline::Continue != evalStatus ) {
                     break;
                 }
-            };
+            }
         }
     }
 
@@ -280,22 +280,28 @@ AnalysisPipeline::EvalStatus
 ConservativeArbiter::_V_consider_rc( ProcRes local, ProcRes & global ) {
     AnalysisPipeline::EvalStatus ret = AnalysisPipeline::Continue;
     if( iEventProcessor::ABORT_CURRENT & local ) {
+        sV_log1( "iArbiter %p: abort current.\n", this );  // XXX
         ret = AnalysisPipeline::AbortCurrent;
     }
     if( iEventProcessor::JUNCTION_DONE & local ) {
+        sV_log1( "iArbiter %p: junction finalized.\n", this );  // XXX
         ret = AnalysisPipeline::JunctionFinalized;
     }
     if( !(iEventProcessor::CONTINUE_PROCESSING & local) ) {
+        sV_log1( "iArbiter %p: aborting processing.\n", this );  // XXX
         global &= ~iEventProcessor::CONTINUE_PROCESSING;  // unset global 'continue' flag.
         ret = AnalysisPipeline::AbortProcessing;
     }
     if( iEventProcessor::DISCRIMINATE & local ) {
+        sV_log1( "iArbiter %p: discriminate.\n", this );  // XXX
         global |= iEventProcessor::DISCRIMINATE;
         // TODO?: ret = AnalysisPipeline::AbortCurrent;
     }
     if( !(iEventProcessor::NOT_MODIFIED & local) ) {
+        sV_log1( "iArbiter %p: manifestating modification.\n", this );  // XXX
         global &= ~iEventProcessor::NOT_MODIFIED;  // unset global 'not modified' flag.
     }
+    sV_log1( "iArbiter %p: returning...\n", this );  // XXX
     return ret;
 }
 
