@@ -224,7 +224,6 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
 
         for( auto evPtr = evSeq.initialize_reading(); evSeq.is_good();
                  evSeq.next_event( evPtr ) ) {
-            sV_log1( "(dev, xxx) got event ptr: %p.\n", evPtr );  // XXX
             for( ; procIt != _processorsChain.end(); ++procIt ) {
                 iEventProcessor::ProcRes localProcRC = procIt->processor()( *evPtr );
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );

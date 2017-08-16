@@ -1,4 +1,4 @@
-%module(directors="1") appUtils
+%module appBase
 
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
@@ -22,31 +22,34 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-%import pipeline.i
-
 %include "std_string.i"
 %include "std_list.i"
-
 %include "_gooExceptionWrapper.i"
 
-%include "goo_vcopy.tcc"
+#define PACKAGE
+%ignore PACKAGE_VERSION;
+%ignore GIT_STRING;
+%rename(instance) goo::aux::iApp::self();
 
-%include "app/analysis.hpp"
-%include "app/py_session.hpp"
+%ignore goo::aux::iApp::HandlerEntry;  // nested class
+%ignore sV::AbstractApplication::ConfigPathInterpolator;  // nested class
+%ignore sV::AbstractApplication::ConstructableConfMapping;  // nested class
+%rename(instance) sV::AbstractApplication::ConstructableConfMapping::self;  // 
 
-%init %{
-sV::PythonSession::initialize_exception_type();
-%}
+%nodefaultctor sV::AbstractApplication;
+%nodefaultctor sV::mixins::PBEventApp;
+
+%include "goo_config.h"
+%include "sV_config.h"
+
+%include "goo_app.hpp"
+%template(BaseApp) goo::App<goo::dict::Configuration, std::ostream>;
+
+%include "app/abstract.hpp"
 
 %{
-
 #include "sV_config.h"
-
-#define SWIG_FILE_WITH_INIT
-
-#include "app/py_session.hpp"
-#include "analysis/pipe_fj.hpp"
-
 %}
 
 // vim: ft=swig
+

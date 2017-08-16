@@ -49,10 +49,13 @@
             e.dump( std::cerr );
         }
         return NULL;
-    } catch( Swig::DirectorException & e ) {
+    }
+    # ifdef SWIG_PYTHON_DIRECTOR_VTABLE
+    catch( Swig::DirectorException & e ) {
         PyErr_SetString( PyExc_RuntimeError, e.what() );
         return NULL;
     }
+    # endif
     // For other type of exceptions one may add:
     // catch( na64ee::Exception & e ) {
     //     PyErr_SetString( PyExc_RuntimeError, e.what() );

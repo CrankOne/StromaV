@@ -68,6 +68,7 @@ class MockEventSequence(iEventSequence):
         self.reentrantEvent = Event()
         self.idx = 0
         self.pack_data( self.reentrantEvent )
+        print( self.reentrantEvent )
         return self.reentrantEvent
 
     def _V_is_good(self):

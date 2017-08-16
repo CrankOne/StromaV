@@ -26,24 +26,19 @@
 
 %import "std_string.i"
 %import "stdint.i"
+%import(module="StromaV.appBase") appBase.i
 %include "_gooExceptionWrapper.i"
 %include "cpointer.i"
 
-%import(module="StromaV.sVEvents") "sVEvents.i"
+//%import(module="StromaV.sVEvents") "sVEvents.i"
 
 %nodefaultctor std::type_index;
 
-/* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
- * keywords, so we get rid of them using these macro defs: */
-# ifdef SWIG
-# define override
-# define final
-# endif  // SWIG
-
-
-//%pointer_class(sV::Event*, EventPtr); //xxx?
+%import "sV_config.h"
 
 %inline %{
+#include "uevent.hpp"
+
 void
 set_event_ptr(sV::events::Event ** dest, sV::events::Event * eventPtr) {
    *dest = eventPtr;
@@ -54,46 +49,23 @@ dereference_event_ptr_ref(sV::events::Event ** v) {
    return *v;
 }
 %}
-%import "sV_config.h"
 
 %feature("director") sV::aux::iEventProcessor;
 %feature("director") sV::aux::iEventSequence;
 
-//%rename(__call__) sV::AnalysisPipeline::process;
-
-//%typemap(in) sV::Event *& (sV::Event * ppEvent = NULL) %{
-//$1 = &ppEvent;
-//%}
-//
-//%typemap(argout) sV::Event *& {
-//*(sV::Event **)&arg = *$1;
-//}
-
 %{
-
-# include "sV_config.h"
-
-#if !defined( RPC_PROTOCOLS )
-#error "RPC_PROTOCOLS is not " \
-"defined. Unable to build pipeline py-wrapper module."
-#endif
-
-#if !defined( RPC_PROTOCOLS ) || !defined( ANALYSIS_ROUTINES )
-#error "Either RPC_PROTOCOLS or ANALYSIS_ROUTINES not defined. Unable to " \
-"build analysis module."
-#endif
 
 #include "analysis/pipeline.hpp"
 #include "analysis/pipe_fj.hpp"
 #include "ctrs_dict.hpp"
+#include "app/py_session.hpp"
 
 %}
 
 %ignore sV::AnalysisPipeline::Handler; 
 
-%import "sV_config.h"
+%include "app/mixins/protobuf.hpp"
 %include "analysis/pipeline.hpp"
 %include "analysis/pipe_fj.hpp"
-//%import "ctrs_dict.hpp"
 
 // vim: ft=swig

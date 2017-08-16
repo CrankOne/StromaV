@@ -62,14 +62,15 @@
 %ignore sV::events::TestingMessage::operator=;
 
 %include "event.pb.h"
+%import "sV_config.h"
+%include "uevent.hpp"
 
 %{
 # include "sV_config.h"
-# include "event.pb.h"
-
-#if !defined( RPC_PROTOCOLS )
 # include <google/protobuf/message.h>
 # include "uevent.hpp"
+
+#ifndef RPC_PROTOCOLS
 #error "RPC_PROTOCOLS is not " \
 "defined. Unable to build events py-wrapper module."
 #endif

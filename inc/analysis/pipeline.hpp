@@ -368,7 +368,6 @@ protected:
     /// of the enumerated values of EvalStatus.
     virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
 public:
-    virtual ~iArbiter() {}
     /// Accepts subprocess result as a first argument and reference to global as a
     /// second. The usual usage implies consideration of result returned by
     /// processing event data subsection (e.g. particular detector).
@@ -414,7 +413,6 @@ protected:
 
     /// Should return 'false' if processing in chain has to be aborted.
     virtual ProcRes _V_process_event( Event & uEvent ) override {
-        sV_log1( "(dev, xxx) #1243 event ptr: %x.\n", &uEvent );  // XXX
         assert(has_payload);
         if( has_payload(uEvent) ) {
             if( !_reentrantPayloadPtr ) {
