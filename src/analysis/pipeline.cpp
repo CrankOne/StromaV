@@ -83,6 +83,11 @@ AnalysisPipeline::AnalysisPipeline() :
                 _arbiter(new aux::ConservativeArbiter()) {
 }
 
+AnalysisPipeline::~AnalysisPipeline() {
+    if( _defaultArbiter ) {
+        delete _arbiter;
+    }
+}
 
 void
 AnalysisPipeline::_update_stat() {
@@ -172,6 +177,7 @@ AnalysisPipeline::_finalize_sequence(
 
 int
 AnalysisPipeline::process( AnalysisPipeline::Event & event ) {
+    _TODO_  // TODO: re-implement it with single-event source.
     int n = _process_chain( event );
     _finalize_event( event );
     return n;
@@ -205,7 +211,6 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
     sourcesStack.push( std::make_pair( &mainEvSeq, _processorsChain.begin() ) );
 
     // Beginning of main processing loop.
-    size_t nEventsProcessed = 0;
     AnalysisPipeline::EvalStatus evalStatus = AnalysisPipeline::Continue;
     while( !sourcesStack.empty()
         && AnalysisPipeline::AbortProcessing != evalStatus ) {
@@ -218,7 +223,8 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
         iEventProcessor::ProcRes globalProcRC = aux::iEventProcessor::RC_ACCOUNTED;
 
         for( auto evPtr = evSeq.initialize_reading(); evSeq.is_good();
-                 evSeq.next_event( evPtr ), ++nEventsProcessed ) {
+                 evSeq.next_event( evPtr ) ) {
+            sV_log1( "(dev, xxx) got event ptr: %p.\n", evPtr );  // XXX
             for( ; procIt != _processorsChain.end(); ++procIt ) {
                 iEventProcessor::ProcRes localProcRC = procIt->processor()( *evPtr );
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );
@@ -239,12 +245,12 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
             sV_loge( "Temporary sources stack contains %zu entries upon "
                 "analysis pipeline processing finish.\n", sourcesStack.size() );
         }
-        sV_log2( "Pipeline %p depleted the source %p with %zu events. "
-                "Finalizing...\n", this, &mainEvSeq, nEventsProcessed );
+        sV_log2( "Pipeline %p depleted the source %p. "
+                "Finalizing...\n", this, &mainEvSeq );
     } else {
-        sV_log2( "Pipeline %p processing aborted on source %p with %zu events. "
+        sV_log2( "Pipeline %p processing aborted on source %p. "
                 "Finalizing...\n",
-                this, &mainEvSeq, nEventsProcessed );
+                this, &mainEvSeq );
     }
     _finalize_sequence( mainEvSeq );
     return 0;

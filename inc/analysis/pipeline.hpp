@@ -169,7 +169,7 @@ protected:
     virtual void _finalize_sequence( iEventSequence & );
 public:
     AnalysisPipeline();
-    virtual ~AnalysisPipeline() {}  // todo?
+    virtual ~AnalysisPipeline();
 
     /// Adds processor to processor chain.
     void push_back_processor( iEventProcessor & );
@@ -368,6 +368,7 @@ protected:
     /// of the enumerated values of EvalStatus.
     virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
 public:
+    virtual ~iArbiter() {}
     /// Accepts subprocess result as a first argument and reference to global as a
     /// second. The usual usage implies consideration of result returned by
     /// processing event data subsection (e.g. particular detector).
@@ -413,13 +414,17 @@ protected:
 
     /// Should return 'false' if processing in chain has to be aborted.
     virtual ProcRes _V_process_event( Event & uEvent ) override {
+        sV_log1( "(dev, xxx) #1243 event ptr: %x.\n", &uEvent );  // XXX
+        assert(has_payload);
         if( has_payload(uEvent) ) {
             if( !_reentrantPayloadPtr ) {
                 assert(unpack_payload);
                 unpack_payload( uEvent );
             }
             ProcRes rs = _V_process_event_payload( *_reentrantPayloadPtr );
-            if( _forcePayloadPack && !(ABORT_CURRENT & rs) ) {
+            if( _forcePayloadPack
+                    && !(ABORT_CURRENT & rs)
+                    &&  (CONTINUE_PROCESSING & rs) ) {
                 pack_payload( uEvent );
             }
             return rs;
