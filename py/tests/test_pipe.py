@@ -75,9 +75,7 @@ class MockEventSequence(iEventSequence):
 
     def _V_next_event(self, eventRef):
         evPtr = dereference_event_ptr_ref(eventRef)
-        # NOTE, strange:
-        #print( str(evPtr), str(self.reentrantEvent) )
-        #self.ut.assertEqual( int(evPtr), int(self.reentrantEvent) )
+        self.ut.assertEqual( int(evPtr.this), int(self.reentrantEvent.this) )
         self.pack_data( evPtr )
 
     def _V_finalize_reading(self):
