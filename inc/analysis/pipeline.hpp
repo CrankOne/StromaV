@@ -165,7 +165,8 @@ protected:
     void register_packing_functions( void(*invalidator)(),
                                      void(*packer)(Event&) );
     virtual int _process_chain( Event & );
-    virtual void _finalize_event( Event & );
+    /// Helper function finalizing event with given processors sub-chain.
+    virtual void _finalize_event( Event &, Chain::iterator , Chain::iterator );
     virtual void _finalize_sequence( iEventSequence & );
 public:
     AnalysisPipeline();
@@ -423,6 +424,7 @@ protected:
             if( _forcePayloadPack
                     && !(ABORT_CURRENT & rs)
                     &&  (CONTINUE_PROCESSING & rs) ) {
+                // Pack payload if forced:
                 pack_payload( uEvent );
             }
             return rs;
@@ -510,6 +512,8 @@ private:
         uEvent.mutable_experimental()
                 ->mutable_payload()
                 ->UnpackTo(Parent::_reentrantPayloadPtr);
+        sV_log1( "(dev, xxx) Proc %p: experimental payload unpacked to %p.\n",
+                        Parent::_reentrantPayloadPtr);  // XXX
     }
     /// Will be called at the end of event processing pipeline.
     static void _pack_payload( Event & uEvent ) {
@@ -523,6 +527,8 @@ private:
         uEvent.mutable_experimental()
                  ->mutable_payload()
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
+        sV_log1( "(dev, xxx) Proc %p: experimental payload packed to %p.\n",
+                        Parent::_reentrantPayloadPtr);  // XXX
         delete Parent::_reentrantPayloadPtr;
         Parent::_reentrantPayloadPtr = nullptr;
     }

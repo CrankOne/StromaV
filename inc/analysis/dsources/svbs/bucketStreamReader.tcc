@@ -167,8 +167,10 @@ template<typename BucketIDT, typename BucketKeyInfoT> void
 BucketStreamReader<BucketIDT, BucketKeyInfoT>::_build_offsets_map( std::istream & is ) {
     offsets_map().clear();
 
+    # if 0
     bool parsingResult;
     size_t nRead;
+    #endif
     uint32_t bucketSize,
              suppInfoSize,
              nBucket = 0;

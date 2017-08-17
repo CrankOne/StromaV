@@ -147,9 +147,9 @@ AnalysisPipeline::_process_chain( Event & event ) {
 }
 
 void
-AnalysisPipeline::_finalize_event( Event & event ) {
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
+AnalysisPipeline::_finalize_event( Event & event, Chain::iterator scb, Chain::iterator sce ) {
+    for( auto it  = scb;
+              it != sce; ++it ) {
         AnalysisPipeline::iEventProcessor::ProcRes result = it->processor().finalize_event( event );
         if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
            || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
@@ -176,11 +176,11 @@ AnalysisPipeline::_finalize_sequence(
 }
 
 int
-AnalysisPipeline::process( AnalysisPipeline::Event & event ) {
+AnalysisPipeline::process( AnalysisPipeline::Event & /*event*/ ) {
     _TODO_  // TODO: re-implement it with single-event source.
-    int n = _process_chain( event );
-    _finalize_event( event );
-    return n;
+    //int n = _process_chain( event );
+    //_finalize_event( event );
+    //return n;
 }
 
 /**
@@ -224,7 +224,8 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
 
         for( auto evPtr = evSeq.initialize_reading(); evSeq.is_good();
                  evSeq.next_event( evPtr ) ) {
-            for( Chain::iterator procIt = procStart; procIt != _processorsChain.end(); ++procIt ) {
+            Chain::iterator procIt;
+            for( procIt = procStart; procIt != _processorsChain.end(); ++procIt ) {
                 iEventProcessor::ProcRes localProcRC = procIt->processor()( *evPtr );
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );
                 if( AnalysisPipeline::JunctionFinalized == evalStatus ) {
@@ -236,6 +237,8 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
                     break;
                 }
             }
+            // Event finalize minor loop.
+            _finalize_event( *evPtr, procStart, procIt);
         }
     }
 

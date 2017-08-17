@@ -83,7 +83,7 @@ protected:
     virtual void _V_concrete_app_configure() override;
     /// Appends updating of ASCII display upon successfull finish of single
     /// event processing.
-    virtual void _finalize_event( Event & ) override;
+    virtual void _finalize_event( Event &, Chain::iterator, Chain::iterator ) override;
 
     AnalysisApplication( Parent::Config * vm );
 public:
