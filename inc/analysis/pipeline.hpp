@@ -443,7 +443,8 @@ protected:
     virtual ProcRes _V_process_event_payload( PayloadT & ) = 0;
 
     iTEventPayloadProcessor( const std::string & pn ) :
-                            iEventPayloadProcessorBase(pn) {}
+                            iEventPayloadProcessorBase(pn),
+                            _forcePayloadPack(false) {}
 
     friend class ::sV::AnalysisPipeline;
 };  // class iTEventPayloadProcessor
