@@ -49,7 +49,8 @@ namespace sV {
 void
 AnalysisApplication::_finalize_event( Event & ep,
                 Chain::iterator scb,
-                Chain::iterator sce ) {
+                Chain::iterator sce,
+                bool doPack ) {
     AnalysisPipeline::_finalize_event( ep, scb, sce );
     notify_ascii_display();
 }

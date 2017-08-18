@@ -49,6 +49,9 @@ template<typename EventClassT, typename PayloadT>
             class iTEventPayloadProcessor;
 /// Aux interfacing class implementing pushing hooks.
 class iEventPayloadProcessorBase;
+
+/// The base type aggregating event processing result flags.
+typedef uint8_t EventProcessingResult;
 }  // namespace aux
 
 
@@ -113,6 +116,10 @@ public:
                         TI(TI_), forcePack(false) {}
         } * _payloadTraits;
         aux::iEventSequence * _junction;  // TODO: nullate, initialize on set
+    protected:
+        //iEventProcessor & processor() { return _processor; }
+        aux::EventProcessingResult handle( Event * );
+        aux::EventProcessingResult finalize( Event & );
     public:
         Handler( iEventProcessor & processor_ );
         Handler( const Handler & );
@@ -124,9 +131,10 @@ public:
         bool junction_available() const { return !!_junction; }
         aux::iEventSequence * junction_ptr();
 
-        iEventProcessor & processor() { return _processor; }
         const iEventProcessor & processor() const { return _processor; }
         const Statistics & stats() { return _stats; }
+
+        friend class AnalysisPipeline;
     };
 
     /// Type alias referencing the stack of processors.
@@ -164,9 +172,11 @@ private:
 protected:
     void register_packing_functions( void(*invalidator)(),
                                      void(*packer)(Event&) );
-    virtual int _process_chain( Event & );
-    /// Helper function finalizing event with given processors sub-chain.
-    virtual void _finalize_event( Event &, Chain::iterator , Chain::iterator );
+    /// Helper function finalizing event with given processors sub-chain. Will
+    /// invoke packing routines, sequentially invoke finalize_event() method of
+    /// each processors in given iterators range and invoke the cache nullating
+    /// method.
+    virtual void _finalize_event( Event &, Chain::iterator , Chain::iterator, bool doPack=true );
     virtual void _finalize_sequence( iEventSequence & );
 public:
     AnalysisPipeline();
@@ -269,7 +279,7 @@ class iEventProcessor {
 public:
     typedef AnalysisPipeline::Event Event;
 
-    typedef uint8_t ProcRes;
+    typedef EventProcessingResult ProcRes;
 
     /// Possible result flags and composite shortcuts that may be returned by
     /// procedure. Note, that flags itself may be counter-intuitive, so better
@@ -368,13 +378,18 @@ protected:
     /// The major interface method making an actual decision. Has to return one
     /// of the enumerated values of EvalStatus.
     virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
+    /// Has to return whether the payloads have to be packed, depending on the
+    /// event evaluation code.
+    virtual bool _V_do_pack( ProcRes g ) const = 0;
 public:
     /// Accepts subprocess result as a first argument and reference to global as a
     /// second. The usual usage implies consideration of result returned by
     /// processing event data subsection (e.g. particular detector).
     /// TODO: usage snippet (may be taken from any existing implementation)
-    AnalysisPipeline::EvalStatus consider_rc( ProcRes sub, ProcRes & current )
-                { return _V_consider_rc(sub, current); }
+    AnalysisPipeline::EvalStatus consider_rc( ProcRes local, ProcRes & global )
+                { return _V_consider_rc(local, global); }
+    bool do_pack( ProcRes g ) const
+                { return _V_do_pack(g); }
     virtual ~iArbiter() {}
 };  // class iEvaluationArbiter
 
@@ -605,14 +620,36 @@ protected:
     }
 };  // class iExperimentalEventPayloadProcessor
 
-/// A simple arbitration class.
-class ConservativeArbiter : public iArbiter {
+/**@brief A trivial arbitration class.
+ * @class DefaultArbiter
+ *
+ * This default arbiter implements a default pipeline steering with a single
+ * parameter: whether or not proceed with events that were marked as
+ * "discriminated" by processor classes. If abortDiscriminated was set to
+ * true in ctr, the DISCRIMINATED flag in return code shall be effecitvely
+ * equivalent to ABORT_CURRENT.
+ *
+ * Note, that processors may force cache packing routines to be evaluated in
+ * any way (all this packing stuff is merely a fine setting for optimization
+ * sake).
+ **/
+class DefaultArbiter : public iArbiter {
+private:
+    bool _abortDiscriminated;
 protected:
     /// The global and local abort flags will considered in a natural way. The
     /// discrimination flag will not cause immediate stop.
     virtual AnalysisPipeline::EvalStatus _V_consider_rc(
                 ProcRes sub, ProcRes & current ) override;
-};  // ConservativeArbiter
+    /// If the abortion flags were set, the false will be returned
+    /// unconditionally. If not, the result corresponds to !NOT_MODIFIED flag.
+    virtual bool _V_do_pack( ProcRes g ) const override;
+public:
+    DefaultArbiter( bool abortDiscriminated=false ) :
+                            _abortDiscriminated(abortDiscriminated) {}
+    ~DefaultArbiter() {}
+    bool abort_discriminated() const { return _abortDiscriminated; }
+};  // DefaultArbiter
 
 }  // namespace aux
 }  // namespace sV

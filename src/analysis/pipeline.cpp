@@ -73,6 +73,16 @@ AnalysisPipeline::Handler::junction_ptr() {
         "is being requested (processor ptr %p).", this, &_processor );
 }
 
+aux::EventProcessingResult
+AnalysisPipeline::Handler::handle( Event * e ) {
+    return _processor.process_event( *e );
+}
+
+aux::EventProcessingResult
+AnalysisPipeline::Handler::finalize( Event & e ) {
+    return _processor.finalize_event( e );
+}
+
 // Pipeline class
 ////////////////
 
@@ -80,7 +90,7 @@ AnalysisPipeline::AnalysisPipeline() :
             ASCII_Entry( goo::aux::iApp::exists() ?
                         &goo::app<AbstractApplication>() : nullptr, 1 ),
                 _defaultArbiter(true),
-                _arbiter(new aux::ConservativeArbiter()) {
+                _arbiter(new aux::DefaultArbiter()) {
 }
 
 AnalysisPipeline::~AnalysisPipeline() {
@@ -132,32 +142,22 @@ AnalysisPipeline::register_packing_functions( void(*invalidator)(),
     }
 }
 
-int
-AnalysisPipeline::_process_chain( Event & event ) {
-    int n = 0;
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it, n++ ) {
-        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor()( event );
-        if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
-           || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
-            break;
+void
+AnalysisPipeline::_finalize_event( Event & event,
+                                Chain::iterator scb, Chain::iterator sce,
+                                bool doPack ) {
+    if( doPack ) {
+        for( auto & packer : _payloadPackers ) {
+            packer( event );
         }
     }
-    return n;
-}
-
-void
-AnalysisPipeline::_finalize_event( Event & event, Chain::iterator scb, Chain::iterator sce ) {
     for( auto it  = scb;
               it != sce; ++it ) {
-        AnalysisPipeline::iEventProcessor::ProcRes result = it->processor().finalize_event( event );
+        AnalysisPipeline::iEventProcessor::ProcRes result = it->finalize( event );
         if(    (result & AnalysisPipeline::iEventProcessor::ABORT_CURRENT)
            || !(result & AnalysisPipeline::iEventProcessor::CONTINUE_PROCESSING)) {
             break;
         }
-    }
-    for( auto & packer : _payloadPackers ) {
-        packer( event );
     }
     for( auto & nullate : _invalidators ) {
         nullate();
@@ -178,9 +178,6 @@ AnalysisPipeline::_finalize_sequence(
 int
 AnalysisPipeline::process( AnalysisPipeline::Event & /*event*/ ) {
     _TODO_  // TODO: re-implement it with single-event source.
-    //int n = _process_chain( event );
-    //_finalize_event( event );
-    //return n;
 }
 
 /**
@@ -219,14 +216,15 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
         // Iterator pointing to the current handler in chain.
         Chain::iterator procStart =  sourcesStack.top().second;
         sourcesStack.pop();
-        // Global processing result considered by iArbiter subclass instance.
-        iEventProcessor::ProcRes globalProcRC = aux::iEventProcessor::RC_ACCOUNTED;
 
+        // Global processing result considered by iArbiter subclass instance.
+        iEventProcessor::ProcRes globalProcRC;
         for( auto evPtr = evSeq.initialize_reading(); evSeq.is_good();
                  evSeq.next_event( evPtr ) ) {
+            globalProcRC = aux::iEventProcessor::RC_ACCOUNTED;
             Chain::iterator procIt;
             for( procIt = procStart; procIt != _processorsChain.end(); ++procIt ) {
-                iEventProcessor::ProcRes localProcRC = procIt->processor()( *evPtr );
+                iEventProcessor::ProcRes localProcRC = procIt->handle( evPtr );
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );
                 if( AnalysisPipeline::JunctionFinalized == evalStatus ) {
                     sourcesStack.push(
@@ -238,7 +236,8 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
                 }
             }
             // Event finalize minor loop.
-            _finalize_event( *evPtr, procStart, procIt);
+            _finalize_event( *evPtr, procStart, procIt,
+                arbiter().do_pack(globalProcRC) );
         }
     }
 
@@ -280,32 +279,43 @@ AnalysisPipeline::arbiter( aux::iArbiter * aPtr ) {
 namespace aux {
 
 AnalysisPipeline::EvalStatus
-ConservativeArbiter::_V_consider_rc( ProcRes local, ProcRes & global ) {
+DefaultArbiter::_V_consider_rc( ProcRes local, ProcRes & global ) {
     AnalysisPipeline::EvalStatus ret = AnalysisPipeline::Continue;
     if( iEventProcessor::ABORT_CURRENT & local ) {
-        sV_log1( "iArbiter %p: abort current.\n", this );  // XXX
         ret = AnalysisPipeline::AbortCurrent;
     }
     if( iEventProcessor::JUNCTION_DONE & local ) {
-        sV_log1( "iArbiter %p: junction finalized.\n", this );  // XXX
         ret = AnalysisPipeline::JunctionFinalized;
     }
     if( !(iEventProcessor::CONTINUE_PROCESSING & local) ) {
-        sV_log1( "iArbiter %p: aborting processing.\n", this );  // XXX
         global &= ~iEventProcessor::CONTINUE_PROCESSING;  // unset global 'continue' flag.
         ret = AnalysisPipeline::AbortProcessing;
     }
     if( iEventProcessor::DISCRIMINATE & local ) {
-        sV_log1( "iArbiter %p: discriminate.\n", this );  // XXX
         global |= iEventProcessor::DISCRIMINATE;
-        // TODO?: ret = AnalysisPipeline::AbortCurrent;
+        if( abort_discriminated() ) {
+            ret = AnalysisPipeline::AbortCurrent;
+        }
     }
     if( !(iEventProcessor::NOT_MODIFIED & local) ) {
-        sV_log1( "iArbiter %p: manifestating modification.\n", this );  // XXX
         global &= ~iEventProcessor::NOT_MODIFIED;  // unset global 'not modified' flag.
     }
-    sV_log1( "iArbiter %p: returning...\n", this );  // XXX
     return ret;
+}
+
+bool
+DefaultArbiter::_V_do_pack( ProcRes g ) const {
+    if( iEventProcessor::ABORT_CURRENT & g ) {
+        return false;
+    }
+    if( !(iEventProcessor::CONTINUE_PROCESSING & g) ) {
+        return false;
+    }
+    if( abort_discriminated() &&
+            iEventProcessor::DISCRIMINATE & g ) {
+        return false;
+    }
+    return !(iEventProcessor::NOT_MODIFIED & g );
 }
 
 //
