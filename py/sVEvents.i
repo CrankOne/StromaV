@@ -25,6 +25,7 @@
 %ignore PACKAGE_VERSION;
 
 %include "std_string.i"
+%include "stdint.i"
 %include "cpointer.i"  // xxx?
 %include "_commonProtobuf.i"
 %include "_gooExceptionWrapper.i"
@@ -75,6 +76,19 @@
 "defined. Unable to build events py-wrapper module."
 #endif
 
+%}
+
+%inline %{
+
+void
+conversion_testing_function_1( ::google::protobuf::uint32 someVal ) {
+    printf("Got: %u, #1\n", someVal);
+}
+
+void
+conversion_testing_function_2( unsigned int someVal ) {
+    printf("Got: %u, #2\n", someVal);
+}
 %}
 
 // vim: ft=swig

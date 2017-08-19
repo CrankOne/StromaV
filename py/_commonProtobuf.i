@@ -42,6 +42,19 @@
 
 %ignore google::protobuf::Any::operator=;
 
+%ignore GOOGLE_UNALIGNED_LOAD16;
+%ignore GOOGLE_UNALIGNED_LOAD32;
+%ignore GOOGLE_UNALIGNED_LOAD64;
+
+%ignore GOOGLE_UNALIGNED_STORE16;
+%ignore GOOGLE_UNALIGNED_STORE32;
+%ignore GOOGLE_UNALIGNED_STORE64;
+
+%ignore bswap_16;
+%ignore bswap_32;
+%ignore bswap_64;
+
+%include "google/protobuf/stubs/port.h"
 %include "google/protobuf/stubs/common.h"
 
 /* NOTE: not sure, whether the 3.1 is exact version number. At least for 3.1
@@ -80,6 +93,19 @@
 %immutable "google::protobuf::*_default_instance_";
 
 %{
+
+# include <google/protobuf/stubs/port.h>
+
+using google::protobuf::int8;
+using google::protobuf::int16;
+using google::protobuf::int32;
+using google::protobuf::int64;
+
+using google::protobuf::uint8;
+using google::protobuf::uint16;
+using google::protobuf::uint32;
+using google::protobuf::uint64;
+
 # include "google/protobuf/message_lite.h"
 
 using google::protobuf::MessageLite;
@@ -97,12 +123,6 @@ using google::protobuf::EnumValueDescriptor;
 # if GOOGLE_PROTOBUF_VERSION > 3001000
 using google::protobuf::ProtobufOnceType;
 # endif  // GOOGLE_PROTOBUF_VERSION > 3001000
-
-typedef int32_t int32;
-typedef uint32_t uint32;
-typedef uint8_t uint8;
-typedef int64_t int64;
-typedef uint64_t uint64;
 
 using std::string;
 
