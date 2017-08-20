@@ -517,33 +517,29 @@ private:
     }
     /// Will be called if current event has payload of required type.
     static void _unpack_payload( Event & uEvent ) {
-        // # ifndef NDEBUG  // TODO: uncomment?
+        # ifndef NDEBUG
         if( Parent::_reentrantPayloadPtr ) {
             emraise(dbgBadArchitect, "Event payload (\"experimental\") caching logic "
                 "violated: substitutive unpacking." );
         }
-        // # endif  // NDEBUG
+        # endif  // NDEBUG
         Parent::_reentrantPayloadPtr = new PayloadT();
         uEvent.mutable_experimental()
                 ->mutable_payload()
                 ->UnpackTo(Parent::_reentrantPayloadPtr);
-        sV_log1( "(dev, xxx) Proc %p: experimental payload unpacked to %p.\n",
-                        Parent::_reentrantPayloadPtr);  // XXX
     }
     /// Will be called at the end of event processing pipeline.
     static void _pack_payload( Event & uEvent ) {
-        // # ifndef NDEBUG  // TODO: uncomment?
+        # ifndef NDEBUG
         if( !Parent::_reentrantPayloadPtr ) {
             sV_logw( "(debug) event payload (\"experimental\") caching logic "
                 "violated: redundant packing routine invokation.\n" );
             return;
         }
-        // # endif // NDEBUG
+        # endif // NDEBUG
         uEvent.mutable_experimental()
                  ->mutable_payload()
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
-        sV_log1( "(dev, xxx) Proc %p: experimental payload packed to %p.\n",
-                        Parent::_reentrantPayloadPtr);  // XXX
         delete Parent::_reentrantPayloadPtr;
         Parent::_reentrantPayloadPtr = nullptr;
     }
