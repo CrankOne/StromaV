@@ -542,6 +542,9 @@ private:
                  ->PackFrom(*Parent::_reentrantPayloadPtr);
         delete Parent::_reentrantPayloadPtr;
         Parent::_reentrantPayloadPtr = nullptr;
+        //std::cout << "======================================" <<
+        //    "Bank!!1!!"
+        //    << std::endl;
     }
 protected:
     iTExperimentalEventPayloadProcessor( const std::string & pn ) :

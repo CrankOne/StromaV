@@ -61,6 +61,10 @@ iDispatcher::is_empty() const {
 
 void
 iDispatcher::push_event(const events::Event & eve) {
+    //std::cout << "=======================EvStore======================" << std::endl
+    //    << eve.DebugString() << std::endl <<
+    //             "===================================================="
+    //             << std::endl;
     events::Event* event = bucket().add_events();
     event->CopyFrom( eve );
     if ( is_full() ) {

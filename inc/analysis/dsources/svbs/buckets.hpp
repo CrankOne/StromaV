@@ -46,7 +46,7 @@ namespace sV {
  *
  * At this level of abstraction we still have no implications about event ID.
  * */
-class Buckets : public buckets::BucketStreamReader<
+class Buckets : public sV::buckets::BucketStreamReader<
                                 aux::SHA256BucketHash,
                                 events::CommonBucketDescriptor>,
                 public AbstractApplication::ASCII_Entry {

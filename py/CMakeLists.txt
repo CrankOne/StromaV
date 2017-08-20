@@ -41,12 +41,17 @@ if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
                 # sV binding modules:
                 appBase.i
                 appUtils.i
+                buckets.i
                 sVEvents.i
                 pipeline.i
                 gooDict.i
                 extParameters.i
                 gooVCopy.i
             DESTINATION ${SWIG_IFACES_DIR}/sV  )
+endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
+
+if ( StromaV_PYMODULES )
+    set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 if ( StromaV_PYMODULES )
