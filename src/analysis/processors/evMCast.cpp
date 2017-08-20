@@ -44,12 +44,14 @@ EventPipelineStorage::EventPipelineStorage( const std::string & pn,
 EventPipelineStorage::~EventPipelineStorage() {
 }
 
-bool
-EventPipelineStorage::_V_process_event( Event * eventPtr ) {
-    return _push_event_to_queue(*eventPtr);
+AnalysisPipeline::iEventProcessor::ProcRes
+EventPipelineStorage::_V_process_event( Event & event ) {
+    bool pushed = _push_event_to_queue(event);
+    (void)(pushed);  // not useful further
+    return sV::aux::iEventProcessor::RC_ACCOUNTED;
 }
 
-bool
+AnalysisPipeline::iEventProcessor::ProcRes
 EventPipelineStorage::_push_event_to_queue( const Event & event ) {
     std::lock_guard<std::mutex> lock( _queueMutex );
     _queue.push_front();  // now back points to newly-created
@@ -114,9 +116,9 @@ EventMulticaster::_V_send_next_message() {
     }
 }
 
-bool
-EventMulticaster::_V_process_event( Event * eventPtr ) {
-    bool insertionResult = aux::EventPipelineStorage::_V_process_event( eventPtr );
+AnalysisPipeline::iEventProcessor::ProcRes
+EventMulticaster::_V_process_event( Event & event ) {
+    ProcRes insertionResult = aux::EventPipelineStorage::_V_process_event( event );
     sending_mutex().lock();
     if( !net::iMulticastEventSender::is_operating() ) {
         _V_send_next_message();

@@ -28,23 +28,35 @@ list( APPEND StromaV_PYMODULES detectorIds.i )
 install( FILES detectorIds.i DESTINATION ${SWIG_IFACES_DIR}/sV )
 
 if( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
-    list( APPEND StromaV_PYMODULES sVEvents.i appUtils.i pipeline.i gooDict.i
-        extParameters.i buckets.i )
+    list( APPEND StromaV_PYMODULES
+                appBase.i
+                sVEvents.i
+                appUtils.i
+                pipeline.i
+                gooDict.i
+                extParameters.i
+                gooVCopy.i )
     install( FILES
-             # System types:
-             std_unique_ptr.i
-             std_stream.i
-             # Common includes
-             _commonProtobuf.i
-             _gooExceptionWrapper.i
-             # sV binding modules:
-             appUtils.i
-             sVEvents.i
-             pipeline.i
-             gooDict.i
-             extParameters.i
-             buckets.i
-             DESTINATION ${SWIG_IFACES_DIR}/sV  )
+                # System types:
+                std_unique_ptr.i
+                std_stream.i
+                # Common includes
+                _commonProtobuf.i
+                _gooExceptionWrapper.i
+                # sV binding modules:
+                appBase.i
+                appUtils.i
+                buckets.i
+                sVEvents.i
+                pipeline.i
+                gooDict.i
+                extParameters.i
+                gooVCopy.i
+            DESTINATION ${SWIG_IFACES_DIR}/sV  )
+endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
+
+if ( StromaV_PYMODULES )
+    set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
 endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 if ( StromaV_PYMODULES )

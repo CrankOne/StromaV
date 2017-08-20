@@ -58,7 +58,7 @@ private:
     EventsDispatcher( const std::string & pn,
                       std::ostream * streamPtr );
 protected:
-    virtual bool _V_process_event( Event * ) override;
+    virtual ProcRes _V_process_event( Event & ) override;
     virtual void _V_finalize() const override;
     void _update_stat();
 

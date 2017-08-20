@@ -25,10 +25,10 @@
 %ignore PACKAGE_VERSION;
 
 %include "std_string.i"
+%include "stdint.i"
+%include "cpointer.i"  // xxx?
 %include "_commonProtobuf.i"
 %include "_gooExceptionWrapper.i"
-
-%import(module="StromaV.appUtils") "appUtils.i"
 
 /* SWIG concats enum names with their encompassing classes. The same does
  * protoc for some intriguing purpose as a dedicated consts. Yhus making SWIG
@@ -42,19 +42,53 @@
 %ignore sV::events::protobuf_AssignDesc_event_2eproto;
 %ignore sV::events::protobuf_ShutdownFile_event_2eproto;
 
+//%ignore "sV::events::*::operator=";  // doesn't work
+%ignore sV::events::AssemblySummary::operator=;
+%ignore sV::events::SimulatedEvent::operator=;
+%ignore sV::events::ExperimentalEvent::operator=;
+%ignore sV::events::DetectorSummary::operator=;
+%ignore sV::events::Displayable::operator=;
+%ignore sV::events::Event::operator=;
+%ignore sV::events::MulticastMessage_SenderStatusMessage::operator=;
+%ignore sV::events::MulticastMessage::operator=;
+%ignore sV::events::BucketInfoEntry::operator=;
+%ignore sV::events::BucketInfo::operator=;
+%ignore sV::events::CommonBucketDescriptor::operator=;
+%ignore sV::events::Bucket::operator=;
+%ignore sV::events::ZLib_Parameters::operator=;
+%ignore sV::events::BZip2_Parameters::operator=;
+%ignore sV::events::LZMA_Parameters::operator=;
+%ignore sV::events::CompressedData::operator=;
+%ignore sV::events::DeflatedBucket::operator=;
+%ignore sV::events::TestingMessage::operator=;
+
 %include "event.pb.h"
+%import "sV_config.h"
+%include "uevent.hpp"
 
 %{
 # include "sV_config.h"
-# include "event.pb.h"
-
-#if !defined( RPC_PROTOCOLS )
 # include <google/protobuf/message.h>
 # include "uevent.hpp"
+
+#ifndef RPC_PROTOCOLS
 #error "RPC_PROTOCOLS is not " \
 "defined. Unable to build events py-wrapper module."
 #endif
 
+%}
+
+%inline %{
+
+void
+conversion_testing_function_1( ::google::protobuf::uint32 someVal ) {
+    printf("Got: %u, #1\n", someVal);
+}
+
+void
+conversion_testing_function_2( unsigned int someVal ) {
+    printf("Got: %u, #2\n", someVal);
+}
 %}
 
 // vim: ft=swig

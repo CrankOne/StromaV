@@ -56,7 +56,7 @@ BucketReader::_V_next_event( Event *& ePtr ) {
     ePtr = &(::sV::mixins::PBEventApp::c_event());
     ePtr->Clear();
     if( _it.sym().nEvent >= (size_t) bucket().events_size() ) {
-        emraise( overflow, "Required reading %d-th event from bucket of %d "
+        emraise( overflow, "Required reading %zu-th event from bucket of %d "
             "events.", _it.sym().nEvent, bucket().events_size() );
     }
     ePtr->CopyFrom( bucket().events( _it.sym().nEvent ) );

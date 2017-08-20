@@ -96,7 +96,7 @@ public:
     bool is_decompressed_bucket_valid() const { return _decompressedBucketValid; }
 
     /// Marks bucket cache as invalid before forwarding invokation to parent.
-    virtual void set_bucket_ptr( events::Bucket * ptr );
+    virtual void set_bucket_ptr( events::Bucket * ptr ) override;
 
     /// Sets compressed bucket pointer to handle the provided instance.
     virtual void set_compressed_bucket_ptr( events::DeflatedBucket * );

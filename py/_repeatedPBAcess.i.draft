@@ -20,36 +20,22 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "pipeline_app.hpp"
+/* This SWIG include-only module introduces wrapping exception to handle the
+ * Goo error as native python exception to establish seamless error-reporting 
+ * mechanism between wrapped C++ code and python environment.
+ */
 
-namespace sV {
+%{
+# include "app/py_session.hpp"
+%}
 
-int
-App::_V_run() {
-    if( do_immediate_exit() ) return EXIT_FAILURE;
-    // Check if we actually have something to do
-    if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- will do nothing with events read.\n" );
-    }
-    if( !event_sequence_set() ) {
-        sV_loge( "No data source specified. Has nothing to do.\n" );
-        return EXIT_FAILURE;
-    }
+#ifdef SWIGPYTHON
 
-    AnalysisPipeline::iEventSequence & evseq = event_sequence();
-
-    int rc = this->AnalysisPipeline::process( evseq );
-
-    evseq.print_brief_summary( goo::app<App>().ls() );
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
-        it->processor().print_brief_summary( goo::app<App>().ls() );
-    }
-    sV_log2( "Pipeline analysis done.\n" );
-
-    return EXIT_SUCCESS ? rc == 0 : EXIT_FAILURE;
+{
+template<typename T>
+RepeatedAccessor
 }
 
-}  // namespace sV
+#endif  //ifdef SWIGPYTHON
 
-
+// vim: ft=swig

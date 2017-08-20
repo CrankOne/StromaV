@@ -47,8 +47,11 @@ namespace sV {
 //}
 
 void
-AnalysisApplication::_finalize_event( Event * ep ) {
-    AnalysisPipeline::_finalize_event( ep );
+AnalysisApplication::_finalize_event( Event & ep,
+                Chain::iterator scb,
+                Chain::iterator sce,
+                bool doPack ) {
+    AnalysisPipeline::_finalize_event( ep, scb, sce, doPack );
     notify_ascii_display();
 }
 
@@ -57,7 +60,8 @@ AnalysisApplication::_finalize_event( Event * ep ) {
 AnalysisApplication::AnalysisApplication( Config * vm ) :
             sV::AbstractApplication(vm),
             mixins::PBEventApp(vm),
-            mixins::RootApplication(vm) {
+            mixins::RootApplication(vm),
+            _evSeq(nullptr) {
     # if 0 // XXX (dev)
     // Inject custom stacktrace info acauizition into boost exception construction
     // procedures; TODO: doesn't work; may be here `handler' means "how to treat" the
@@ -118,9 +122,11 @@ AnalysisApplication::~AnalysisApplication() {
         delete _evSeq;
         _evSeq = nullptr;
     }
+    // Since we allocate processor within _V_concrete_app_configure() within
+    // this class, it's our responsibility here to delete allocated processors.
     for( auto it  = _processorsChain.begin();
               it != _processorsChain.end(); ++it ) {
-        delete *it;
+        delete &(it->processor());
     }
     _processorsChain.clear();
     if(gFile) {
@@ -177,7 +183,7 @@ AnalysisApplication::_V_concrete_app_configure() {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
-            AnalysisPipeline::push_back_processor( generic_new<aux::iEventProcessor>(*it) );
+            AnalysisPipeline::push_back_processor( *generic_new<aux::iEventProcessor>(*it) );
         }
     }
 }

@@ -51,7 +51,7 @@ struct SHA256BucketHash {
     SHA256BucketHash( sV::events::CommonBucketDescriptor & msg ) {
         if( sizeof(hash) != msg.sha256hash().size() ) {
             emraise( badValue, "Expected length of SHA256 hash is 32 bytes "
-                "while incoming protobuf message carries %d.",
+                "while incoming protobuf message carries %zu.",
                 msg.sha256hash().size() );
         }
         memcpy( hash, msg.sha256hash().c_str(), sizeof(hash) );

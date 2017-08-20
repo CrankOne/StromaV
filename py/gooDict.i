@@ -594,8 +594,11 @@ def __setattr__(self, pyStrKey, pyVal):
 #error "PYTHON_BINDINGS is not defined. Unable to build goo's dicts py-wrapper module."
 #endif
 
-// TODO Crutch
+// Kludge. The SWIG for some reason may not add automatically the #include
+// directive with this header from extParameters.i, but generates a type
+// adaptor wrapper code in the gooDict.i.
 #include "app/cvalidators.hpp"
+
 //
 // Parameter insertion helper macros and routine {{{
 
