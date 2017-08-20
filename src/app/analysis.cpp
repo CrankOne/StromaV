@@ -51,7 +51,7 @@ AnalysisApplication::_finalize_event( Event & ep,
                 Chain::iterator scb,
                 Chain::iterator sce,
                 bool doPack ) {
-    AnalysisPipeline::_finalize_event( ep, scb, sce );
+    AnalysisPipeline::_finalize_event( ep, scb, sce, doPack );
     notify_ascii_display();
 }
 
