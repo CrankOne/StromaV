@@ -1,3 +1,5 @@
+%module appBase
+
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
@@ -20,36 +22,34 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "pipeline_app.hpp"
+%include "std_string.i"
+%include "std_list.i"
+%include "_gooExceptionWrapper.i"
 
-namespace sV {
+#define PACKAGE
+%ignore PACKAGE_VERSION;
+%ignore GIT_STRING;
+%rename(instance) goo::aux::iApp::self();
 
-int
-App::_V_run() {
-    if( do_immediate_exit() ) return EXIT_FAILURE;
-    // Check if we actually have something to do
-    if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- will do nothing with events read.\n" );
-    }
-    if( !event_sequence_set() ) {
-        sV_loge( "No data source specified. Has nothing to do.\n" );
-        return EXIT_FAILURE;
-    }
+%ignore goo::aux::iApp::HandlerEntry;  // nested class
+%ignore sV::AbstractApplication::ConfigPathInterpolator;  // nested class
+%ignore sV::AbstractApplication::ConstructableConfMapping;  // nested class
+%rename(instance) sV::AbstractApplication::ConstructableConfMapping::self;  // 
 
-    AnalysisPipeline::iEventSequence & evseq = event_sequence();
+%nodefaultctor sV::AbstractApplication;
+%nodefaultctor sV::mixins::PBEventApp;
 
-    int rc = this->AnalysisPipeline::process( evseq );
+%include "goo_config.h"
+%include "sV_config.h"
 
-    evseq.print_brief_summary( goo::app<App>().ls() );
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
-        it->processor().print_brief_summary( goo::app<App>().ls() );
-    }
-    sV_log2( "Pipeline analysis done.\n" );
+%include "goo_app.hpp"
+%template(BaseApp) goo::App<goo::dict::Configuration, std::ostream>;
 
-    return EXIT_SUCCESS ? rc == 0 : EXIT_FAILURE;
-}
+%include "app/abstract.hpp"
 
-}  // namespace sV
+%{
+#include "sV_config.h"
+%}
 
+// vim: ft=swig
 

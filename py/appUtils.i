@@ -22,33 +22,15 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+%import pipeline.i
+
 %include "std_string.i"
 %include "std_list.i"
+
 %include "_gooExceptionWrapper.i"
-
-%nodefaultctor sV::AbstractApplication;
-%nodefaultctor sV::mixins::PBEventApp;
-
-/* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
- * keywords, so we get rid of them using these macro defs: */
-# ifdef SWIG
-# define override
-# define final
-# endif  // SWIG
-
-%ignore PACKAGE_VERSION;
-%ignore GIT_STRING;
-
-%include "goo_config.h"
-%include "sV_config.h"
-
-%include "goo_app.hpp"
-%template(BaseApp) goo::App<goo::dict::Configuration, std::ostream>;
 
 %include "goo_vcopy.tcc"
 
-%include "app/abstract.hpp"
-%include "app/mixins/protobuf.hpp"
 %include "app/analysis.hpp"
 %include "app/py_session.hpp"
 
@@ -60,13 +42,10 @@ sV::PythonSession::initialize_exception_type();
 
 #include "sV_config.h"
 
-#if !defined( PYTHON_BINDINGS )
-#error "PYTHON_BINDINGS is not defined. Unable to build app py-wrapper module."
-#endif
-
 #define SWIG_FILE_WITH_INIT
 
 #include "app/py_session.hpp"
+#include "analysis/pipe_fj.hpp"
 
 %}
 

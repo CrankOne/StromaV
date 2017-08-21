@@ -62,8 +62,8 @@ private:
                   _n_events
                   ;
 protected:
-    virtual bool _V_process_event( Event * ) override;
-    virtual void _V_finalize_event_processing( Event * ) override;
+    virtual ProcRes _V_process_event( Event & ) override;
+    virtual ProcRes _V_finalize_event_processing( Event & ) override;
     virtual void _V_print_brief_summary( std::ostream & ) const override;
     virtual void _V_finalize() const override;
     void _update_stat();

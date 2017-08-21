@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwith@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -20,36 +21,36 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "pipeline_app.hpp"
+# ifndef H_STROMA_V_ANALYSIS_PIPELINE_JUNCTION_H
+# define H_STROMA_V_ANALYSIS_PIPELINE_JUNCTION_H
+
+# include "sV_config.h"
+
+# ifdef RPC_PROTOCOLS
+
+# include "pipeline.hpp"
 
 namespace sV {
+namespace aux {
 
-int
-App::_V_run() {
-    if( do_immediate_exit() ) return EXIT_FAILURE;
-    // Check if we actually have something to do
-    if( _processorsChain.empty() ) {
-        sV_logw( "No processors specified --- will do nothing with events read.\n" );
-    }
-    if( !event_sequence_set() ) {
-        sV_loge( "No data source specified. Has nothing to do.\n" );
-        return EXIT_FAILURE;
-    }
+/**@brief Special node representing the fork/junction pipeline entry performing
+ *      several sub-pipelines in parallel within major pipeline.
+ * @class ForkJunction
+ *
+ * This class implements a special behaviour of event processing node that has
+ * to accumulate several events prior to be proceed. The usual usecase relates
+ * to parallel computation.
+ *
+ * @ingroup analysis
+ **/
+class iForkJunction : public iEventProcessor,
+                      public iEventSequence {
+    // ...
+};  // class ForkJunction
 
-    AnalysisPipeline::iEventSequence & evseq = event_sequence();
-
-    int rc = this->AnalysisPipeline::process( evseq );
-
-    evseq.print_brief_summary( goo::app<App>().ls() );
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
-        it->processor().print_brief_summary( goo::app<App>().ls() );
-    }
-    sV_log2( "Pipeline analysis done.\n" );
-
-    return EXIT_SUCCESS ? rc == 0 : EXIT_FAILURE;
-}
-
+}  // namespace aux
 }  // namespace sV
 
+# endif  // RPC_PROTOCOLS
+# endif  // H_STROMA_V_ANALYSIS_PIPELINE_JUNCTION_H
 

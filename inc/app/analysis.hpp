@@ -65,8 +65,11 @@ namespace sV {
 class AnalysisApplication :
         public mixins::PBEventApp,
         public mixins::RootApplication,
-        public AnalysisPipeline,
+        public sV::AnalysisPipeline,
         public virtual sV::AbstractApplication {
+private:
+    /// Pointer to data source.
+    sV::aux::iEventSequence * _evSeq;
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
@@ -80,11 +83,32 @@ protected:
     virtual void _V_concrete_app_configure() override;
     /// Appends updating of ASCII display upon successfull finish of single
     /// event processing.
-    virtual void _finalize_event( Event * ) override;
+    virtual void _finalize_event( Event &, Chain::iterator, Chain::iterator, bool doPack=false ) override;
 
     AnalysisApplication( Parent::Config * vm );
 public:
     virtual ~AnalysisApplication();
+
+    /// Current event sequence getter.
+    sV::aux::iEventSequence & event_sequence() {
+        const AnalysisApplication * cThis = this;
+        return const_cast<iEventSequence &>( cThis->event_sequence() );
+    }
+
+    /// Returns reference to an event sequence set.
+    const sV::aux::iEventSequence & event_sequence() const {
+        if( !event_sequence_set() ) {
+            emraise( badState, "Event sequence object is not set for pipeline "
+                    "%p.", this )
+        }
+        return *_evSeq;
+    }
+
+    /// Returns whether the event sequence had been set.
+    bool event_sequence_set() const { return !!_evSeq; }
+
+    /// Sets the event sequence for the pipeline.
+    // TODO: void event_sequence( iEventSequence * ) const;
 
     /// Find processor by name and push back it to chain.
     //void push_back_processor( const std::string & );
