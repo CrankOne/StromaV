@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2016 Renat R. Dusaev <crank@qcrypt.org>
  * Author: Renat R. Dusaev <crank@qcrypt.org>
- * 
+ * Author: Bogdan Vasilishin <togetherwithra@gmail.com>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
@@ -71,18 +72,20 @@ typedef unsigned int   AFR_DetSignature;
  * representation as more descriptive field. The wholenum field
  * can be used as key value in associative containers like maps/sets/etc.
  * */
+struct AFR_DetNumsPair {
+    /**\brief Major number defines a detector digest in terms of custom
+     * code. It is defined as unique ordering number
+     * written in first few bits.
+     */
+    AFR_DetMjNo major;
+    /**\brief The minor number is used to encode x/y/z ordering num
+     * coordinates for detectors which support it. There are no dedicated
+     * fields. */
+    AFR_DetMnNo minor;
+};
+
 union AFR_UniqueDetectorID {
-    struct {
-        /**\brief Major number defines a detector digest in terms of custom
-         * code. It is defined as unique ordering number
-         * written in first few bits.
-         */
-        AFR_DetMjNo major;
-        /**\brief The minor number is used to encode x/y/z ordering num
-         * coordinates for detectors which support it. There are no dedicated
-         * fields. */
-        AFR_DetMnNo minor;
-    } byNumber;
+    struct AFR_DetNumsPair byNumber;
     /**\brief Number congregating full detector identification. */
     AFR_DetSignature wholenum;
     # ifdef __cplusplus
@@ -175,6 +178,9 @@ AFR_DetMjNo AFR_compose_detector_major( AFR_DetFamID, const struct sV_DSuL_MVarI
  * Note, that full signature is required since index encoding may vary
  * depending of particular detector family. */
 void AFR_decode_minor_to_indexes( AFR_DetSignature, struct sV_DSuL_MVarIndex * )
+    sV_FUNCTION_WEAK;
+
+char * snprintf_detector_name( char * buffer, size_t bufferSize, union AFR_UniqueDetectorID )
     sV_FUNCTION_WEAK;
 
 # ifdef DSuL

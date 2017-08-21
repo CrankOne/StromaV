@@ -25,7 +25,6 @@
 
 %import "std_string.i"
 %include "_gooExceptionWrapper.i"
-//%import "goo_types.h"
 
 /* SWIG of versions at least >=2.0.9 doesn't like the C++11 override/final
  * keywords, so we get rid of them using these macro defs: */
@@ -44,6 +43,15 @@
 %}
 
 %include "detector_ids.h"
+
+%extend AFR_UniqueDetectorID {
+    std::string descrptn_t() {
+       char detNamebf[32];
+       snprintf_detector_name( detNamebf, 32, *$self );
+       return std::string(detNamebf);
+    }
+}
+
 %include "detector_ids.hpp"
 
 // vim: ft=swig
