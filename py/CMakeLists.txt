@@ -57,7 +57,7 @@ endif( RPC_PROTOCOLS AND ANALYSIS_ROUTINES )
 
 if ( StromaV_PYMODULES )
     set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
-endif( RPC_PROTOCOLS )
+endif( StromaV_PYMODULES )
 
 if ( StromaV_PYMODULES )
     set( CMAKE_SWIG_FLAGS ${CMAKE_SWIG_FLAGS} -templatereduce )
