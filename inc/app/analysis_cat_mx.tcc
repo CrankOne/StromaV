@@ -121,6 +121,16 @@ ThematicDirectoryStructure<HashKeyT, CategoryKeyT, CategorizedEntryT>::consider_
                     # if 0
                     std::cout << "Root directory \"" << _rootDirectoryName << "\" created." << std::endl;
                     # endif
+                    if( !_tCategoryDir ) {
+                        _tCategoryDir = gFile->GetDirectory(
+                                _rootDirectoryName.c_str(),
+                                /*print error*/ false );
+                    }
+                    if( !_tCategoryDir ) {
+                        emraise( badState, "ROOT unable to create/obtain "
+                        "dir \"%s\" in current file.",
+                        _rootDirectoryName.c_str() );
+                    }
                 } else {
                     emraise( badState, "Couldn't operate with directory \"%s\" "
                         "since this name is empty, or no ROOT file is opened.",
