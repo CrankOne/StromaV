@@ -200,6 +200,23 @@ AbstractApplication::AbstractApplication( Config * cfg ) :
                 "a name of particular group which must include at least the "
                 "\"class\" entry referring to VCtr of \"iLoggingFamily\" "
                 "descendants.")
+            .bgn_sect( "catalogues-mixin", "sV's ThematicDirectoryStructure "
+                       "class parameters defining naming conventions for "
+                       "output histograms." )
+                .p<std::string>( "root-directory-name", "Sets the CTemplate "
+                    "string which is used to render the directory name for "
+                    "particular handler. Possible values: address (hex-addres "
+                    "of memory where processor instance is located), class "
+                    "(mangled class name of processor class), and name (name "
+                    "of particular processor given usually as argument), PID "
+                    "(system processor ID). Note, that TEMPLATED_LOGGING "
+                    "feature must be enabled, otherwise this expression will "
+                    "be ignored and only \"name\" string will be used. Note, "
+                    "that other values may be dynamically added from within "
+                    "other software modules (i.e. number of processor in "
+                    "pipeline, or thread ID for parallel applications).",
+                    "{{name}}-{{address}}")
+            .end_sect( "catalogues-mixin" )
         .end_sect( "logging" )
         ;
 }
@@ -523,10 +540,19 @@ AbstractApplication::_V_configure_application( const Config * appCfgPtr ) {
         _immediateExit = true;
     }
 
-    {   // Apply logging families configuration at this point.
+    {   // Apply logging families configuration
         size_t nFamsInitd = logging::iLoggingFamily::initialize_families();
         sV_log1( "Existing %zu logging families have been re-initialized.\n",
                  nFamsInitd );
+    }
+    // Set catalogue mixin templates:
+    {
+        //ctemplate::mutable_default_template_cache()->Delete( tmlName );
+        const auto & catMxDct = _configuration.subsection("logging.catalogues-mixin");
+        //
+        ctemplate::StringToTemplateCache( "cat-mixin-directory",
+            catMxDct["root-directory-name"].as<std::string>(),
+            ctemplate::DO_NOT_STRIP );
     }
     // Configure mixins:
     if( myRootMixin && !do_immediate_exit() ) {

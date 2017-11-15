@@ -28,7 +28,12 @@
 # include <unordered_map>
 # include <goo_exception.hpp>
 # include <iostream>  // XXX
+
 # include "../detector_ids.h"
+
+# if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+#   include "ctemplate/template.h"
+# endif
 
 namespace sV {
 namespace mixins {
@@ -50,11 +55,14 @@ public:
     typedef CategoryKeyT CategoryKey;
     typedef CategorizedEntryT CategorizedEntry;
 protected:
-    const std::string _rootDirectoryName;
+    std::string _rootDirectoryName;
 
     TDirectory * _tCategoryDir;
     std::unordered_map<CategoryKey, TDirectory *> _subdirs;
     std::unordered_map<HashKey, CategorizedEntry> _entries;
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    ctemplate::TemplateDictionary _tDict;
+    # endif
 
     virtual CategorizedEntry _V_new_entry(HashKey, TDirectory *) = 0;
     virtual CategoryKey _V_get_category_key(HashKey) const = 0;
@@ -85,7 +93,30 @@ template<typename HashKeyT,
 ThematicDirectoryStructure<HashKeyT, CategoryKeyT, CategorizedEntryT>::ThematicDirectoryStructure(
                         const std::string & directoryName ) :
                                 _rootDirectoryName(directoryName),
-                                _tCategoryDir(nullptr) {}
+                                _tCategoryDir(nullptr)
+                                # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+                                , _tDict("CatMxLocalDictionary")
+                                # endif
+                                {
+    # if defined(TEMPLATED_LOGGING) && TEMPLATED_LOGGING
+    {
+        char bf[32];
+        _tDict.SetValue( "name", _rootDirectoryName );
+        snprintf( bf, sizeof(bf), "%p", this );
+        _tDict.SetValue( "address", bf );
+        _tDict.SetValue( "class", typeid(this).name() );
+        // ^^^ will be set to P<smth>, where <smth> is an actual name of
+        // descendant class.
+        _tDict.SetIntValue( "PID", sV::AbstractApplication::PID() );
+    }
+    // The directoryName contains name of particular instance. We now have to
+    // use the configurable template string to supersede it with the rendered
+    // template.
+    ctemplate::ExpandTemplate( "cat-mixin-directory",
+                               ctemplate::DO_NOT_STRIP,
+                               &_tDict,   &_rootDirectoryName );
+    # endif
+}
 
 template<typename HashKeyT,
          typename CategoryKeyT,
@@ -218,4 +249,5 @@ DetectorCatalogue<CategorizedEntryT>::_V_get_category_name( AFR_DetFamID fk ) co
 }  // namespace sV
 
 # endif  // H_STROMA_V_TFILE_TDIRECTORY_DISPATCHER_MIXIN_H
+
 
