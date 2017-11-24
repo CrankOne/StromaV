@@ -32,13 +32,13 @@
 namespace sV {
 namespace aux {
 
-/** Creates dynamically-updated ASCII-display that does not lead to
+/** Creates dynamically-updated ASCII-display that does not cause
  * sufficient performance penalty (which usually appears in text terminals
  * due to ASCII-output latency).
  *
- * Life cycle implies two stages: «printing» and «ready». While printing it does
- * not accept any output contrary to «ready» stage. Switching (toggling) between
- * stages are performed by calling special method --- notify_ascii_display().
+ * Life cycle implies two stages: "printing" and "ready". While printing it does
+ * not generates any output contrary to "ready" stage. Switching (toggling)
+ * between stages are performed by calling special method --- notify_ascii_display().
  * */
 class ASCII_Display {
 public:

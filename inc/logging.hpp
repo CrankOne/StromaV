@@ -51,7 +51,7 @@ enum LogLevel : int8_t {
 };
 
 /**@class StreamBuffer
- * @brief A stream buffer class multiplicating its output to substreams.
+ * @brief A stream buffer class multiplicates its output to substreams.
  *
  * A custom stream buffer class for std::ostream that forwards
  * logging depending on provided settings. Not well optimized,
