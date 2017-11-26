@@ -91,20 +91,22 @@ public:
     class Consumer {
     private:
         Self * _rPtr;
-        /// Must be called by destructor of a resource instance.
-        void _unleash() { _rPtr = nullptr; }
     protected:
         Consumer() : _rPtr( nullptr ) {}
         Consumer( Self & jRef ) : _rPtr(&jRef) {}
         virtual ~Consumer() {}
+        /// Must be called by destructor of a resource instance.
+        void _unleash() { _rPtr = nullptr; }
+        /// Returns ptr to owning collateral process (can be null for unbound).
+        Self * owner() { return _rPtr; }
     public:
         /// Returns true, if consuming resource is available.
-        bool try_acquire() { return _rPtr ? 
-                             ( _rPtr->is_ready() ? _rPtr->_pM.try_lock() : false )
+        bool try_acquire() { return owner() ? 
+                             ( owner()->is_ready() ? owner()->_pM.try_lock() : false )
                              : false; }
         /// Has to be invoked ONLY when try_acquire() succeeded.
         void release_locked() {
-            _rPtr->_pM.unlock();
+            owner()->_pM.unlock();
         }
 
         /// Moving sematics for scoped lock.
@@ -118,7 +120,8 @@ public:
 
     class iConsumer : public Consumer {
     protected:
-        virtual void _V_modify_collateral_job_parameters( Parameters & ) = 0;
+        /// Shall return true, if parameters were really modified.
+        virtual bool _V_modify_collateral_job_parameters( Parameters & ) = 0;
         iConsumer( Self & jRef ) : Consumer( jRef ) {}
     public:
         virtual void modify_collateral_job_parameters() {
@@ -127,7 +130,9 @@ public:
                     "any owner.", this );
             }
             if( Consumer::try_acquire() ) {
-                _V_modify_collateral_job_parameters( Consumer::_rPtr->parameters() );
+                Consumer::owner()->_updated |=
+                        _V_modify_collateral_job_parameters(
+                                            Consumer::owner()->parameters() );
                 Consumer::release_locked();
             }
         }
@@ -135,10 +140,10 @@ public:
 private:
     Parameters & _psRef;
 
-    /// Spurious trigger protection variable.
-    bool _isReady;
-    /// Quit indicator.
-    bool _doQuit;
+    bool _isReady   ///< Spurious trigger protector
+       , _doQuit    ///< Quit indicator
+       , _updated   ///< Prevents duplicated refreshing
+       ;
     Mutex _m;
     CondVar _cv;
     Thread _t;
@@ -165,11 +170,10 @@ protected:
     /// Will sequentially perform task.
     virtual void _run() {
         while( _wait() ) {
-            ScopedLockT jl(_m)
-                      , pl(_pM)
-                      ;
+            MoveableLock jobLock(_m);
             _V_run( _psRef );
             _isReady = true;
+            _updated = false;
         }
     }
 
@@ -178,6 +182,7 @@ public:
     iCollateralJob( Parameters & psRef ) : _psRef(psRef)
                                          , _isReady( true )
                                          , _doQuit( false )
+                                         , _updated( true )
                                          , _t( std::bind( &Self::_run, this ) )
                                          {;}
 
@@ -185,18 +190,16 @@ public:
         for( auto c : _consumers ) {
             c->_unleash();
         }
-        //_m.lock();
         {
             MoveableLock l(_m);
             _doQuit = true;
             _cv.notify_all();
         }
-        //_m.unlock();
         _t.join();
     }
 
     void notify() {
-        if( is_ready() && _m.try_lock() ) {
+        if( _updated && is_ready() && _m.try_lock() ) {
             _isReady = false;
             _m.unlock();
             _cv.notify_all();
