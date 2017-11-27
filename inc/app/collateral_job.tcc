@@ -53,7 +53,7 @@ namespace aux {
  *
  * To implement such a thing:
  *
- *  - One should implement the operating code at overriden _V_run() method.
+ *  - One should implement the operating code at overriden _V_sr_use() method.
  *  - The consuming classes have to inherit the nested Consumer class and then
  *    either:
  *      1) 
@@ -99,14 +99,23 @@ public:
         void _unleash() { _rPtr = nullptr; }
         /// Returns ptr to owning collateral process (can be null for unbound).
         Self * owner() { return _rPtr; }
+        /// Returns ptr to owning collateral process (can be null for unbound)
+        /// (const ver).
+        const Self * owner() const { return _rPtr; }
     public:
         /// Returns true, if consuming resource is available.
         bool try_acquire() { return owner() ? 
                              ( owner()->is_ready() ? owner()->_pM.try_lock() : false )
                              : false; }
+
         /// Has to be invoked ONLY when try_acquire() succeeded.
         void release_locked() {
             owner()->_pM.unlock();
+        }
+
+        /// Should be invoked upon successfull update.
+        void set_updated() {
+            Consumer::owner()->_updated = true;
         }
 
         /// Moving sematics for scoped lock.
@@ -166,12 +175,12 @@ protected:
         return true;
     }
     /// Abstract method performing actual work.
-    virtual void _V_run( Parameters & ) = 0;
+    virtual void _V_sr_use( Parameters & ) = 0;
     /// Will sequentially perform task.
-    virtual void _run() {
+    virtual void _sr_run() {
         while( _wait() ) {
             MoveableLock jobLock(_m);
-            _V_run( _psRef );
+            _V_sr_use( _psRef );
             _isReady = true;
             _updated = false;
         }
@@ -183,7 +192,7 @@ public:
                                          , _isReady( true )
                                          , _doQuit( false )
                                          , _updated( true )
-                                         , _t( std::bind( &Self::_run, this ) )
+                                         , _t( std::bind( &Self::_sr_run, this ) )
                                          {;}
 
     virtual ~iCollateralJob() {

@@ -23,6 +23,7 @@
 # include "app/collateral_job.tcc"
 # include <unistd.h>
 # include <vector>
+# include <sstream>
 
 # include <iostream>  // XXX
 # include <algorithm>
@@ -60,7 +61,7 @@ private:
     uint8_t _timings[3];
     std::vector<JobParameters> _history;
 protected:
-    virtual void _V_run( JobParameters & ps ) override {
+    virtual void _V_sr_use( JobParameters & ps ) override {
         // Pretend, that we're re-initializing resource for something.
         usleep( RANDOM_INTERVAL*_timings[0] );
         // Pretend, that we're doing something with parameter struct.
@@ -136,10 +137,40 @@ run_tcase( uint8_t tPrior,
     return cj.history();
 }
 
-//void
-//analyze_history( const std::vector<JobParameters> & h ) {
-//    double mean, variability, 
-//}
+std::string
+analyze_history( const std::vector<JobParameters> & h ) {
+    std::stringstream ss;
+    ss << "#" << h.size() << ":";
+    double mean[3] = {0, 0, 0}  // "mean delta"
+         , var[3] = {0, 0, 0}   // "variance" (similar to dispersion)
+         ;
+    if( h.size() < 2 ) {
+        ss << "trivial" << std::endl;
+        return ss.str();
+    }
+    for( auto e : h ) {
+        for( uint8_t i = 0; i < 3; ++i ) {
+            mean[i] += e.n[i] - var[i];
+            var[i] = e.n[i];  // var is used as "previous" here
+            //std::cout << e.n[i] << " ";  // XXX
+        }
+        //std::cout << std::endl;  // XXX
+    }
+    for( uint8_t i = 0; i < 3; ++i ) {
+        mean[i] /= h.size();
+        var[i] = 0;
+    }
+    for( auto e : h ) {
+        for( uint8_t i = 0; i < 3; ++i ) {
+            var[i] += fabs( mean[i] - fabs(e.n[i] - var[i]) );
+        }
+    }
+    for( uint8_t i = 0; i < 3; ++i ) {
+        var[i] /= h.size();
+        ss << "(" << (int) i << ")=" << mean[i] << "[+/-]" << var[i] << ", ";
+    }
+    return ss.str();
+}
 
 }  // namespace test
 }  // namespace sV
@@ -159,9 +190,23 @@ BOOST_AUTO_TEST_CASE( CollateralJobTC ) {
     //std::vector<sV::test::JobParameters> histories;
 
     //sV::test::for_all_timings( 5, 3 );
-    sV::test::run_tcase( 1, 3, 1, 3, 1 );
-    sV::test::run_tcase( 0, 3, 0, 2, 3 );
-    sV::test::run_tcase( 3, 1, 0, 1, 5 );
+    std::stringstream ss;
+    //std::cout
+    ss
+        << analyze_history( sV::test::run_tcase( 1, 3, 1, 3, 1 ) )
+        << std::endl
+        << analyze_history( sV::test::run_tcase( 0, 1, 0, 2, 3 ) )
+        << std::endl
+        << analyze_history( sV::test::run_tcase( 3, 1, 0, 1, 5 ) )
+        << std::endl
+        ;
+    // ^^^ usual output is something like:
+    //  #180:(0)=0.566667[+/-]0.563519, (1)=0.488889[+/-]0.486173, (2)=0.516667[+/-]0.513796, 
+    //  #544:(0)=0.367647[+/-]0.366971, (1)=0.915441[+/-]0.913758, (2)=0.915441[+/-]0.913758, 
+    //  #408:(0)=0.661765[+/-]0.660143, (1)=0.928922[+/-]0.926645, (2)=0.904412[+/-]0.902195,
+    // Where the # number corresponds to entire updates, and the triplet
+    // relates to each interesting thread. The numbers in triplet indicates
+    // averaged increment and averaged increment deviation.
 
     BOOST_TEST_MESSAGE( "[==] Collateral job." );
 }

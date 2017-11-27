@@ -24,6 +24,8 @@
 # include "metadata/type_cached.tcc"
 # include "md-test-common.hpp"
 
+# include <algorithm>
+
 namespace sV {
 namespace mdTest2 {
 

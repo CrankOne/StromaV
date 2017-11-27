@@ -25,12 +25,15 @@
 
 # include <cstdint>
 # include <cassert>
-# include <boost/thread/mutex.hpp>
-# include <boost/thread/thread.hpp>
-# include <boost/thread/condition_variable.hpp>
+# include <map>
+# include "app/collateral_job.tcc"
 
 namespace sV {
 namespace aux {
+
+struct ASCIIDisplayParameters {
+    // ...
+};
 
 /** Creates dynamically-updated ASCII-display that does not cause
  * sufficient performance penalty (which usually appears in text terminals
@@ -40,59 +43,39 @@ namespace aux {
  * not generates any output contrary to "ready" stage. Switching (toggling)
  * between stages are performed by calling special method --- notify_ascii_display().
  * */
-class ASCII_Display {
+class ASCII_Display : public iCollateralJob<ASCIIDisplayParameters> {
 public:
     static constexpr size_t LineLength = 512;
-
+    typedef iCollateralJob<ASCIIDisplayParameters> Parent;
     typedef uint8_t NLines;
-    class ASCII_Entry {
-    private:
-        ASCII_Display * _displayPtr;
-        /// Should be called by destructor of display instance.
-        void _unleash() { _displayPtr = nullptr; }
+    class ASCII_Entry : public Parent::Consumer {
     protected:
         ASCII_Entry( ASCII_Display *, NLines );
         virtual ~ASCII_Entry();
     public:
         /// Returns result of is_ready() invokation for owning display.
         bool can_acquire_display_buffer() const {
-                return _displayPtr ? _displayPtr->is_ready() : false; }
+                return owner() ? owner()->is_ready() : false; }
         /// Could be used in snprintf() calls.
         char ** my_ascii_display_buffer() {
-                assert(_displayPtr);
-                return _displayPtr->get_buffer_of(this); }
+                assert(owner());
+                set_updated();
+                return static_cast<ASCII_Display *>(owner())->get_buffer_of(this); }
         friend class ASCII_Display;
     };
 private:
-    /// Manifesting bool variable;
-    bool _isReady;
-    /// Tells listening thread to exit.
-    bool _quit;
-    /// Conjugates with _isReady.
     bool _enabled;
-    bool _updated;
-
-    boost::mutex _printingMtx;
-    boost::condition_variable _notifier;
-    boost::thread _printingThread;
-
-    /// Returns false when exit flag was set.
-    bool _wait_for_info();
-    /// Launches printing worker
-    void _print_lines();
 protected:
-
     std::map<const ASCII_Entry *, char ** > _entries;
-
     /// Implicitly called by ASCII_Entry constructor.
     void _register_me( const ASCII_Entry *, NLines );
     /// Implicitly called by ASCII_Entry destructor.
     void _erase_me( const ASCII_Entry * );
     /// Called by ASCII_Entry my_ascii_display_buffer() method.
     char ** get_buffer_of( const ASCII_Entry * );
-public:
-    bool is_ready() const { return _isReady && _enabled; }
 
+    virtual void _V_sr_use( ASCIIDisplayParameters & ) override;
+public:
     /**@brief Toggling method that initiates transition between «printing» and
      * «ready» stage.
      *
@@ -101,13 +84,12 @@ public:
      * When actual printing is done the next notify() invokation causes
      * the instance manifest itself as «ready» (is_ready() returns true);
      * */
-    void notify_ascii_display();
-
-    ASCII_Display( bool enabled=false );
-    ~ASCII_Display();
-
+    void notify_ascii_display() { Parent::notify(); }
     void enable_ASCII_display();
     void disable_ASCII_display();
+    virtual bool is_ready() const override { return Parent::is_ready() && _enabled; }
+    ASCII_Display( bool enabled=false );
+    ~ASCII_Display();
 };  // class ASCII_Display
 
 }  // namespace aux

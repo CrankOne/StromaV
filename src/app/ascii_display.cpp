@@ -21,6 +21,7 @@
  */
 
 # include <goo_exception.hpp>
+# include <strings.h>
 # include "app/ascii_display.hpp"
 
 namespace sV {
@@ -29,16 +30,17 @@ namespace aux {
 // Display::ASCII_Entry
 ////////////////
 
-ASCII_Display::ASCII_Entry::ASCII_Entry( ASCII_Display * displayPtr, NLines nLines ) :
-        _displayPtr(displayPtr) {
-    if( _displayPtr ) {
-        _displayPtr->_register_me( this, nLines );
+ASCII_Display::ASCII_Entry::ASCII_Entry( ASCII_Display * displayPtr
+                                       , NLines nLines ) :
+                Parent::Consumer( *displayPtr ) {
+    if( owner() ) {
+        static_cast<ASCII_Display *>(owner())->_register_me( this, nLines );
     }
 }
 
 ASCII_Display::ASCII_Entry::~ASCII_Entry( ) {
-    if( _displayPtr ) {
-        _displayPtr->_erase_me( this );
+    if( owner() ) {
+        static_cast<ASCII_Display *>(owner())->_erase_me( this );
     }
 }
 
@@ -86,65 +88,27 @@ ASCII_Display::get_buffer_of( const ASCII_Entry * entryPtr ) {
     if( _entries.end() == it ) {
         emraise( badArchitect, "Couldn't find the entry %p.", entryPtr );
     }
-    _updated = true;
     return it->second;
 }
 
-bool
-ASCII_Display::_wait_for_info() {
-    boost::mutex::scoped_lock lock( _printingMtx );
-    while( _isReady && !_quit ) {
-        _notifier.wait( lock );
-    }
-    if( _quit )
-        return false;
-    return true;
-}
-
 void
-ASCII_Display::_print_lines() {
-    while( _wait_for_info() ) {
-        _printingMtx.lock();
-        size_t overallLineNo = 0;
-        for( auto it = _entries.begin(); _entries.end() != it; ++it ) {
-            for( char * const * line = it->second; *line; ++line, ++overallLineNo ) {
-                printf( "\033[1K%s\n", *line );
-            }
+ASCII_Display::_V_sr_use( ASCIIDisplayParameters & ) {
+    size_t overallLineNo = 0;
+    for( auto it = _entries.begin(); _entries.end() != it; ++it ) {
+        for( char * const * line = it->second; *line; ++line, ++overallLineNo ) {
+            printf( "\033[1K%s\n", *line );
         }
-        printf( "\033[%zuA", overallLineNo );
-        _isReady = true;
-        _updated = false;
-        _printingMtx.unlock();
     }
-}
-
-void
-ASCII_Display::notify_ascii_display() {
-    if( _updated && is_ready() && _printingMtx.try_lock() ) {
-        _isReady = false;
-        _printingMtx.unlock();
-        _notifier.notify_all();
-    }
+    printf( "\033[%zuA", overallLineNo );
 }
 
 ASCII_Display::ASCII_Display( bool enabled ) :
-                _isReady( true ),
-                _quit( false ),
-                _enabled( enabled ),
-                _updated( true ),
-        _printingThread( boost::bind( &ASCII_Display::_print_lines, this ) ) {
+                Parent( *(new ASCIIDisplayParameters) ),
+                _enabled( enabled ) {
 }
 
 ASCII_Display::~ASCII_Display() {
-    for( auto it = _entries.begin(); _entries.end() != it; ++it ) {
-        const_cast<ASCII_Display::ASCII_Entry*>(it->first)->_unleash();
-    }
-    _quit = true;
-
-    _printingMtx.lock();
-    _notifier.notify_all();
-    _printingMtx.unlock();
-    _printingThread.join();
+    delete &(this->parameters());
 }
 
 void
