@@ -30,6 +30,7 @@
 
 # include "app/mixins/protobuf.hpp"
 # include "uevent.hpp"
+# include "analysis/pipe_watcher.hpp"
 
 # include <unordered_map>
 # include <unordered_set>
@@ -53,7 +54,6 @@ class iEventPayloadProcessorBase;
 /// The base type aggregating event processing result flags.
 typedef uint8_t EventProcessingResult;
 }  // namespace aux
-
 
 /**@class AnalysisPipeline
  * @brief Representation for data analysis pipeline.
@@ -111,11 +111,12 @@ public:
         struct PayloadTraits {
             const std::type_info & TI;
             bool forcePack;
+            size_t nPacked;  // TODO: use it
             // ...
             PayloadTraits( const std::type_info & TI_ ) :
-                        TI(TI_), forcePack(false) {}
+                        TI(TI_), forcePack(false), nPacked(0) {}
         } * _payloadTraits;
-        aux::iEventSequence * _junction;  // TODO: nullate, initialize on set
+        aux::iEventSequence * _junction;
     protected:
         //iEventProcessor & processor() { return _processor; }
         aux::EventProcessingResult handle( Event * );
@@ -127,6 +128,7 @@ public:
 
         bool payload_traits_available() const { return !!_payloadTraits; }
         PayloadTraits & payload_traits();
+        //const PayloadTraits & payload_traits() const;  // NOTE: see comment 27 of issue #169
 
         bool junction_available() const { return !!_junction; }
         aux::iEventSequence * junction_ptr();
@@ -138,7 +140,7 @@ public:
     };
 
     /// Type alias referencing the stack of processors.
-    typedef std::list<Handler> Chain;
+    typedef std::vector<Handler> Chain;
 
     /// The evaluation strategy indicators steering the event processing from
     /// a set of consideration functions. Has to be returned by
@@ -163,9 +165,7 @@ protected:
 private:
     std::set<void (*)()> _invalidators;
     std::set<void (*)(Event&)> _payloadPackers;
-
-    /// ASCII_Entry-related internal function.
-    void _update_stat();
+    aux::iPipelineWatcher * _watcher;
 
     bool _defaultArbiter;
     aux::iArbiter * _arbiter;
@@ -179,7 +179,7 @@ protected:
     virtual void _finalize_event( Event &, Chain::iterator , Chain::iterator, bool doPack=true );
     virtual void _finalize_sequence( iEventSequence & );
 public:
-    AnalysisPipeline();
+    AnalysisPipeline( aux::iPipelineWatcher * reps=nullptr );
     virtual ~AnalysisPipeline();
 
     /// Adds processor to processor chain.
@@ -206,6 +206,8 @@ public:
 
     template<typename EventClassT, typename PayloadT>
     friend class aux::iTEventPayloadProcessor;
+
+    friend class aux::iPipelineWatcher;
 };  // class AnalysisPipeline
 
 namespace aux {

@@ -124,8 +124,10 @@ else()
 endif()
 
 if( RPC_PROTOCOLS )
-    protobuf_generate_cpp(GPROTO_MSGS_SRCS GPROTO_MSGS_HDRS
+    protobuf_generate_cpp(GPROTO_EVS_SRCS GPROTO_EVS_HDRS
                           event.proto)
+    protobuf_generate_cpp(GPROTO_REP_SRCS GPROTO_REP_HDRS
+                          pipeline_reports.proto)
 endif( RPC_PROTOCOLS )
 
 # Doxygen is a nice and robust software for automated creation of
@@ -319,7 +321,8 @@ endif( DSuL )
 
 add_library( ${StromaV_LIB} SHARED
         ${StromaV_LIB_SOURCES}
-        $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_MSGS_SRCS}>
+        $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_EVS_SRCS}>
+        $<$<BOOL:${RPC_PROTOCOLS}>:${GPROTO_REP_SRCS}>
         #$<$<BOOL:${ANALYSIS_ROUTINES}>:TrackingGroupDict.cxx>
         $<$<BOOL:${DSuL}>:${BISON_DSuL_Parser_OUTPUTS}>
         $<$<BOOL:${DSuL}>:${FLEX_DSuL_Lexer_OUTPUTS}>
@@ -400,8 +403,10 @@ if( ANALYSIS_ROUTINES )
     target_link_libraries( ${StromaV_LIB} PRIVATE ${GSL_LIBRARIES} )
 endif( ANALYSIS_ROUTINES )
 if( RPC_PROTOCOLS )
-    set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES COMPILE_FLAGS -w )
-    set_source_files_properties(${GPROTO_MSGS_SRCS} PROPERTIES GENERATED TRUE )
+    set_source_files_properties(${GPROTO_EVS_SRCS} PROPERTIES COMPILE_FLAGS -w )
+    set_source_files_properties(${GPROTO_EVS_SRCS} PROPERTIES GENERATED TRUE )
+    set_source_files_properties(${GPROTO_REP_SRCS} PROPERTIES COMPILE_FLAGS -w )
+    set_source_files_properties(${GPROTO_REP_SRCS} PROPERTIES GENERATED TRUE )
     target_link_libraries( ${StromaV_LIB}
             PUBLIC  ${PROTOBUF_LIBRARIES}
                     ${Protobuf_LIBRARIES}

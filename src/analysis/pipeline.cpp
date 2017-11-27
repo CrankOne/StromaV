@@ -86,22 +86,24 @@ AnalysisPipeline::Handler::finalize( Event & e ) {
 // Pipeline class
 ////////////////
 
-AnalysisPipeline::AnalysisPipeline() :
+AnalysisPipeline::AnalysisPipeline( aux::iPipelineWatcher * reps ) :
             ASCII_Entry( goo::aux::iApp::exists() ?
                         &goo::app<AbstractApplication>() : nullptr, 1 ),
+                _watcher(reps),
                 _defaultArbiter(true),
                 _arbiter(new aux::DefaultArbiter()) {
-}
-
-AnalysisPipeline::~AnalysisPipeline() {
-    if( _defaultArbiter ) {
-        delete _arbiter;
+    if( _watcher ) {
+        _watcher->track_pipeline(this);
     }
 }
 
-void
-AnalysisPipeline::_update_stat() {
-    // ...
+AnalysisPipeline::~AnalysisPipeline() {
+    if( _watcher ) {
+        _watcher->release_pipeline(this);
+    }
+    if( _defaultArbiter ) {
+        delete _arbiter;
+    }
 }
 
 void
@@ -127,7 +129,6 @@ AnalysisPipeline::push_back_processor( iEventProcessor & proc ) {
         static_cast<iEventPayloadProcessorBase&>(proc).register_hooks( this );
     }
     _processorsChain.push_back( handler );
-    
     sV_log3( "Processor %p now handles event pipeline.\n", &proc );
 }
 
@@ -162,7 +163,9 @@ AnalysisPipeline::_finalize_event( Event & event,
     for( auto & nullate : _invalidators ) {
         nullate();
     }
-    _update_stat();
+    if( _watcher ) {
+        _watcher->update_stats( this );
+    }
 }
 
 void
@@ -198,7 +201,7 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
     // Check if we actually have something to do
     if( _processorsChain.empty() ) {
         sV_loge( "No processors specified --- has nothing to do for "
-                     "pipeline %p.\n", this );
+                 "pipeline %p.\n", this );
         return -1;
     }
 
@@ -225,6 +228,12 @@ AnalysisPipeline::process( AnalysisPipeline::iEventSequence & mainEvSeq ) {
             Chain::iterator procIt;
             for( procIt = procStart; procIt != _processorsChain.end(); ++procIt ) {
                 iEventProcessor::ProcRes localProcRC = procIt->handle( evPtr );
+                // NOTE: see comment 27 of issue #169
+                //if( procIt->payload_traits_available() && procIt->payload_traits().forcePack ) {
+                //    for( auto & packer : _payloadPackers ) {
+                //        packer( event );
+                //    }
+                //}
                 evalStatus = arbiter().consider_rc( localProcRC, globalProcRC );
                 if( AnalysisPipeline::JunctionFinalized == evalStatus ) {
                     sourcesStack.push(

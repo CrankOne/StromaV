@@ -57,7 +57,7 @@ find_package( Boost ${Boost_FORCE_VERSION}
 if( RPC_PROTOCOLS OR StromaV_RPC_PROTOCOLS )
     find_package( Protobuf REQUIRED )
     #set(PROTOBUF_GENERATE_CPP_APPEND_PATH FALSE)
-    # TODO: protobuf_generate_cpp(GPROTO_MSGS_SRCS GPROTO_MSGS_HDRS
+    # TODO: protobuf_generate_cpp(GPROTO_EVS_SRCS GPROTO_EVS_HDRS
     #                      event.proto)
 endif( RPC_PROTOCOLS OR StromaV_RPC_PROTOCOLS )
 
