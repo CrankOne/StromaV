@@ -51,6 +51,12 @@ AnalysisPipeline::Handler::Handler( const Handler & o ) :
 
 AnalysisPipeline::Handler::PayloadTraits &
 AnalysisPipeline::Handler::payload_traits() {
+    const AnalysisPipeline::Handler * cthis = this;
+    return const_cast<AnalysisPipeline::Handler::PayloadTraits &>(cthis->payload_traits());
+}
+
+const AnalysisPipeline::Handler::PayloadTraits &
+AnalysisPipeline::Handler::payload_traits() const {
     if( ! payload_traits_available() ) {
         emraise( badState, "Handler of processors %p has no payload traits.",
             &_processor );

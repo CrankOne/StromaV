@@ -53,7 +53,7 @@ iPipelineWatcher::update_structure( AnalysisPipeline * ppl ) {
         sV::reports::ProcessorState & ps = *R.add_processorstates();
         if( h.payload_traits_available() ) {
             if( h.payload_traits().forcePack ) {
-                ps.set_type( reports::ProcessorState::typedPayload );
+                ps.set_type( reports::ProcessorState::payloadForcePack );
             } else {
                 ps.set_type( reports::ProcessorState::payloadPlain );
             }
@@ -70,13 +70,13 @@ iPipelineWatcher::update_structure( AnalysisPipeline * ppl ) {
 }
 
 void
-iPipelineWatcher::update_stats( AnalysisPipeline * ) {
+iPipelineWatcher::update_stats( AnalysisPipeline * ppl ) {
     sV::reports::PipelineReport & R = *_repPtr;
     # ifndef NDEBUG
-    if( R.processorstates_size() != ppl->_processorsChain ) {
-        emraise(asertFailed, "iPipelineWatcher::update_stats() indicates "
+    if( (size_t) R.processorstates_size() != ppl->_processorsChain.size() ) {
+        emraise( assertFailed, "iPipelineWatcher::update_stats() indicates "
             "changed pipeline structure (processor number: %d kept vs %d "
-            "real).", R.processorstates_size(), ppl->_processorsChain );
+            "real).", R.processorstates_size(), ppl->_processorsChain.size() );
     }
     // ... other checks
     # endif
@@ -87,7 +87,7 @@ iPipelineWatcher::update_stats( AnalysisPipeline * ) {
         sV::reports::ProcessorState & ps = *R.mutable_processorstates( np );
         ps.set_nconsidered( h.stats().nConsidered );
         ps.set_ndiscriminated( h.stats().nDiscriminated );
-        ps.set_aborted( h.stats().nAborted );
+        ps.set_naborted( h.stats().nAborted );
         if( h.payload_traits_available() ) {
             ps.set_npacked( h.payload_traits().nPacked );
         }

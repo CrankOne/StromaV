@@ -128,13 +128,13 @@ public:
 
         bool payload_traits_available() const { return !!_payloadTraits; }
         PayloadTraits & payload_traits();
-        //const PayloadTraits & payload_traits() const;  // NOTE: see comment 27 of issue #169
+        const PayloadTraits & payload_traits() const;
 
         bool junction_available() const { return !!_junction; }
         aux::iEventSequence * junction_ptr();
 
         const iEventProcessor & processor() const { return _processor; }
-        const Statistics & stats() { return _stats; }
+        const Statistics & stats() const { return _stats; }
 
         friend class AnalysisPipeline;
     };
