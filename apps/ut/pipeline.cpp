@@ -20,11 +20,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-# include "analysis/pipe.tcc"
+# include "analysis/pipeline/basic.tcc"
 
 # include <string>
-
-# include <iostream>  // XXX
 
 # define BOOST_TEST_NO_MAIN
 //# define BOOST_TEST_MODULE Data source with metadata
@@ -85,15 +83,15 @@ public:
 
 // Define pipeline type from template:
 
-typedef sV::Pipeline< Message
-                    , Processor
-                    , int
-                    , int > Pipe;
+typedef sV::PipelineTraits< Message
+                          , Processor
+                          , int
+                          , int > Traits;
 
 
 // Define arbiter class:
 
-class TestingArbiter : public Pipe::IArbiter {
+class TestingArbiter : public Traits::IArbiter {
 protected:
     size_t _nMsg;
     bool _skipNext, _abortProcessing;
@@ -132,7 +130,7 @@ public:
 
 // Define source wrapper simply iterating over gSrcMsgs array
 
-class TestingSource : public Pipe::ISource {
+class TestingSource : public Traits::ISource {
 private:
     Message * _latest;
 public:
@@ -155,26 +153,22 @@ public:
 BOOST_AUTO_TEST_SUITE( Pipeline_suite )
 
 BOOST_AUTO_TEST_CASE( LinearPipelineTC ) {
-    using sV::test::Pipe;
-
     sV::test::Processor p1(0), p2(1), p3(2), p4(3);
 
     sV::test::TestingArbiter ta;
-    Pipe ppl( &ta );
+    sV::Pipeline<sV::test::Traits> ppl( &ta );
 
-    ppl.push_back( Pipe::Handler( &p1 ) );
-    ppl.push_back( Pipe::Handler( &p2 ) );
-    ppl.push_back( Pipe::Handler( &p3 ) );
-    ppl.push_back( Pipe::Handler( &p4 ) );
+    ppl.push_back( &p1 );
+    ppl.push_back( &p2 );
+    ppl.push_back( &p3 );
+    ppl.push_back( &p4 );
 
     sV::test::TestingSource src;
 
     int n = ppl.process(src);
     BOOST_CHECK( 4 == n );  // shall be aborted on #4
-    std::cout << "XXX " << n << std::endl;
     n = ppl.process( sV::test::gSrcMsgs[0] );
     BOOST_CHECK( 0 == n );
-    std::cout << "XXX " << n << std::endl;
 
     BOOST_TEST_MESSAGE( "    ...basic pipeline processing passed." );
 
