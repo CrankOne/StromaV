@@ -37,8 +37,8 @@ namespace test {
 // We define flags array as a sequence of messages that will be emitted by our
 // testing source:
 static const uint8_t msgSkip = 0x1
-                   , msgAbort = 0x2
-                   , msgFrbdn = 0x4
+                   , msgAbort = 0x1 << 1
+                   , msgFrbdn = 0x1 << 2
                    ;
 
 struct Message {
@@ -58,18 +58,28 @@ struct Message {
     { 0, { msgFrbdn,            msgFrbdn,           msgFrbdn,           msgFrbdn } },
 };
 
+int pIDS[][6] = {
+    {1,  2,  3,  4,  5,  1},
+    {1,  2,  3,      5,  1, -1},
+    {1,  2,  3,      1, -1, -1},
+    {1,  2,          1, -1, -1, -1},
+};
+
 // The processor type forwards the according bit flags as its processing
 // result.
 
 class Processor {
 private:
     int _pID;
+    std::vector<int> _idsHistory;
 public:
     Processor( int pID ) : _pID(pID) {}
     int operator()(Message & msg) {
+        _idsHistory.push_back( msg.id );
         BOOST_CHECK( ! (msg.flags[_pID] & msgFrbdn) );
         return msg.flags[_pID];
     }
+    const std::vector<int> & ids_history() const { return _idsHistory; }
 };
 
 
@@ -100,7 +110,7 @@ public:
         if( rc & msgAbort ) {
             _abortProcessing = true;
         }
-        return !_skipNext;
+        return !(_skipNext | _abortProcessing);
     }
     virtual int pop_result() override {
         int res = (int) _nMsg;
@@ -109,11 +119,11 @@ public:
         return res;
     }
     virtual bool next_message() override {
+        _skipNext = false;
         if(!_abortProcessing) {
             ++_nMsg;
             return true;  // continue
         } else {
-            _skipNext = false;
             return false;  // abort
         }
     }
@@ -160,13 +170,23 @@ BOOST_AUTO_TEST_CASE( LinearPipelineTC ) {
     sV::test::TestingSource src;
 
     int n = ppl.process(src);
-    BOOST_CHECK( 2 == n );  // shall be aborted on #8
+    BOOST_CHECK( 4 == n );  // shall be aborted on #4
     std::cout << "XXX " << n << std::endl;
     n = ppl.process( sV::test::gSrcMsgs[0] );
     BOOST_CHECK( 0 == n );
     std::cout << "XXX " << n << std::endl;
 
     BOOST_TEST_MESSAGE( "    ...basic pipeline processing passed." );
+
+    int idx1 = 0, idx2 = 0;
+    for( const auto & h : ppl ) {
+        for( auto nEv : h.processor().ids_history() ) {
+            BOOST_CHECK( sV::test::pIDS[idx1][idx2] == nEv );
+            ++idx2;
+        }
+        idx2 = 0;
+        ++idx1;
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

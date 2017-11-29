@@ -48,6 +48,8 @@ private:
 public:
     PipelineHandler( Processor * p ) : _p(p) {}
     ProcRes process( Message & m ) { return (*_p)( m ); }
+    Processor & processor() { return *_p; }
+    const Processor & processor() const { return *_p; }
 };  // class PipelineHandler
 
 namespace aux {
@@ -58,8 +60,9 @@ using STLAllocatedVector = std::vector<T>;
 /**@brief Strightforward pipeline template primitive.
  * @class Pipeline
  *
- * This is basic implementation of pipeline that performs sequential invokation
- * of processing atoms stored at ordered container.
+ * This is the basic implementation of pipeline that performs sequential
+ * invokation of processing atoms stored at ordered container, guided by
+ * arbitering class.
  *
  * The PipelineProcResT type has to be compy-constructible.
  *
@@ -116,53 +119,30 @@ public:
     /// Virtual dtr (trivial).
     virtual ~Pipeline() {}
     /// Run pipeline evaluation on source.
-    virtual PipelineProcRes process( ISource & );
-    /// Run pipeline evaluation on single message.
-    virtual PipelineProcRes process( Message & );
-};  // class Pipeline
-
-
-template< typename MessageT
-        , typename ProcessorT
-        , typename ProcResT
-        , typename PipelineProcResT
-        , template<typename> class TChainT> PipelineProcResT
-Pipeline< MessageT
-        , ProcessorT
-        , ProcResT
-        , PipelineProcResT
-        , TChainT >::process( ISource & src ) {
-    Message * msg;
-    while(!!(msg = src.next())) {
-        for( Handler & h : *static_cast<Chain*>(this) ) {
-            if( ! _a->consider_handler_result( h.process(*msg) ) ) {
+    virtual PipelineProcRes process( ISource & src ) {
+        Message * msg;
+        while(!!(msg = src.next())) {
+            for( Handler & h : *static_cast<Chain*>(this) ) {
+                if( ! _a->consider_handler_result( h.process(*msg) ) ) {
+                    break;
+                }
+            }
+            if( ! _a->next_message() ) {
                 break;
             }
         }
-        if( ! _a->next_message() ) {
-            break;
-        }
+        return _a->pop_result();
     }
-    return _a->pop_result();
-}
-
-template< typename MessageT
-        , typename ProcessorT
-        , typename ProcResT
-        , typename PipelineProcResT
-        , template<typename> class TChainT > PipelineProcResT
-Pipeline< MessageT
-        , ProcessorT
-        , ProcResT
-        , PipelineProcResT
-        , TChainT >::process( Message & msg ) {
-    for( Handler & h : *static_cast<Chain*>(this) ) {
-        if( ! _a->consider_handler_result( h.process(msg) ) ) {
-            break;
+    /// Run pipeline evaluation on single message.
+    virtual PipelineProcRes process( Message & ) {
+        for( Handler & h : *static_cast<Chain*>(this) ) {
+            if( ! _a->consider_handler_result( h.process(msg) ) ) {
+                break;
+            }
         }
+        return _a->pop_result();
     }
-    return _a->pop_result();
-}
+};  // class Pipeline
 
 
 # if 0
