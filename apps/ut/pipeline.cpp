@@ -95,10 +95,8 @@ class TestingArbiter : public Traits::IArbiter {
 protected:
     size_t _nMsg;
     bool _skipNext, _abortProcessing;
-public:
-    TestingArbiter() : _nMsg(0), _skipNext(false), _abortProcessing(false) {}
-
-    virtual bool consider_handler_result( int rc ) override {
+protected:
+    virtual bool _V_consider_handler_result( int rc ) override {
         BOOST_CHECK( ! (rc & msgFrbdn) );
         BOOST_CHECK( ! _skipNext );
         BOOST_CHECK( ! _abortProcessing );
@@ -110,13 +108,13 @@ public:
         }
         return !(_skipNext | _abortProcessing);
     }
-    virtual int pop_result() override {
+    virtual int _V_pop_result() override {
         int res = (int) _nMsg;
         _nMsg = 0;
         _skipNext = _abortProcessing = false;
         return res;
     }
-    virtual bool next_message() override {
+    virtual bool _V_next_message() override {
         _skipNext = false;
         if(!_abortProcessing) {
             ++_nMsg;
@@ -125,6 +123,8 @@ public:
             return false;  // abort
         }
     }
+public:
+    TestingArbiter() : _nMsg(0), _skipNext(false), _abortProcessing(false) {}
 };
 
 

@@ -29,6 +29,8 @@
 
 namespace sV {
 
+template<typename PipelineTraitsT> class Pipeline;
+
 namespace aux {
 template<typename T>
 using STLAllocatedVector = std::vector<T>;
@@ -82,17 +84,19 @@ struct PipelineTraits {
     };  // class ISource
     /// Interface making a decision, whether to continue processing on few
     /// stages.
-    /// Invokation of pop_result() is guaranteed at the ending of processing
+    /// Invokation of _V_pop_result() is guaranteed at the ending of processing
     /// loop.
-    struct IArbiter {
+    class IArbiter {
+    protected:
         /// Shall return true if result returned by current handler allows
         /// further propagation.
-        virtual bool consider_handler_result( ProcRes ) = 0;
+        virtual bool _V_consider_handler_result( ProcRes ) = 0;
         /// Shall return result considering current state and reset state.
-        virtual PipelineProcRes pop_result() = 0;
+        virtual PipelineProcRes _V_pop_result() = 0;
         /// Whether to retrieve next message from source and start
         /// event propagation.
-        virtual bool next_message() = 0;
+        virtual bool _V_next_message() = 0;
+        friend class Pipeline<Self>;
     };  // class IArbiter
 };
 
@@ -141,15 +145,15 @@ public:
         Message * msg;
         while(!!(msg = src.next())) {
             for( Handler & h : *static_cast<Chain*>(this) ) {
-                if( ! a.consider_handler_result( h.process(*msg) ) ) {
+                if( ! a._V_consider_handler_result( h.process(*msg) ) ) {
                     break;
                 }
             }
-            if( ! a.next_message() ) {
+            if( ! a._V_next_message() ) {
                 break;
             }
         }
-        return a.pop_result();
+        return a._V_pop_result();
     }
     /// Run pipeline evaluation on single message.
     virtual PipelineProcRes process( Message & msg ) {
@@ -160,11 +164,11 @@ public:
         }
         IArbiter & a = *arbiter_ptr();
         for( Handler & h : *static_cast<Chain*>(this) ) {
-            if( ! a.consider_handler_result( h.process(msg) ) ) {
+            if( ! a._V_consider_handler_result( h.process(msg) ) ) {
                 break;
             }
         }
-        return a.pop_result();
+        return a._V_pop_result();
     }
     /// Shortcut for inserting processor at the back of pipeline.
     virtual void push_back( Processor * p ) {

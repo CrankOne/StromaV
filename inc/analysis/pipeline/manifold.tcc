@@ -24,7 +24,15 @@
 # ifndef H_STROMA_V_PIPELINING_MANIFOLD_H
 # define H_STROMA_V_PIPELINING_MANIFOLD_H
 
+# include "analysis/pipeline/basic.tcc"
+
+# include <stack>
+# include <utility>
+
 namespace sV {
+
+template< typename MessageT
+        , typename ResultT> class Manifold;
 
 namespace aux {
 
@@ -64,7 +72,7 @@ enum ManifoldProcessingResultFlags : int8_t {
     , RC_ABORT_DISCRIMINATE             = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
 };
 
-template< typename MessageT>
+template<typename MessageT>
 struct iManifoldProcessor {
 public:
     typedef MessageT Message;
@@ -72,27 +80,20 @@ public:
     virtual ManifoldProcessingResultFlags operator()( Message & ) = 0;
 };
 
-//template<typename MessageT, typename ManifoldResultT>
-//using ManifoldTraits = PipelineTraitsT< MessageT
-//                                      , iManifoldProcessor<MessageT>
-//                                      , ManifoldProcessingResultFlags
-//                                      , ManifoldResultT>
-//                                      ;
-
 template< typename MessageT
-        , typename ManifoldResultT >
-struct ManifoldTraits : protected PipelineTraitsT< MessageT
-                                                 , iManifoldProcessor<MessageT>
-                                                 , ManifoldProcessingResultFlags
-                                                 , ManifoldResultT > {
+        , typename ManifoldResultT
+        , template<typename T> class TChainT=aux::STLAllocatedVector>
+struct ManifoldTraits : protected PipelineTraits< MessageT
+                                                , iManifoldProcessor<MessageT>
+                                                , ManifoldProcessingResultFlags
+                                                , ManifoldResultT > {
     /// Self traits typedef.
     typedef ManifoldTraits<MessageT, ManifoldResultT> Self;
     /// Parent (hidden) typedef.
-    typedef PipelineTraitsT< MessageT
-                           , iManifoldProcessor<MessageT>
-                           , ManifoldProcessingResultFlags
-                           , PipelineProcResT
-                           , ManifoldResultT > Parent;
+    typedef PipelineTraits< MessageT
+                          , iManifoldProcessor<MessageT>
+                          , ManifoldProcessingResultFlags
+                          , ManifoldResultT > Parent;
     /// Message type (e.g. physical event).
     typedef typename Parent::Message   Message;
     /// Processor type (must be callable --- function or functor).
@@ -101,38 +102,58 @@ struct ManifoldTraits : protected PipelineTraitsT< MessageT
     typedef typename Parent::ProcRes   ProcRes;
     /// Result type, that shall be returned by pipeline invokation.
     typedef typename Parent::PipelineProcRes PipelineProcRes;
-    /// Concrete handler interfacing type.
-    typedef aux::PipelineHandler<Self> Handler;
-    /// Concrete chain interfacing type (parent for this class).
-    typedef typename Parent::Chain Chain;
     /// Base source interface that has to be implemented.
     typedef typename Parent::ISource ISource;
-    /// Interface making a decision, whether to continue processing on few
-    /// stages.
-    /// Invokation of pop_result() is guaranteed at the ending of processing
-    /// loop.
+    /// Concrete handler interfacing type.
+    class Handler : public aux::PipelineHandler<Self> {
+    private:
+        ISource * _jSrc;
+    public:
+        Handler( Processor * p ) : aux::PipelineHandler<Self>( p ) {
+            _jSrc = dynamic_cast<ISource *>(p);
+        }
+        /// Will return pointer to junction as a source.
+        virtual ISource * junction_ptr() {
+            return _jSrc;
+        }
+    };
+    /// Concrete chain interfacing type (parent for this class).
+    typedef TChainT<Handler> Chain;
+    /// This IArbiter interface introduces additional is_fork_filled() method
+    /// that returns true, if latest handler result raised the JUNCTION_DONE
+    /// flag.
+    /// TODO: must become protected.
     struct IArbiter : public Parent::IArbiter {
     private:
         bool _doAbort
            , _doSkip
            , _forkFilled
            ;
+    protected:
+        virtual void _reset_flags() {
+            _doAbort = _doSkip = _forkFilled = false;
+        }
+        //virtual PipelineProcRes _V_
     public:
         /// Causes transitions
-        virtual bool consider_handler_result( ManifoldProcessingResultFlags fs ) override {
+        virtual bool _V_consider_handler_result( ManifoldProcessingResultFlags fs ) override {
             _doAbort = !(CONTINUE_PROCESSING & fs);
             _forkFilled = JUNCTION_DONE & fs;
             return _doAbort || (ABORT_CURRENT & fs);
         }
-        virtual PipelineProcRes pop_result() override {
-            // ... TODO: what?
-        }
-        virtual bool next_message() override {
+        virtual bool _V_next_message() override {
             return !_doAbort;
         }
-        virtual bool is_fork_filled() override {
+        virtual bool is_fork_filled() const {
             return _forkFilled;
         }
+        // This is the single method that has to be overriden by particular
+        // descendant.
+        //virtual PipelineProcRes _V_pop_result() = 0;
+    public:
+        bool do_skip() const { return _doSkip; }
+        bool do_abort() const { return _doAbort; }
+        friend class Manifold<Message, ManifoldResultT>;
     };  // class IArbiter
 };
 
@@ -153,6 +174,7 @@ class Manifold : public Pipeline< aux::ManifoldTraits< MessageT
                                 > {
 public:
     typedef aux::ManifoldTraits<MessageT, ResultT> Traits;
+    typedef Pipeline< aux::ManifoldTraits<MessageT, ResultT> > Parent;
     typedef typename Traits::Message   Message;
     typedef typename Traits::Processor Processor;
     typedef typename Traits::ProcRes   ProcRes;
@@ -161,77 +183,113 @@ public:
     typedef typename Traits::Chain     Chain;
     typedef typename Traits::ISource   ISource;
     typedef typename Traits::IArbiter  IArbiter;
+    typedef Manifold<Message, PipelineProcRes> Self;
+
+    class SingularSource : public ISource {
+    private:
+        bool _msgRead;
+        Message & _msgRef;
+    public:
+        SingularSource( Message & msg ) : _msgRead(false), _msgRef(msg) {}
+        virtual Message * next() override {
+            if( !_msgRead ) {
+                _msgRead = true;
+                return &_msgRef;
+            }
+            return nullptr;
+        }
+    };  // class SingularSource
 public:
+    Manifold( IArbiter * a ) : Parent( a ) {}
     /// Manifold overloads the source processing method to support fork/junction
     /// processing.
-    virtual PipelineProcRes process( ISource & ) override;
+    virtual PipelineProcRes process( ISource & src ) override {
+        // Check if we actually have something to do
+        if( Chain::empty() ) {
+            emraise( badState
+                   , "No processors specified --- has nothing to do for "
+                     "manifold %p.\n"
+                   , this );
+        }
+        IArbiter & a = *(this->arbiter_ptr());
+        // The temporary sources stack keeping internal state. Has to be empty upon
+        // finishing processing.
+        std::stack< std::pair<ISource *, typename Chain::iterator> > sourcesStack;
+        // First in stack will refer to original source.
+        sourcesStack.push( std::make_pair( &src, Chain::begin() ) );
+        // Begin main processing loop. Will run upon sources stack is non-empty AND
+        // arbiter did not explicitly interrupt it.
+        while( !sourcesStack.empty() ) {
+            // Reference pointing to the current event source.
+            ISource & cSrc = *sourcesStack.top().first;
+            // Iterator pointing to the current handler in chain.
+            typename Chain::iterator procStart =  sourcesStack.top().second;
+            sourcesStack.pop();
+            // Begin of loop iterating messages source.
+            Message * msg;
+            while(!!(msg = cSrc.next())) {
+                typename Chain::iterator handlerIt;
+                // Begin of loop iterating the handlers chain.
+                for( handlerIt = procStart
+                   ; handlerIt != Chain::end()
+                   ; ++handlerIt ) {
+                    // Process message with current handler and consider result.
+                    if( a._V_consider_handler_result( handlerIt->process( *msg ) ) ) {
+                        // _V_consider_handler_result() returned true, what means we
+                        // can propagate further along the handlers chain.
+                        continue;
+                    }
+                    // _V_consider_handler_result() returned false, that means we have
+                    // to interrupt the propagation, but if we have filled the
+                    // f/j handler, it must be put on top of sources stack.
+                    if( a.is_fork_filled() ) {
+                        // Fork was filled and junction has merged events. It
+                        // means that we have to proceed with events that were put
+                        // in "junction" queue as if it is an event source.
+                        sourcesStack.push(
+                            std::make_pair( handlerIt->junction_ptr(), ++handlerIt) );
+                    }
+                    break;
+                }
+            }
+            if( a._V_next_message() ) {
+                // We have to take next (newly-created) source from internal
+                // queue and proceed with it.
+                break;
+            }
+        }
+        return a._V_pop_result();
+    }
     /// Single message will be processed as a (temporary) messages source
     /// containing only one event.
-    virtual PipelineProcRes process( Message & ) override {
-        _TODO_  // TODO
+    virtual PipelineProcRes process( Message & msg ) override {
+        return Self::process( SingularSource(msg) );
     }
 };  // class ForkProcessor
 
 
-template< typename MessageT
-        , typename ResultT> ResultT
-Manifold::process( ISource & src ) {
-    // Check if we actually have something to do
-    if( Chain::empty() ) {
-        emraise( badState
-               , "No processors specified --- has nothing to do for "
-                 "manifold %p.\n"
-               , this );
-    }
-    IArbiter & a = *arbiter_ptr();
-    // The temporary sources stack keeping internal state. Has to be empty upon
-    // finishing processing.
-    std::stack< std::pair<ISource *, Chain::iterator> > sourcesStack;
-    // First in stack will refer to original source.
-    sourcesStack.push( std::make_pair( &src, _processorsChain.begin() ) );
-    // Begin main processing loop. Will run upon sources stack is non-empty AND
-    // arbiter did not explicitly interrupt it.
-    while( !sourcesStack.empty() ) {
-        // Reference pointing to the current event source.
-        iEventSequence & cSrc = *sourcesStack.top().first;
-        // Iterator pointing to the current handler in chain.
-        Chain::iterator procStart =  sourcesStack.top().second;
-        sourcesStack.pop();
-        // Begin of loop iterating messages source.
-        Message * msg;
-        while(!!(msg = cSrc.next())) {
-            Chain::iterator procIt;
-            // Begin of loop iterating the handlers chain.
-            for( procIt = procStart
-               ; procIt != _processorsChain.end()
-               ; ++procIt ) {
-                // Process message with current handler and consider result.
-                if( mnfldArbiter.consider_handler_result( procIt->process( msg ) ) ) {
-                    // consider_handler_result() returned true, what means we
-                    // can propagate further along the handlers chain.
-                    continue;
-                }
-                // consider_handler_result() returned false, that means we have
-                // to interrupt the propagation, but if we have filled the
-                // f/j handler, it must be put on top of sources stack.
-                if( mnfldArbiter.fork_filled() ) {
-                    // Fork was filled and junction has merged events. It
-                    // means that we have to proceed with events that were put
-                    // in "junction" queue as if it is an event source.
-                    sourcesStack.push(
-                        std::make_pair( procIt->junction_ptr(), ++procIt) );
-                }
-                break;
-            }
+template<MessageT>
+class SubManifold : public Manifold< MessageT
+                                   , aux::ManifoldProcessingResultFlags>
+                  , public aux::iManifoldProcessor<MessageT> {
+public:
+    typedef typename Manifold< MessageT
+                             , aux::ManifoldProcessingResultFlags> Traits;
+    class Arbiter : public IArbiter {
+    protected:
+        virtual aux::ManifoldProcessingResultFlags _V_pop_result() override {
+            _TODO_  // TODO
         }
-        if( mnfldArbiter.next_message() ) {
-            // We have to take next (newly-created) source from internal
-            // queue and proceed with it.
-            break;
-        }
+    };
+public:
+    virtual aux::ManifoldProcessingResultFlags operator()( Message & msg ) override {
+        return this->process(msg);
     }
-    return a.pop_result();
-}
+};
+
+//template< typename MessageT
+//        , typename ResultT> ResultT
+//Manifold<MessageT, ResultT>::process( ISource & src ) 
 
 }  // namespace sV
 

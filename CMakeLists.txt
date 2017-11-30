@@ -331,10 +331,12 @@ add_library( ${StromaV_LIB} SHARED
 target_include_directories( ${StromaV_LIB}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/extra>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/inc>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/rootPlugins>
-            $<INSTALL_INTERFACE:include/StromaV> )
+            $<INSTALL_INTERFACE:include/StromaV>
+            $<INSTALL_INTERFACE:include/StromaV/extra> )
 target_include_directories( ${StromaV_LIB} SYSTEM
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/inc>
