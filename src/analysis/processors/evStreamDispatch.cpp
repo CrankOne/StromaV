@@ -25,6 +25,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "ctrs_dict.hpp"
 
 # include <goo_dict/parameters/path_parameter.hpp>
@@ -173,6 +175,8 @@ EventsDispatcher::_update_stat() {
 
 }  // namespace ::sV::dprocessors
 }  // namespace sV
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

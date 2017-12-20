@@ -28,6 +28,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "app/analysis.hpp"
 # include "uevent.hpp"
 # include "buckets/compressedDispatcher.hpp"
@@ -74,8 +76,9 @@ public:
 }  // namespace ::sV::dprocessors
 }  // namespace sV
 
-# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
+# endif
 
+# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 # endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 
 

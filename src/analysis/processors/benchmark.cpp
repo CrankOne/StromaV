@@ -24,6 +24,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include <iomanip>
 
 namespace sV {
@@ -75,7 +77,7 @@ Benchmarking::_V_print_brief_summary( std::ostream & os ) const {
 }
 
 void
-Benchmarking::_V_finalize() const {
+Benchmarking::finalize() const {
     _dur_overall = timer_end( _start );
 }
 
@@ -120,6 +122,8 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE( Benchmarking, "benchmarking" ) {
 
 }  // namespace dprocessors
 }  // namespace sV
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

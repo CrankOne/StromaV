@@ -28,198 +28,30 @@
 
 # ifdef RPC_PROTOCOLS
 
+# include "pipeT/pipet.tcc"
+
 # include "app/mixins/protobuf.hpp"
 # include "uevent.hpp"
-# include "analysis/pipe_watcher.hpp"
+//# include "analysis/pipe_watcher.hpp"
 
 # include <unordered_map>
 # include <unordered_set>
 
 namespace sV {
 
-// FWD
-namespace aux {
-/// Data format reader object representation.
-class iEventSequence;
-/// Event processor reader object representation.
-class iEventProcessor;
-/// Evaluation strategy class.
-class iArbiter;
-/// Processor stub helper for concrete event processors.
-template<typename EventClassT, typename PayloadT>
-            class iTEventPayloadProcessor;
-/// Aux interfacing class implementing pushing hooks.
-class iEventPayloadProcessorBase;
-
-/// The base type aggregating event processing result flags.
-typedef uint8_t EventProcessingResult;
-}  // namespace aux
-
-/**@class AnalysisPipeline
- * @brief Representation for data analysis pipeline.
- *
- * The analysis pipeline is merely a container for a sequence of handlers
- * designed to process individual event.
- *
- * The handlers are represented by a
- * subclasses of iEventProcessor. The common functions of data sources are
- * summirized within iEventSequence base class.
- *
- * The pipeline receives the data from source (iEventSequence or per individual
- * events basis) and then performs sequentional operations defined in stacked
- * handlers. Handlers may or may not change the data object and accumulate
- * various side statistics.
- *
- * The pipeline can be configured at the run-time by dynamic registering data
- * source and handlers.
- *
- * Data source and handlers have to be configured outside of this class.
- *
- * The lifetime of data source and handlers are not maintained by this class.
- *
- * The particular responsibility of AnalysisPipeline is to track consistency
- * of passing data and accumulate some common statistics: number of events
- * read, processed by individual processors, number of events discriminated by
- * particular processors and so on.
- *
- * Considering the event representation level, the pipeline also ensures that
- * event data payload caches are also properly [un]packed during processing.
- *
- * @ingroup analysis
- * */
-class AnalysisPipeline : public sV::AbstractApplication::ASCII_Entry {
-public:
-    typedef typename mixins::PBEventApp::UniEvent Event;
-    typedef aux::iEventSequence iEventSequence;
-    typedef aux::iEventProcessor iEventProcessor;
-    typedef aux::iEventPayloadProcessorBase iEventPayloadProcessorBase;
-
-    /// The entry referencing particular processor once being stacked up with
-    /// others becomes a handler.
-    class Handler {
-    public:
-        struct Statistics {
-            size_t nConsidered
-                 , nDiscriminated
-                 , nAborted
-                 ;
-            Statistics() :  nConsidered(0), nDiscriminated(0), nAborted(0) {}
-        };
-    private:
-        iEventProcessor & _processor;
-        Statistics _stats;
-        struct PayloadTraits {
-            const std::type_info & TI;
-            bool forcePack;
-            size_t nPacked;  // TODO: use it
-            // ...
-            PayloadTraits( const std::type_info & TI_ ) :
-                        TI(TI_), forcePack(false), nPacked(0) {}
-        } * _payloadTraits;
-        aux::iEventSequence * _junction;
-    protected:
-        //iEventProcessor & processor() { return _processor; }
-        aux::EventProcessingResult handle( Event * );
-        aux::EventProcessingResult finalize( Event & );
-    public:
-        Handler( iEventProcessor & processor_ );
-        Handler( const Handler & );
-        ~Handler();
-
-        bool payload_traits_available() const { return !!_payloadTraits; }
-        PayloadTraits & payload_traits();
-        const PayloadTraits & payload_traits() const;
-
-        bool junction_available() const { return !!_junction; }
-        aux::iEventSequence * junction_ptr();
-
-        const iEventProcessor & processor() const { return _processor; }
-        const Statistics & stats() const { return _stats; }
-
-        friend class AnalysisPipeline;
-    };
-
-    /// Type alias referencing the stack of processors.
-    typedef std::vector<Handler> Chain;
-
-    /// The evaluation strategy indicators steering the event processing from
-    /// a set of consideration functions. Has to be returned by
-    /// iArbiter::consider_rc().
-    enum EvalStatus {
-        /// Indicates that processing has to be continued in a usual manner.
-        Continue,
-        /// Indicates that processing of current event has to be terminated.
-        /// The current event won't be propagated through subsequent
-        /// processors.
-        AbortCurrent,
-        /// Indicates that overall processing has to be terminated causing
-        /// gentle termination of all processing handlers.
-        AbortProcessing,
-        /// Indicates that junction has been finalized and causes pull from
-        /// sources stack.
-        JunctionFinalized,
-    };
-protected:
-    /// List of handlers.
-    Chain _processorsChain;
-private:
-    std::set<void (*)()> _invalidators;
-    std::set<void (*)(Event&)> _payloadPackers;
-    aux::iPipelineWatcher * _watcher;
-
-    bool _defaultArbiter;
-    aux::iArbiter * _arbiter;
-protected:
-    void register_packing_functions( void(*invalidator)(),
-                                     void(*packer)(Event&) );
-    /// Helper function finalizing event with given processors sub-chain. Will
-    /// invoke packing routines, sequentially invoke finalize_event() method of
-    /// each processors in given iterators range and invoke the cache nullating
-    /// method.
-    virtual void _finalize_event( Event &, Chain::iterator , Chain::iterator, bool doPack=true );
-    virtual void _finalize_sequence( iEventSequence & );
-public:
-    AnalysisPipeline( aux::iPipelineWatcher * reps=nullptr );
-    virtual ~AnalysisPipeline();
-
-    /// Adds processor to processor chain.
-    void push_back_processor( iEventProcessor & );
-
-    /// Processor chain getter.
-    const Chain & processors() const
-        { return _processorsChain; }
-
-    /// Evaluates pipeline on the single event. If event was denied,
-    /// returns the ordering number of processor which did the discrimination
-    /// starting from 1. 0 is returned if event passed.
-    virtual int process( Event & );
-
-    /// Evaluates pipeline on the sequence. If no errors occured, returns 0.
-    virtual int process( iEventSequence & );
-
-    /// Returns reference to arbiter instance.
-    aux::iArbiter & arbiter();
-    /// Returns reference to arbiter instance (const).
-    const aux::iArbiter & arbiter() const;
-    /// Sets external arbiter instance.
-    void arbiter( aux::iArbiter * );
-
-    template<typename EventClassT, typename PayloadT>
-    friend class aux::iTEventPayloadProcessor;
-
-    friend class aux::iPipelineWatcher;
-};  // class AnalysisPipeline
+typedef pipet::Pipe<mixins::PBEventApp::UniEvent> AnalysisPipeline;
 
 namespace aux {
+
 /**@class AnalysisApplication::iEventSequence
  *
  * Data format reader object representation.
  *
  * @ingroup analysis
  * */
-class iEventSequence {
+class iEventSequence : public pipet::interfaces::Source<mixins::PBEventApp::UniEvent> {
 public:
-    typedef AnalysisPipeline::Event Event;
+    typedef mixins::PBEventApp::UniEvent Event;
     typedef uint8_t Features_t;
     enum Features : Features_t
     {
@@ -229,6 +61,7 @@ public:
     };
 private:
     uint8_t _features;
+    Event * _ePtr;
 protected:
     virtual bool _V_is_good() = 0;
     virtual void _V_next_event( Event *& ) = 0;
@@ -242,16 +75,16 @@ public:
     virtual ~iEventSequence(){}
 
     /// Returns true if source initialized and next event can be read.
-    virtual bool is_good() {     return _V_is_good(); }
+    virtual bool is_good() { return _V_is_good(); }
 
     /// Set-ups reading procedure.
-    virtual Event * initialize_reading() { return _V_initialize_reading(); }
+    virtual Event * initialize_reading() { return _ePtr = _V_initialize_reading(); }
 
     /// Performs reading next event into provided reentrant instance.
-    virtual void next_event( Event *& e ) {         _V_next_event( e ); }
+    virtual void next_event( Event *& e ) { _V_next_event( e ); }
 
     /// Invoked after event reading done (e.g. to clean-up file descriptor).
-    virtual void finalize_reading( ) {   _V_finalize_reading(); }
+    virtual void finalize_reading() {   _V_finalize_reading(); }
 
     /// Prints out brief statistics of current state.
     virtual void print_brief_summary( std::ostream & os ) const
@@ -268,132 +101,60 @@ public:
     bool is_identifiable() const
                 { return _features & identifiable; }
 
-    friend class ::sV::AnalysisPipeline;
+    virtual Event * get() override {
+        if( !_ePtr ) {
+            initialize_reading();
+            if( is_good() ) {
+                return _ePtr;
+            }
+            return nullptr;
+        }
+        if( is_good() ) {
+            next_event(_ePtr);
+            return _ePtr;
+        } else {
+            finalize_reading();
+            return _ePtr = nullptr;
+        }
+    }
 };
 
 /**@class AnalysisApplication::iEventProcessor
  *
- * Event processing handler class interface. This class claims the basic logic.
+ * Event processing handler class interface. This class claims the basic logic
+ * for pipeline processing handler used in sV.
  *
  * @ingroup analysis
  * */
+template<typename EventT=mixins::PBEventApp::UniEvent>
 class iEventProcessor {
 public:
-    typedef AnalysisPipeline::Event Event;
-
-    typedef EventProcessingResult ProcRes;
-
-    /// Possible result flags and composite shortcuts that may be returned by
-    /// procedure. Note, that flags itself may be counter-intuitive, so better
-    /// stand for shortcuts (the have RC_ prefix). Priority of treatment:
-    /// 1. Global abort --- stop processing, gently finalize all the processing
-    /// handlers (flush buffers, build plots, close files, etc).
-    /// 2. Event abort  --- no further treatment of current shall be performed.
-    /// No modification have to be considered.
-    /// 3. Modification --- shall propagate modified flag to caller.
-    /// 4. Discriminate --- shall pull out the event/sub-event/sample. Arbiter,
-    /// depending of its modification, may keep process this event.
-    /// Note: all modification will be refused upon abort/discrimination.
-    enum ProcessingResultFlags : int8_t {
-        CONTINUE_PROCESSING = 0x1,  ///< when set, all the analysis has to be interrupted
-        ABORT_CURRENT       = 0x2,  ///< processing of current event or payload has to be interrupted
-        DISCRIMINATE        = 0x4,  ///< processing continues, but the current event/payload has to be considered as discriminated
-        NOT_MODIFIED        = 0x8,  ///< the event or data payload wasn't modified
-        JUNCTION_DONE       = 0x10  ///< returned ONLY by f/j handlers. Has special meaning.
-        // shortcuts:
-        /// For invasive processor task (e.g. reconstruction, applying calibration)
-        , RC_CORRECTED                      = CONTINUE_PROCESSING
-        /// For non-invasive processors (e.g. stats accumulators)
-        , RC_ACCOUNTED                      = CONTINUE_PROCESSING | NOT_MODIFIED
-        /// For invasive processor revealed cut condition (event still valid!)
-        , RC_DISCRIMINATE_CORRECTED         = CONTINUE_PROCESSING | DISCRIMINATE
-        /// For non-invasive cutter, to exclude event from physical analysis
-        , RC_DISCRIMINATE                   = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
-        /// May be useful for invasive data look-up procedures (xxx?)
-        , RC_DONE                           = CONTINUE_PROCESSING | ABORT_CURRENT
-        /// Useful for non-invasive data look-up procedures
-        , RC_ABORT_CURRENT                  = CONTINUE_PROCESSING | ABORT_CURRENT | NOT_MODIFIED
-        /// Invasive processor encountered invalid event that shouldn't be analysed further
-        , RC_ABORT_DISCRIMINATE_CORRECTED   = CONTINUE_PROCESSING | DISCRIMINATE
-        /// Non-invasive processor encountered invalid event that shouldn't be analysed further
-        , RC_ABORT_DISCRIMINATE             = CONTINUE_PROCESSING | DISCRIMINATE  | NOT_MODIFIED
-    };
+    typedef EventT Event;
+    typedef pipet::PipeRC ProcRes;
 private:
     const std::string _pName;
 protected:
     /// Should return 'false' if processing in chain should be aborted.
     virtual ProcRes _V_process_event( Event & ) = 0;
-    /// Called after single event processed by all the processors.
-    virtual ProcRes _V_finalize_event_processing( Event & ) { return RC_ACCOUNTED; }
-    /// Called after all events read and source closed to cleanup statistics.
-    virtual void _V_finalize() const {}
-    /// Called after all events read and all processors finalized.
-    virtual void _V_print_brief_summary( std::ostream & ) const {}
 public:
     iEventProcessor( const std::string & pn ) : _pName(pn) {}
     virtual ~iEventProcessor(){}
-    virtual ProcRes process_event( Event & e ) { return _V_process_event( e ); }
-    virtual ProcRes finalize_event( Event & e )
-                                { return _V_finalize_event_processing( e ); }
-    virtual void print_brief_summary( std::ostream & os ) const
-                                { _V_print_brief_summary( os ); }
-    virtual void finalize() const { _V_finalize(); }
-    const std::string & processor_name() const { return _pName; }
-    virtual ProcRes operator()( Event & e ) { return process_event( e ); }
-    friend class ::sV::AnalysisPipeline;
+
+    virtual ProcRes operator()( Event & e ) {
+        return _V_process_event( e );
+    }
+    const std::string & name() const { return _pName; }
 };
 
-class iEventPayloadProcessorBase : public iEventProcessor {
-public:
-    typedef AnalysisPipeline::Event Event;
-    iEventPayloadProcessorBase( const std::string & pn ) :
-                                                        iEventProcessor(pn) {}
+# if 0
+
+class iStatefulProcessor {
 protected:
-    /// Must be overriden by payload processor.
-    virtual void register_hooks( AnalysisPipeline * ) = 0;
+    void _V_finalize(  );
+};
+# endif
 
-    /// Has to return C++ RTTI identifier of payload type.
-    virtual const std::type_info & _V_payload_type_info() const = 0;
-public:
-    /// Returns C++ RTTI identifier of payload type.
-    const std::type_info & payload_type_info() const {
-        return _V_payload_type_info(); }
-
-    friend class ::sV::AnalysisPipeline;
-};  // class AnalysisPipeline::iEventPayloadProcessorBase
-
-
-/**@class iArbiter
- * @brief Makes decision, whether the current event has to be omitted and
- * whether the pipeline processing has to be interrupted.
- *
- * This abstract base has implement a strategy of making decisions during the
- * event processing in a pipeline. The decisions are based on returned results
- * of the latest handler evaluations, statistics, physical conditions and so
- * on.
- * */
-class iArbiter {
-public:
-    /// Type alias for code returning from analysis subroutines.
-    typedef iEventProcessor::ProcRes ProcRes;
-protected:
-    /// The major interface method making an actual decision. Has to return one
-    /// of the enumerated values of EvalStatus.
-    virtual AnalysisPipeline::EvalStatus _V_consider_rc( ProcRes sub, ProcRes & current ) = 0;
-    /// Has to return whether the payloads have to be packed, depending on the
-    /// event evaluation code.
-    virtual bool _V_do_pack( ProcRes g ) const = 0;
-public:
-    /// Accepts subprocess result as a first argument and reference to global as a
-    /// second. The usual usage implies consideration of result returned by
-    /// processing event data subsection (e.g. particular detector).
-    /// TODO: usage snippet (may be taken from any existing implementation)
-    AnalysisPipeline::EvalStatus consider_rc( ProcRes local, ProcRes & global )
-                { return _V_consider_rc(local, global); }
-    bool do_pack( ProcRes g ) const
-                { return _V_do_pack(g); }
-    virtual ~iArbiter() {}
-};  // class iEvaluationArbiter
+# if 0
 
 /**@class AnalysisApplication::iTEventPayloadProcessor
  *
@@ -651,9 +412,25 @@ public:
     ~DefaultArbiter() {}
     bool abort_discriminated() const { return _abortDiscriminated; }
 };  // DefaultArbiter
+# endif
 
 }  // namespace aux
 }  // namespace sV
+
+namespace pipet {
+namespace aux {
+
+template< typename MessageT
+        > struct CallableTraits<sV::aux::iEventProcessor<MessageT>, MessageT, false> {
+    typedef sV::aux::iEventProcessor<MessageT> Callable;
+    typedef MessageT Message;
+    constexpr static bool isFunction = false;
+    typedef typename pipet::PipeRC CallableResult;
+    typedef sV::aux::iEventProcessor<MessageT> & CallableRef;
+};  // CallableTraits (sV's iEventProcessor)
+
+}  // namespace aux
+}  // namespace pipet
 
 # endif  // RPC_PROTOCOLS
 # endif  //H_STROMA_V_ANALYSIS_PIPELINE_H

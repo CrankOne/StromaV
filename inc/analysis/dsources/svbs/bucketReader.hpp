@@ -56,7 +56,7 @@ public:
     /// Parent interface class.
     typedef sV::aux::iEventSequence Parent;
     /// Unified events type.
-    typedef typename sV::AnalysisPipeline::Event Event;
+    typedef typename mixins::PBEventApp::UniEvent Event;
     /// Bucket event id. Used for custom iterator class.
     template<typename BucketT>
     struct BucketEventID {

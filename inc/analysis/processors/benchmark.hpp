@@ -27,6 +27,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "app/analysis.hpp"
 # include "uevent.hpp"
 
@@ -46,11 +48,11 @@ namespace dprocessors {
  * processor goes first in chain. I.e. it has to be placed right after the
  * data source in processing pipeline.
  */
-class Benchmarking : public AnalysisPipeline::iEventProcessor,
+class Benchmarking : public sV::aux::iEventProcessor,
                      public sV::AbstractApplication::ASCII_Entry {
 public:
-    typedef AnalysisPipeline::iEventProcessor Parent;
-    typedef sV::events::Event Event;
+    typedef sV::aux::iEventProcessor Parent;
+    typedef mixins::PBEventApp::UniEvent Event;
 private:
     bool _initialEventSubmitted;
     struct timespec _start,
@@ -63,9 +65,8 @@ private:
                   ;
 protected:
     virtual ProcRes _V_process_event( Event & ) override;
-    virtual ProcRes _V_finalize_event_processing( Event & ) override;
+    virtual void _V_finalize_event_processing( Event & ) override;
     virtual void _V_print_brief_summary( std::ostream & ) const override;
-    virtual void _V_finalize() const override;
     void _update_stat();
 public:
     Benchmarking( const std::string & pn );
@@ -74,10 +75,12 @@ public:
 
     static void timer_start( struct timespec & );
     static long timer_end(const struct timespec & start_time);
+    void finalize() const;
 };  // class Benchmarking
 
 }  // namespace dprocessors
 }  // namespace sV
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 # endif  // H_STROMA_V_MULTICASTING_DATA_PROCESSOR_H

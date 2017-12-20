@@ -24,6 +24,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "analysis/processors/evMCast.hpp"
 # include <boost/bind.hpp>
 
@@ -161,6 +163,8 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventMulticaster, "multicast" ) {
 
 }  // namespace sV
 }  // namespace dprocessors
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

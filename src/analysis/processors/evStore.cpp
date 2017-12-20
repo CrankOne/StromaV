@@ -25,6 +25,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "ctrs_dict.hpp"
 # include "buckets/compressedDispatcher.hpp"
 
@@ -87,6 +89,8 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsStore, "eventsStore" ) {
 
 }  // namespace ::sV::dprocessors
 }  // namespace sV
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 

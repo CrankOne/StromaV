@@ -25,10 +25,12 @@
 
 # include "sV_config.h"
 
+# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
+
+# if 0
+
 # include "evStreamDispatch.hpp"
 # include "net/client.hpp"
-
-# if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
 namespace sV {
 namespace dprocessors {
@@ -52,7 +54,8 @@ public:
 }  // namespace ::sV::dprocessors
 }  // namespace sV
 
-# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
+# endif
 
+# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 # endif  // H_STROMA_V_EVENT_SEND_DATA_PROCESSOR_H
 

@@ -27,6 +27,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include <boost/asio.hpp>
 # include <mutex>
 # include <boost/circular_buffer.hpp>
@@ -113,6 +115,8 @@ public:
 
 }  // namespace sV
 }  // namespace dprocessors
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 # endif  // H_STROMA_V_MULTICASTING_DATA_PROCESSOR_H

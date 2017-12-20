@@ -46,14 +46,14 @@ namespace sV {
 //    AnalysisPipeline::push_back_processor( p );
 //}
 
-void
-AnalysisApplication::_finalize_event( Event & ep,
-                Chain::iterator scb,
-                Chain::iterator sce,
-                bool doPack ) {
-    AnalysisPipeline::_finalize_event( ep, scb, sce, doPack );
-    notify_ascii_display();
-}
+//void
+//AnalysisApplication::_finalize_event( Event & ep,
+//                Chain::iterator scb,
+//                Chain::iterator sce,
+//                bool doPack ) {
+//    AnalysisPipeline::_finalize_event( ep, scb, sce, doPack );
+//    notify_ascii_display();
+//}
 
 // Interfacing application methods implementation
 
@@ -111,7 +111,7 @@ AnalysisApplication::AnalysisApplication( Config * vm ) :
             "Data source formats to be read." )
         ;
     AbstractApplication::ConstructableConfMapping::self()
-        .set_basetype_description<sV::aux::iEventProcessor>( "processors",
+        .set_basetype_description<sV::aux::iEventProcessor<> >( "processors",
             "Events processing handlers (processors). By arranging them in "
             "order one may configure particular data treatment procedure." )
         ;
@@ -124,11 +124,12 @@ AnalysisApplication::~AnalysisApplication() {
     }
     // Since we allocate processor within _V_concrete_app_configure() within
     // this class, it's our responsibility here to delete allocated processors.
-    for( auto it  = _processorsChain.begin();
-              it != _processorsChain.end(); ++it ) {
-        delete &(it->processor());
+    for( auto it  = _processors.begin();
+              it != _processors.end(); ++it ) {
+        delete *it;
     }
-    _processorsChain.clear();
+    _processors.clear();
+    sV::AnalysisPipeline::clear();
     if(gFile) {
         gFile->Write();
     }
@@ -168,11 +169,11 @@ AnalysisApplication::_V_get_options() const {
 void
 AnalysisApplication::_V_concrete_app_configure() {
     if( co()["list-src-formats"].as<bool>() ) {
-        print_constructables_reference<sV::aux::iEventSequence>( std::cout );
+        print_constructables_reference<Processor>( std::cout );
         _immediateExit = true;
     }
     if( co()["list-processors"].as<bool>() ) {
-        print_constructables_reference<sV::aux::iEventProcessor>( std::cout );
+        print_constructables_reference<Processor>( std::cout );
         _immediateExit = true;
     }
     if( !do_immediate_exit()
@@ -183,7 +184,9 @@ AnalysisApplication::_V_concrete_app_configure() {
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
-            AnalysisPipeline::push_back_processor( *generic_new<aux::iEventProcessor>(*it) );
+            Processor * procPtr = generic_new<Processor>(*it);
+            _processors.push_back( procPtr );
+            AnalysisPipeline::push_back( *procPtr );
         }
     }
 }

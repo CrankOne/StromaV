@@ -28,6 +28,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "evStreamDispatch.hpp"
 
 # include <fstream>
@@ -55,7 +57,8 @@ public:
 }  // namespace ::sV::dprocessors
 }  // namespace sV
 
-# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
+# endif
 
+# endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 # endif  // H_STROMA_V_BUCKET_STORAGE_PROCESSOR_H
 

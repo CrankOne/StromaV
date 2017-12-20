@@ -67,12 +67,14 @@ class AnalysisApplication :
         public mixins::RootApplication,
         public sV::AnalysisPipeline,
         public virtual sV::AbstractApplication {
-private:
-    /// Pointer to data source.
-    sV::aux::iEventSequence * _evSeq;
 public:
     typedef AbstractApplication Parent;
     typedef typename mixins::PBEventApp::UniEvent Event;
+    typedef aux::iEventProcessor<> Processor;
+private:
+    /// Pointer to data source.
+    sV::aux::iEventSequence * _evSeq;
+    std::vector<Processor *> _processors;
 
     /// Concrete config object type shortcut (variables map from boost lib).
     typedef Parent::Config Config;
@@ -83,7 +85,7 @@ protected:
     virtual void _V_concrete_app_configure() override;
     /// Appends updating of ASCII display upon successfull finish of single
     /// event processing.
-    virtual void _finalize_event( Event &, Chain::iterator, Chain::iterator, bool doPack=false ) override;
+    //virtual void _finalize_event( Event &, Chain::iterator, Chain::iterator, bool doPack=false ) override;  // XXX
 
     AnalysisApplication( Parent::Config * vm );
 public:
@@ -92,7 +94,7 @@ public:
     /// Current event sequence getter.
     sV::aux::iEventSequence & event_sequence() {
         const AnalysisApplication * cThis = this;
-        return const_cast<iEventSequence &>( cThis->event_sequence() );
+        return const_cast<aux::iEventSequence &>( cThis->event_sequence() );
     }
 
     /// Returns reference to an event sequence set.

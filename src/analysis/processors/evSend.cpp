@@ -24,6 +24,8 @@
 
 # if defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
+# if 0
+
 # include "buckets/compressedDispatcher.hpp"
 
 namespace sV {
@@ -97,6 +99,8 @@ StromaV_ANALYSIS_PROCESSOR_DEFINE_MCONF( EventsSend, "eventsSend" ) {
 
 }  // namespace ::sV::dprocessors
 }  // namespace sV
+
+# endif
 
 # endif  // defined(RPC_PROTOCOLS) && defined(ANALYSIS_ROUTINES)
 
