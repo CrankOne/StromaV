@@ -142,7 +142,7 @@ public:
     const MetadataEntry & query_word_loc( const EventID & eid ) const {
         if( contains(eid) ) {
             for( const auto & it : *this ) {
-                los << "[==] " << it.eid << " =?= " << eid << std::endl;
+                //los << "[==] " << it.eid << " =?= " << eid << std::endl;  // dev out
                 if( it.eid == eid ) {
                     return it;
                 }
@@ -175,7 +175,7 @@ extract_test2_metadata( Test2Metadata & md,
     MetadataEntry me = {{ initialStanzaNo, 0, 0 }, 0, 0};
     bool doesIterateWord = false,
          done = false;
-    los << "[==] [" << (int) initialStanzaNo << "-0] ";
+    // los << "[==] [" << (int) initialStanzaNo << "-0] ";  // dev out
     for( const char * c = s; !done; c++ ) {
         if( std::isalnum(*c) ) {
             if( !doesIterateWord ) {
@@ -198,10 +198,10 @@ extract_test2_metadata( Test2Metadata & md,
                     me.eid.lineNo = 0;
                     ++me.eid.stanzaNo;
                 }
-                los << std::endl << "[==] "
-                    << "[" << (int) me.eid.stanzaNo
-                    << "-" << (int) me.eid.lineNo
-                    << "]" << " ";
+                //los << std::endl << "[==] "  // dev out
+                //    << "[" << (int) me.eid.stanzaNo
+                //    << "-" << (int) me.eid.lineNo
+                //    << "]" << " ";
             }
         }
         done = ('\0' == *c);
@@ -500,14 +500,14 @@ public:
                     nullptr, nullptr } ); // < Note, that we hadn't set md
                                           // here to check run-time md
                                           // acquizition.
-                los << "[==] set for begin." << std::endl;
+                //los << "[==] set for begin." << std::endl;  // dev out
             } else if( mdePair.second->contains( to ) ) {
                 output.push_back( MetadataTraits::SubrangeMarkup {
                     {0, 0, 0},
                     {0, 0, 0},
                     mdePair.first,
                     mdePair.second, nullptr } ); // < Here, md ptr is set.
-                los << "[==] set for end." << std::endl;
+                //los << "[==] set for end." << std::endl;  // dev out
             }
         }
         for( SubrangeMarkup & entry : output ) {
@@ -526,14 +526,14 @@ public:
                     if( !( mde.eid < from) ) {
                         foundFrom = mde.eid;
                         hasStarted = true;
-                        los << "[==] starts: " << mde.eid
-                            << "..." << std::endl;
+                        //los << "[==] starts: " << mde.eid  // dev out
+                        //    << "..." << std::endl;
                     }
                 } else {
                     if( !( mde.eid < to) ) {
                         foundTo = mde.eid;
                         hasEnded = true;
-                        los << "[==] ...ends: " << mde.eid << std::endl;
+                        // los << "[==] ...ends: " << mde.eid << std::endl;  // dev out
                         break;  // Done
                     }
                 }
@@ -541,7 +541,7 @@ public:
             if( hasStarted && !hasEnded ) {
                 foundTo = mdPtr->back().eid;
                 hasEnded = true;
-                los << "[==] ...ends: " << mdPtr->back().eid << std::endl;
+                // los << "[==] ...ends: " << mdPtr->back().eid << std::endl;  // dev out
             } /*else if( hasEnded ) {
                 break;
             }*/
@@ -593,8 +593,8 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
             new DataSource( 3, _static_srcEN[2], dict )
         };
 
-    BOOST_TEST_MESSAGE( "[==] Dict, type, store and sources constructed and "
-        "seems being ready to operate..." );
+    //BOOST_TEST_MESSAGE( "[==] Dict, type, store and sources constructed and "
+    //    "seems being ready to operate..." );
 
     {
         // First, let's test look-up capabilities for one word that
@@ -625,16 +625,16 @@ BOOST_AUTO_TEST_CASE( SectionalSource,
         s[1]->metadata();
         s[2]->metadata();
     }
-    BOOST_TEST_MESSAGE( "[==] By-event selection tests passed. Freeing "
-                        "sources..." );
+    //BOOST_TEST_MESSAGE( "[==] By-event selection tests passed. Freeing "
+    //                    "sources..." );
     // Clear sources.
     delete s[0]; s[0] = nullptr;
     delete s[1]; s[1] = nullptr;
     delete s[2]; s[2] = nullptr;
 
-    BOOST_TEST_MESSAGE( "[==] ...initial sources cleared. "
-        "Testing operations with "
-        "sectional data..." );
+    //BOOST_TEST_MESSAGE( "[==] ...initial sources cleared. "
+    //    "Testing operations with "
+    //    "sectional data..." );
 
     // Now we have metadata indexing two of three fragments available in store
     // and can gain access it by using interim batch events source representing

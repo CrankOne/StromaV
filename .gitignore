@@ -34,3 +34,4 @@ StromaVConfig.cmake
 inc/config.h
 nbproject/
 src/*_generated.*
+.idea/*

@@ -291,7 +291,6 @@ BOOST_AUTO_TEST_CASE( BulkSource ) {
         //                    << obtainedPhrase << "'" << std::endl;
         BOOST_REQUIRE( obtainedPhrase == expectedPhrase );
     }
-    BOOST_TEST_MESSAGE( "[==] Bulk source test done." );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

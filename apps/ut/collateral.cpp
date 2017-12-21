@@ -208,7 +208,7 @@ BOOST_AUTO_TEST_CASE( CollateralJobTC ) {
     // relates to each interesting thread. The numbers in triplet indicates
     // averaged increment and averaged increment deviation.
 
-    BOOST_TEST_MESSAGE( "[==] Collateral job." );
+    //BOOST_TEST_MESSAGE( "[==] Collateral job." );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

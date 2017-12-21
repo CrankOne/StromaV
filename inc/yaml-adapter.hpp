@@ -32,16 +32,18 @@
 namespace sV {
 namespace aux { 
 
-void read_yaml_config_file_to_goo_dict( goo::dict::Dictionary &,
-                                        const std::string filename );
+void read_yaml_config_file_to_goo_dict( goo::dict::Dictionary &
+                                      , const std::string filename
+                                      , bool addUndeclared=false );
 
-void read_yaml_node_to_goo_dict( goo::dict::Dictionary &,
-                                 const YAML::Node &,
-                                 const std::string nameprefix="");
+void read_yaml_node_to_goo_dict( goo::dict::Dictionary &
+                               , const YAML::Node &
+                               , const std::string nameprefix=""
+                               , bool addUndeclared=false );
 
-void read_yaml_node_to_goo_list( goo::dict::iSingularParameter &,
-                                 const YAML::Node &,
-                                 const std::string nameprefix="" );
+void read_yaml_node_to_goo_list( goo::dict::iSingularParameter &
+                               , const YAML::Node &
+                               , const std::string nameprefix="" );
 
 }  // namespace ::sV::aux
 }  // namespace sV

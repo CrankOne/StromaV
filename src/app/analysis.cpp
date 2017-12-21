@@ -26,6 +26,8 @@
 
 # include "event.pb.h"
 # include "app/mixins/root.hpp"
+# include "yaml-adapter.hpp"
+# include "analysis/pipe_builder.hpp"
 
 # include <goo_dict/parameters/path_parameter.hpp>
 
@@ -91,16 +93,16 @@ AnalysisApplication::AnalysisApplication( Config * vm ) :
 
     vm->insertion_proxy()
         .list<goo::filesystem::Path>('i', "input-file",
-            "Input file --- an actual data source.") //.required_argument()? 
+            "Input file --- an actual data source." ) //.required_argument() TODO: uncomment this
+        .p<goo::filesystem::Path>( 'p', "specification",
+            "Pipeline specification config file." ).required_argument()
         .p<std::string>('F', "input-format",
             "Sets input file format.",
             "unset" )  //.required_argument()?
-        .list<std::string>('p', "processor",
-            "Pushes processor in chain, one by one, in order.")
         .flag("list-src-formats",
-            "Prints a list of available input file data formats.")
+            "Prints a list of available input data formats.")
         .flag("list-processors",
-            "Prints a list of available treatment routines.")
+            "Prints a list of available processors.")
         .p<size_t>('n', "max-events-to-read",
             "Number of events to read; (set zero to read all available).",
             0 )
@@ -181,6 +183,23 @@ AnalysisApplication::_V_concrete_app_configure() {
         _evSeq = generic_new<aux::iEventSequence>( app_option<std::string>("input-format") );
     }
     if( !do_immediate_exit() ) {
+        goo::dict::Dictionary specification( "Specification"
+                                           , "Analysis pipeline specification." );
+        sV::aux::read_yaml_config_file_to_goo_dict( specification
+                                                  , co()["specification"].as<goo::filesystem::Path>() );
+        sV::PipelineBuilder<mixins::PBEventApp::UniEvent> builder;
+        # if 1
+        std::cout << "Parsed pipeline description: {{{" << std::endl;
+        std::list<std::string> lst;
+        specification.print_ASCII_tree( lst );
+        for( auto line : lst ) {
+            std::cout << "> " << line << std::endl;
+        }
+        std::cout << "}}} end" << std::endl;  // XXX
+        # endif
+        _TODO_  // TODO
+        // builder.build_pipe( specification["nodes"].as<>() );
+        # if 0
         auto procNamesVect = co()["processor"].as_list_of<std::string>();
         for( auto it  = procNamesVect.begin();
                   it != procNamesVect.end(); ++it) {
@@ -188,6 +207,9 @@ AnalysisApplication::_V_concrete_app_configure() {
             _processors.push_back( procPtr );
             AnalysisPipeline::push_back( *procPtr );
         }
+        # else
+        _TODO_  // implement read of specification file and perform pipeline assembly
+        # endif
     }
 }
 

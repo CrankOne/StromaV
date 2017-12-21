@@ -26,6 +26,7 @@ namespace sV {
 
 int
 App::_V_run() {
+    # if 0
     if( do_immediate_exit() ) return EXIT_FAILURE;
     // Check if we actually have something to do
     if( _processorsChain.empty() ) {
@@ -48,6 +49,8 @@ App::_V_run() {
     sV_log2( "Pipeline analysis done.\n" );
 
     return EXIT_SUCCESS ? rc == 0 : EXIT_FAILURE;
+    # endif
+    return EXIT_SUCCESS;
 }
 
 }  // namespace sV

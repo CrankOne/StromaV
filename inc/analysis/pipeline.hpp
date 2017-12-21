@@ -146,6 +146,22 @@ public:
     const std::string & name() const { return _pName; }
 };
 
+
+template< typename ContainerMessageT
+        , typename SubMessageT>
+class SubPipeProcessor : public iEventProcessor<ContainerMessageT>
+                       , public pipet::Pipe<SubMessageT> {
+public:
+    typedef ContainerMessageT ContainerMessage;
+    typedef SubMessageT SubMessage;
+    typedef iEventProcessor<ContainerMessageT> Parent;
+protected:
+    virtual SubMessage * _unpack( ContainerMessage ) = 0;
+    virtual void _pack( const SubMessage & sMsg, ContainerMessage * ) = 0;
+public:
+    SubPipeProcessor( const std::string & nm ) : Parent(nm) {}
+};
+
 # if 0
 
 class iStatefulProcessor {

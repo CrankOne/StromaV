@@ -1,0 +1,37 @@
+pipe:
+  label: commonPipe
+  description: Common event class pipeline.
+  messageClass: Event
+  nodes:
+    - fork:
+      - pipeline:
+          label: "expPipe"
+          description: Experimental event processing.
+          messageClass: ExperimentalEvent
+          nodes:
+            - fork:
+              - pipeline:
+                  messageClass: SADCAmplitude
+                  label: "SADC"
+                  description: Sampling ADC processing pipe.
+                  nodes:
+                    - processor:
+                        class: SADCWfAlign
+                        parameters:
+                          one: 1
+                          two: 2
+                    - processor:
+                        class: SADCWfFit
+              - pipeline:
+                  messageClass: APVData
+                  label: "APV"
+                  description: APV hits processing pipe.
+                  nodes:
+                    - processor:
+                        class: SimpleAPVClustering
+      - pipeline:
+          label: "mcPipe"
+          description: Simulated (Monte-Carlo) event processing.
+          messageClass: SimulatedEvent
+          nodes: null
+
