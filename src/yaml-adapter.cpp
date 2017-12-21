@@ -105,6 +105,7 @@ read_yaml_node_to_goo_dict( goo::dict::Dictionary & D
                         // whether they're maps or scalars itself).
                         bool hasSequence = false
                            , hasMap = false
+                           , hasScalar = false
                            ;
                         for( auto entry : subNode.second ) {
                             hasSequence |= entry.IsSequence();
@@ -117,6 +118,7 @@ read_yaml_node_to_goo_dict( goo::dict::Dictionary & D
                                        , nName.c_str()
                                        , subNode.first.as<std::string>().c_str() );
                             }
+                            hasScalar |= true;
                         }
                         if( hasSequence ) {
                             if( hasMap ) {
@@ -131,11 +133,24 @@ read_yaml_node_to_goo_dict( goo::dict::Dictionary & D
                             // Note: generally speaking, there are ways to
                             // introduce such a support, but the particular use
                             // cases fot this remains unclear, again.
-                            emraise( unimplemented, "sV YAML to goo::dict "
+                            emraise( unimplemented, "sV YAML to goo:i:dict "
                                      "adapter does not support "
                                      "multidimensional arrays (node %s.%s)."
                                     , nodePath.c_str()
                                     , nName.c_str() );
+                        }
+                        if( hasMap ) {
+                            if( hasScalar ) {
+                                emraise(badValue, "Unable to construct goo::dict "
+                                        "from mixed sequence: map and scalar values "
+                                        "have been found for node %s.%s."
+                                        , nodePath.c_str(), nName.c_str());
+                            }
+                            // Here we apparently have a sequence of objects.
+                            auto p = new goo::dict::Parameter<std::list<goo::dict::Dictionary> >(
+                                    nName.c_str(), "<YAML injection>" );
+                            read_yaml_node_to_goo_list( *p, subNode, nodePath );
+                            _TODO_  // TODO
                         }
                         _TODO_ // TODO
                         // ...

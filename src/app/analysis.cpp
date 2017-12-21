@@ -182,35 +182,37 @@ AnalysisApplication::_V_concrete_app_configure() {
                 && app_option<std::string>("input-format") != "unset" ) {
         _evSeq = generic_new<aux::iEventSequence>( app_option<std::string>("input-format") );
     }
-    if( !do_immediate_exit() ) {
-        goo::dict::Dictionary specification( "Specification"
-                                           , "Analysis pipeline specification." );
-        sV::aux::read_yaml_config_file_to_goo_dict( specification
-                                                  , co()["specification"].as<goo::filesystem::Path>() );
-        sV::PipelineBuilder<mixins::PBEventApp::UniEvent> builder;
-        # if 1
-        std::cout << "Parsed pipeline description: {{{" << std::endl;
-        std::list<std::string> lst;
-        specification.print_ASCII_tree( lst );
-        for( auto line : lst ) {
-            std::cout << "> " << line << std::endl;
-        }
-        std::cout << "}}} end" << std::endl;  // XXX
-        # endif
-        _TODO_  // TODO
-        // builder.build_pipe( specification["nodes"].as<>() );
-        # if 0
-        auto procNamesVect = co()["processor"].as_list_of<std::string>();
-        for( auto it  = procNamesVect.begin();
-                  it != procNamesVect.end(); ++it) {
-            Processor * procPtr = generic_new<Processor>(*it);
-            _processors.push_back( procPtr );
-            AnalysisPipeline::push_back( *procPtr );
-        }
-        # else
-        _TODO_  // implement read of specification file and perform pipeline assembly
-        # endif
+    if( do_immediate_exit() ) {
+        return;
     }
+    goo::dict::Dictionary specification( "Specification"
+                                     , "Analysis pipeline specification." );
+    sV::aux::read_yaml_config_file_to_goo_dict( specification
+                                             , co()["specification"].as<goo::filesystem::Path>()
+                                             , true );
+    sV::PipelineBuilder<mixins::PBEventApp::UniEvent> builder;
+    # if 1
+    std::cout << "Parsed pipeline description: {{{" << std::endl;
+    std::list<std::string> lst;
+    specification.print_ASCII_tree( lst );
+    for( auto line : lst ) {
+        std::cout << "> " << line << std::endl;
+    }
+    std::cout << "}}} end" << std::endl;  // XXX
+    # endif
+    _TODO_  // TODO
+    // builder.build_pipe( specification["nodes"].as<>() );
+    # if 0
+    auto procNamesVect = co()["processor"].as_list_of<std::string>();
+for( auto it  = procNamesVect.begin();
+it != procNamesVect.end(); ++it) {
+Processor * procPtr = generic_new<Processor>(*it);
+_processors.push_back( procPtr );
+AnalysisPipeline::push_back( *procPtr );
+}
+    # else
+    _TODO_  // implement read of specification file and perform pipeline assembly
+    # endif
 }
 
 }  // namespace sV
